@@ -129,7 +129,7 @@ export async function runResearchJob(jobId: string): Promise<void> {
       }
 
       for (const item of pendingItems) {
-        const countryName = iso3ToName.get(item.countryIso3) ?? "";
+        const countryName = iso3ToName.get(item.countryIso3!) ?? "";
         const result = results.find(
           (r) =>
             r.countryName.toLowerCase() === countryName.toLowerCase() ||
@@ -139,7 +139,7 @@ export async function runResearchJob(jobId: string): Promise<void> {
 
         if (result) {
           await prisma.country.update({
-            where: { iso3: item.countryIso3 },
+            where: { iso3: item.countryIso3! },
             data: {
               institution: result.institution,
               systemType: result.systemType,
@@ -180,7 +180,7 @@ export async function runResearchJob(jobId: string): Promise<void> {
           });
         } else {
           await prisma.country.update({
-            where: { iso3: item.countryIso3 },
+            where: { iso3: item.countryIso3! },
             data: { researchStatus: "failed" },
           });
 
@@ -221,7 +221,7 @@ export async function runResearchJob(jobId: string): Promise<void> {
           data: { status: "failed", error: errorMessage, durationMs },
         });
         await prisma.country.update({
-          where: { iso3: item.countryIso3 },
+          where: { iso3: item.countryIso3! },
           data: { researchStatus: "failed" },
         });
       }
