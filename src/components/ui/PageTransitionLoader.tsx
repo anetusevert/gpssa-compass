@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
-  Globe, GitCompare, Layers, Monitor, Lightbulb,
-  Server, Building2, GraduationCap, DollarSign, Workflow,
-  Map, ListOrdered, FileText, AlertTriangle, BarChart3,
+  Globe, GitCompare, Layers, Radio, Sparkles,
+  Package, Users2, Lightbulb,
+  Truck, UserCircle, Network,
   LayoutDashboard, type LucideIcon,
 } from "lucide-react";
 
@@ -15,30 +15,27 @@ import {
    Route → label + icon mapping
 ───────────────────────────────────────────────────────────── */
 
-const ROUTES: Record<string, { label: string; icon: LucideIcon; pillar: "discover" | "requirements" | "roadmap" | "home" }> = {
-  "/dashboard":                                  { label: "Home",                  icon: LayoutDashboard, pillar: "home" },
-  "/dashboard/discover/atlas":                   { label: "Global Atlas",          icon: Globe,           pillar: "discover" },
-  "/dashboard/discover/benchmarking":            { label: "Benchmarking",          icon: GitCompare,      pillar: "discover" },
-  "/dashboard/discover/services":                { label: "Service Landscape",     icon: Layers,          pillar: "discover" },
-  "/dashboard/discover/systems":                 { label: "Systems & Delivery",    icon: Monitor,         pillar: "discover" },
-  "/dashboard/discover/design":                  { label: "Design Studio",         icon: Lightbulb,       pillar: "discover" },
-  "/dashboard/requirements/infrastructure":      { label: "Infrastructure",        icon: Server,          pillar: "requirements" },
-  "/dashboard/requirements/organization":        { label: "Organization",          icon: Building2,       pillar: "requirements" },
-  "/dashboard/requirements/capabilities":        { label: "Capabilities",          icon: GraduationCap,   pillar: "requirements" },
-  "/dashboard/requirements/investments":         { label: "Investments",           icon: DollarSign,      pillar: "requirements" },
-  "/dashboard/requirements/processes":           { label: "Processes",             icon: Workflow,        pillar: "requirements" },
-  "/dashboard/roadmap/strategic":                { label: "Strategic Plan",        icon: Map,             pillar: "roadmap" },
-  "/dashboard/roadmap/prioritization":           { label: "Prioritization",        icon: ListOrdered,     pillar: "roadmap" },
-  "/dashboard/roadmap/concepts":                 { label: "Concept Sheets",        icon: FileText,        pillar: "roadmap" },
-  "/dashboard/roadmap/risks":                    { label: "Risks & Mitigations",   icon: AlertTriangle,   pillar: "roadmap" },
-  "/dashboard/roadmap/governance":               { label: "Governance & KPIs",     icon: BarChart3,       pillar: "roadmap" },
+const ROUTES: Record<string, { label: string; icon: LucideIcon; pillar: "atlas" | "services" | "products" | "delivery" | "home" }> = {
+  "/dashboard":                          { label: "Home",                icon: LayoutDashboard, pillar: "home" },
+  "/dashboard/atlas":                    { label: "Global Atlas",        icon: Globe,           pillar: "atlas" },
+  "/dashboard/atlas/benchmarking":       { label: "Benchmarking",        icon: GitCompare,      pillar: "atlas" },
+  "/dashboard/services/catalog":         { label: "Service Catalog",     icon: Layers,          pillar: "services" },
+  "/dashboard/services/channels":        { label: "Channel Capabilities",icon: Radio,           pillar: "services" },
+  "/dashboard/services/analysis":        { label: "Service Analysis",    icon: Sparkles,        pillar: "services" },
+  "/dashboard/products/portfolio":       { label: "Portfolio",           icon: Package,         pillar: "products" },
+  "/dashboard/products/segments":        { label: "Segment Coverage",    icon: Users2,          pillar: "products" },
+  "/dashboard/products/innovation":      { label: "Innovation",          icon: Lightbulb,       pillar: "products" },
+  "/dashboard/delivery/channels":        { label: "Channels",            icon: Truck,           pillar: "delivery" },
+  "/dashboard/delivery/personas":        { label: "Personas",            icon: UserCircle,      pillar: "delivery" },
+  "/dashboard/delivery/models":          { label: "Delivery Models",     icon: Network,         pillar: "delivery" },
 };
 
 const PILLAR_COLORS: Record<string, string> = {
-  discover:     "var(--gpssa-green)",
-  requirements: "var(--adl-blue)",
-  roadmap:      "var(--gold)",
-  home:         "var(--cream)",
+  atlas:    "var(--gpssa-green)",
+  services: "var(--adl-blue)",
+  products: "var(--gold)",
+  delivery: "#2dd4bf",
+  home:     "var(--cream)",
 };
 
 function getRoute(path: string) {

@@ -1,113 +1,22 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Globe,
-  GitCompare,
   Layers,
-  Monitor,
-  Lightbulb,
-  Server,
-  Building2,
-  GraduationCap,
-  DollarSign,
-  Workflow,
-  Map,
-  ListOrdered,
-  FileText,
-  AlertTriangle,
-  BarChart3,
+  Package,
+  Truck,
   ChevronRight,
+  GitCompare,
+  Database,
+  TrendingUp,
+  Users2,
+  Radio,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-
-/* ─────────────────────────────────────────────
-   Types & Data
-───────────────────────────────────────────── */
-
-interface SubItem {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-}
-
-interface Pillar {
-  id: string;
-  number: string;
-  title: string;
-  question: string;
-  accentVar: string;          // CSS variable name e.g. "--gpssa-green"
-  accentClass: string;        // Tailwind text class
-  borderClass: string;        // active border class
-  bgDimClass: string;         // expanded bg tint
-  dotClass: string;           // sidebar-dot class
-  subItems: SubItem[];
-}
-
-const PILLARS: Pillar[] = [
-  {
-    id: "discover",
-    number: "01",
-    title: "Discover & Improve",
-    question: "How could we do better?",
-    accentVar: "--gpssa-green",
-    accentClass: "text-gpssa-green",
-    borderClass: "border-gpssa-green/40",
-    bgDimClass: "bg-gpssa-green/5",
-    dotClass: "bg-gpssa-green",
-    subItems: [
-      { label: "Global Atlas",       href: "/dashboard/discover/atlas",        icon: Globe },
-      { label: "Benchmarking",       href: "/dashboard/discover/benchmarking", icon: GitCompare },
-      { label: "Service Landscape",  href: "/dashboard/discover/services",     icon: Layers },
-      { label: "Systems & Delivery", href: "/dashboard/discover/systems",      icon: Monitor },
-      { label: "Design Studio",      href: "/dashboard/discover/design",       icon: Lightbulb },
-    ],
-  },
-  {
-    id: "requirements",
-    number: "02",
-    title: "Requirements & Enablers",
-    question: "What do we need to do it?",
-    accentVar: "--adl-blue",
-    accentClass: "text-adl-blue",
-    borderClass: "border-adl-blue/40",
-    bgDimClass: "bg-adl-blue/5",
-    dotClass: "bg-adl-blue",
-    subItems: [
-      { label: "Infrastructure", href: "/dashboard/requirements/infrastructure", icon: Server },
-      { label: "Organization",   href: "/dashboard/requirements/organization",   icon: Building2 },
-      { label: "Capabilities",   href: "/dashboard/requirements/capabilities",   icon: GraduationCap },
-      { label: "Investments",    href: "/dashboard/requirements/investments",     icon: DollarSign },
-      { label: "Processes",      href: "/dashboard/requirements/processes",       icon: Workflow },
-    ],
-  },
-  {
-    id: "roadmap",
-    number: "03",
-    title: "Roadmap & Implementation",
-    question: "How do we get there?",
-    accentVar: "--gold",
-    accentClass: "text-gold",
-    borderClass: "border-gold/40",
-    bgDimClass: "bg-gold/5",
-    dotClass: "bg-gold",
-    subItems: [
-      { label: "Strategic Plan",  href: "/dashboard/roadmap/strategic",      icon: Map },
-      { label: "Prioritization",  href: "/dashboard/roadmap/prioritization", icon: ListOrdered },
-      { label: "Concept Sheets",  href: "/dashboard/roadmap/concepts",       icon: FileText },
-      { label: "Risks",           href: "/dashboard/roadmap/risks",           icon: AlertTriangle },
-      { label: "Governance & KPIs", href: "/dashboard/roadmap/governance",   icon: BarChart3 },
-    ],
-  },
-];
-
-/* ─────────────────────────────────────────────
-   Helpers
-───────────────────────────────────────────── */
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -127,192 +36,265 @@ function getFormattedDate(): string {
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-/* ─────────────────────────────────────────────
-   Sub-item button
-───────────────────────────────────────────── */
-
-function SubItemButton({
-  item,
-  accentVar,
-  index,
-  onClick,
-}: {
-  item: SubItem;
+interface KnowledgePillar {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
   accentVar: string;
-  index: number;
-  onClick: () => void;
-}) {
-  const Icon = item.icon;
+  accentClass: string;
+  borderClass: string;
+  bgClass: string;
+  icon: LucideIcon;
+  href: string;
+  stats: { label: string; value: string; icon: LucideIcon }[];
+}
+
+const PILLARS: KnowledgePillar[] = [
+  {
+    id: "services",
+    title: "Services",
+    subtitle: "Service Intelligence",
+    description:
+      "Deep knowledge on GPSSA's 31 services, their capabilities across channels, digital readiness, and enhancement opportunities.",
+    accentVar: "--adl-blue",
+    accentClass: "text-adl-blue",
+    borderClass: "border-adl-blue/30",
+    bgClass: "bg-adl-blue/5",
+    icon: Layers,
+    href: "/dashboard/services/catalog",
+    stats: [
+      { label: "Services", value: "31", icon: Layers },
+      { label: "Categories", value: "7", icon: Database },
+      { label: "Channels", value: "6", icon: Radio },
+    ],
+  },
+  {
+    id: "products",
+    title: "Products",
+    subtitle: "Product Intelligence",
+    description:
+      "Comprehensive product portfolio covering pension, insurance, and social protection products across core, complementary, and non-core offerings.",
+    accentVar: "--gold",
+    accentClass: "text-gold",
+    borderClass: "border-gold/30",
+    bgClass: "bg-gold/5",
+    icon: Package,
+    href: "/dashboard/products/portfolio",
+    stats: [
+      { label: "Products", value: "15+", icon: Package },
+      { label: "Segments", value: "8", icon: Users2 },
+      { label: "Coverage Types", value: "5", icon: TrendingUp },
+    ],
+  },
+  {
+    id: "delivery",
+    title: "Delivery",
+    subtitle: "Delivery Intelligence",
+    description:
+      "How services and products reach customers through digital portals, mobile apps, service centers, partnerships, and cross-border channels.",
+    accentVar: "--teal",
+    accentClass: "text-teal-400",
+    borderClass: "border-teal-400/30",
+    bgClass: "bg-teal-400/5",
+    icon: Truck,
+    href: "/dashboard/delivery/channels",
+    stats: [
+      { label: "Channels", value: "6", icon: Truck },
+      { label: "Personas", value: "8", icon: Users2 },
+      { label: "Models", value: "4", icon: GitCompare },
+    ],
+  },
+];
+
+function AtlasHero({ onClick }: { onClick: () => void }) {
   return (
     <motion.button
       onClick={onClick}
-      className="group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 hover:bg-white/[0.06] active:scale-[0.98]"
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.055, duration: 0.3, ease: EASE }}
-      whileHover={{ x: 2 }}
+      className="group relative w-full overflow-hidden rounded-2xl border border-gpssa-green/20 transition-colors duration-300 hover:border-gpssa-green/40 text-left"
+      style={{
+        background:
+          "linear-gradient(135deg, rgba(0,168,107,0.06) 0%, rgba(10,22,40,0.8) 50%, rgba(45,74,140,0.06) 100%)",
+      }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: EASE }}
+      whileHover={{ scale: 1.005 }}
     >
-      {/* Icon */}
-      <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200"
-        style={{
-          backgroundColor: `color-mix(in srgb, var(${accentVar}) 12%, transparent)`,
-        }}
-      >
-        <Icon
-          size={15}
-          style={{ color: `var(${accentVar})` }}
-          strokeWidth={1.8}
+      <div className="absolute inset-0 opacity-20 pointer-events-none">
+        <div className="grid-overlay" />
+      </div>
+
+      <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 px-8 py-8 md:py-10">
+        <div className="flex-shrink-0 flex items-center justify-center w-20 h-20 rounded-2xl bg-gpssa-green/10 border border-gpssa-green/20">
+          <Globe size={36} className="text-gpssa-green" strokeWidth={1.5} />
+        </div>
+
+        <div className="flex-1 min-w-0 text-center md:text-left">
+          <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gpssa-green/70">
+              Knowledge Layer
+            </span>
+          </div>
+          <h2 className="font-playfair text-2xl md:text-3xl font-bold text-cream mb-2">
+            Global Atlas
+          </h2>
+          <p className="text-sm text-gray-muted max-w-xl">
+            Explore the worldwide landscape of social insurance and pension
+            systems. Country-level intelligence, institutional benchmarking, and
+            comparative analysis across 196 nations.
+          </p>
+        </div>
+
+        <div className="hidden lg:flex items-center gap-6">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-cream">196</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-muted/70">
+              Countries
+            </p>
+          </div>
+          <div className="w-px h-10 bg-[var(--border)]" />
+          <div className="text-center">
+            <p className="text-2xl font-bold text-cream">50+</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-muted/70">
+              Institutions
+            </p>
+          </div>
+          <div className="w-px h-10 bg-[var(--border)]" />
+          <div className="text-center">
+            <p className="text-2xl font-bold text-cream">12</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-muted/70">
+              Dimensions
+            </p>
+          </div>
+        </div>
+
+        <ChevronRight
+          size={24}
+          className="shrink-0 text-gpssa-green/50 transition-transform duration-300 group-hover:translate-x-1"
         />
       </div>
 
-      {/* Label */}
-      <span className="flex-1 text-sm font-medium text-gray-muted transition-colors duration-200 group-hover:text-cream">
-        {item.label}
-      </span>
-
-      {/* Arrow */}
-      <ChevronRight
-        size={14}
-        className="shrink-0 text-gray-muted/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-gray-muted"
-        style={{ color: `color-mix(in srgb, var(${accentVar}) 50%, transparent)` }}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, var(--gpssa-green), transparent)",
+          opacity: 0.2,
+        }}
       />
     </motion.button>
   );
 }
 
-/* ─────────────────────────────────────────────
-   Pillar Tile
-───────────────────────────────────────────── */
-
-function PillarTile({
+function PillarCard({
   pillar,
-  isActive,
-  onToggle,
-  onNavigate,
+  index,
+  onClick,
 }: {
-  pillar: Pillar;
-  isActive: boolean;
-  onToggle: () => void;
-  onNavigate: (href: string) => void;
+  pillar: KnowledgePillar;
+  index: number;
+  onClick: () => void;
 }) {
+  const Icon = pillar.icon;
+
   return (
-    <motion.div
-      layout
-      className={`
-        glass-card cursor-pointer select-none overflow-hidden rounded-2xl border
-        transition-colors duration-300
-        ${isActive ? pillar.borderClass : "border-[var(--border)] hover:border-[var(--border-hover)]"}
-      `}
-      style={
-        isActive
-          ? {
-              boxShadow: `0 0 32px color-mix(in srgb, var(${pillar.accentVar}) 10%, transparent)`,
-            }
-          : {}
-      }
-      transition={{ layout: { duration: 0.4, ease: EASE } }}
+    <motion.button
+      onClick={onClick}
+      className={`group relative w-full overflow-hidden rounded-2xl border ${pillar.borderClass} transition-all duration-300 hover:border-opacity-60 text-left`}
+      style={{
+        background: `linear-gradient(145deg, color-mix(in srgb, var(${pillar.accentVar}) 5%, transparent), rgba(10,22,40,0.6))`,
+      }}
+      initial={{ opacity: 0, y: 24, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{
+        duration: 0.55,
+        ease: EASE,
+        delay: 0.3 + index * 0.12,
+      }}
+      whileHover={{ y: -2 }}
     >
-      {/* ── Collapsed header (always visible) ── */}
-      <motion.div
-        layout="position"
-        className={`flex items-center gap-4 px-6 py-5 transition-colors duration-300 ${
-          isActive ? pillar.bgDimClass : ""
-        }`}
-        onClick={onToggle}
-      >
-        {/* Number */}
-        <span
-          className="font-playfair text-[11px] font-semibold tracking-[0.2em] opacity-40"
-          style={{ color: `var(${pillar.accentVar})` }}
-        >
-          {pillar.number}
-        </span>
-
-        {/* Title + question */}
-        <div className="flex-1 min-w-0">
-          <h2 className="font-playfair text-lg font-semibold leading-tight text-cream">
-            {pillar.title}
-          </h2>
-          <p className="mt-0.5 text-xs font-medium tracking-wide text-gray-muted/70">
-            {pillar.question}
-          </p>
-        </div>
-
-        {/* Chevron */}
-        <motion.div
-          animate={{ rotate: isActive ? 90 : 0 }}
-          transition={{ duration: 0.25, ease: EASE }}
-          className="shrink-0"
-        >
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div
+            className="flex items-center justify-center w-12 h-12 rounded-xl border"
+            style={{
+              backgroundColor: `color-mix(in srgb, var(${pillar.accentVar}) 10%, transparent)`,
+              borderColor: `color-mix(in srgb, var(${pillar.accentVar}) 20%, transparent)`,
+            }}
+          >
+            <Icon
+              size={22}
+              style={{ color: `var(${pillar.accentVar})` }}
+              strokeWidth={1.5}
+            />
+          </div>
           <ChevronRight
             size={18}
-            style={{ color: `var(${pillar.accentVar})` }}
-            className="opacity-60"
+            className="text-gray-muted/40 transition-all duration-300 group-hover:translate-x-1"
+            style={{
+              color: `color-mix(in srgb, var(${pillar.accentVar}) 50%, transparent)`,
+            }}
           />
-        </motion.div>
-      </motion.div>
+        </div>
 
-      {/* ── Expanded sub-items ── */}
-      <AnimatePresence initial={false}>
-        {isActive && (
-          <motion.div
-            key="sub-items"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: EASE }}
-            className="overflow-hidden"
-          >
-            {/* Divider */}
-            <div
-              className="mx-6 h-px"
-              style={{
-                background: `linear-gradient(90deg, color-mix(in srgb, var(${pillar.accentVar}) 30%, transparent), transparent)`,
-              }}
-            />
+        <span
+          className="text-[10px] font-semibold uppercase tracking-[0.2em] block mb-1"
+          style={{
+            color: `color-mix(in srgb, var(${pillar.accentVar}) 70%, transparent)`,
+          }}
+        >
+          {pillar.subtitle}
+        </span>
 
-            {/* Items */}
-            <div className="px-4 py-3">
-              {pillar.subItems.map((item, i) => (
-                <SubItemButton
-                  key={item.href}
-                  item={item}
-                  accentVar={pillar.accentVar}
-                  index={i}
-                  onClick={() => onNavigate(item.href)}
-                />
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+        <h3 className="font-playfair text-xl font-bold text-cream mb-2">
+          {pillar.title}
+        </h3>
+
+        <p className="text-xs text-gray-muted mb-5 line-clamp-2">
+          {pillar.description}
+        </p>
+
+        <div
+          className="h-px mb-4"
+          style={{
+            background: `linear-gradient(90deg, color-mix(in srgb, var(${pillar.accentVar}) 25%, transparent), transparent)`,
+          }}
+        />
+
+        <div className="grid grid-cols-3 gap-3">
+          {pillar.stats.map((stat) => {
+            const StatIcon = stat.icon;
+            return (
+              <div key={stat.label} className="text-center">
+                <div className="flex items-center justify-center mb-1">
+                  <StatIcon
+                    size={12}
+                    className="text-gray-muted/50 mr-1"
+                  />
+                  <span className="text-lg font-bold text-cream">
+                    {stat.value}
+                  </span>
+                </div>
+                <p className="text-[9px] uppercase tracking-wider text-gray-muted/60">
+                  {stat.label}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </motion.button>
   );
 }
-
-/* ─────────────────────────────────────────────
-   Page
-───────────────────────────────────────────── */
 
 export default function DashboardHome() {
   const { data: session } = useSession();
   const router = useRouter();
   const userName = (session?.user?.name ?? "there").split(" ")[0];
-  const [activePillar, setActivePillar] = useState<string | null>(null);
-
-  function handleToggle(id: string) {
-    setActivePillar((prev) => (prev === id ? null : id));
-  }
-
-  function handleNavigate(href: string) {
-    router.push(href);
-  }
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-12 md:px-16">
-
-      {/* Ambient orbs */}
       <div
         className="orb pointer-events-none"
         style={{
@@ -320,7 +302,8 @@ export default function DashboardHome() {
           height: 480,
           top: -100,
           right: -80,
-          background: "radial-gradient(circle, rgba(0,168,107,0.07) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(0,168,107,0.07) 0%, transparent 70%)",
           animationDelay: "0s",
         }}
       />
@@ -331,7 +314,8 @@ export default function DashboardHome() {
           height: 380,
           bottom: -60,
           left: -60,
-          background: "radial-gradient(circle, rgba(45,74,140,0.07) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(45,74,140,0.07) 0%, transparent 70%)",
           animationDelay: "2s",
         }}
       />
@@ -342,17 +326,16 @@ export default function DashboardHome() {
           height: 300,
           top: "45%",
           right: "25%",
-          background: "radial-gradient(circle, rgba(197,165,114,0.05) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(197,165,114,0.05) 0%, transparent 70%)",
           animationDelay: "4s",
         }}
       />
 
-      {/* Grid overlay */}
       <div className="grid-overlay pointer-events-none absolute inset-0" />
 
-      {/* Header */}
       <motion.header
-        className="relative z-10 mb-10 text-center"
+        className="relative z-10 mb-8 text-center"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: EASE }}
@@ -363,37 +346,26 @@ export default function DashboardHome() {
         <h1 className="font-playfair text-3xl font-bold text-cream md:text-4xl">
           {getGreeting()}, {userName}
         </h1>
+        <p className="mt-2 text-sm text-gray-muted/70">
+          Social Insurance &amp; Pension Knowledge Intelligence
+        </p>
       </motion.header>
 
-      {/* Pillar tiles — stacked column, max-width for readability */}
-      <motion.div
-        className="relative z-10 w-full max-w-2xl space-y-3"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          hidden: {},
-          visible: { transition: { staggerChildren: 0.12, delayChildren: 0.25 } },
-        }}
-      >
-        {PILLARS.map((pillar) => (
-          <motion.div
-            key={pillar.id}
-            variants={{
-              hidden: { opacity: 0, y: 24, scale: 0.97 },
-              visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.55, ease: EASE } },
-            }}
-          >
-            <PillarTile
-              pillar={pillar}
-              isActive={activePillar === pillar.id}
-              onToggle={() => handleToggle(pillar.id)}
-              onNavigate={handleNavigate}
-            />
-          </motion.div>
-        ))}
-      </motion.div>
+      <div className="relative z-10 w-full max-w-5xl space-y-4">
+        <AtlasHero onClick={() => router.push("/dashboard/atlas")} />
 
-      {/* Footer */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {PILLARS.map((pillar, i) => (
+            <PillarCard
+              key={pillar.id}
+              pillar={pillar}
+              index={i}
+              onClick={() => router.push(pillar.href)}
+            />
+          ))}
+        </div>
+      </div>
+
       <motion.footer
         className="relative z-10 mt-12 flex items-center justify-center gap-2.5"
         initial={{ opacity: 0 }}

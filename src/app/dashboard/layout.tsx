@@ -13,7 +13,7 @@ export default function DashboardLayout({
 }) {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const pathname = usePathname();
-  const isBenchmarkingStage = pathname === "/dashboard/discover/benchmarking";
+  const isBenchmarkingStage = pathname === "/dashboard/atlas/benchmarking";
 
   return (
     <div className="flex min-h-screen bg-navy">

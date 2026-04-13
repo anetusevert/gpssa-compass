@@ -368,7 +368,7 @@ export default function LandingPage() {
                 className="text-body-lg mb-10 max-w-md"
                 style={{ color: "var(--gray-muted)" }}
               >
-                Product &amp; Service Development Roadmap
+                Social Insurance &amp; Pension Knowledge Intelligence
               </motion.p>
 
               {/* CTA Button */}

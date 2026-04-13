@@ -10,6 +10,10 @@ const pillarAccent = {
   requirements: "bg-adl-blue/20 border-adl-blue/30 text-adl-blue",
   roadmap: "bg-gold/20 border-gold/30 text-gold",
   admin: "bg-gray-muted/20 border-gray-muted/30 text-cream",
+  atlas: "bg-gpssa-green/20 border-gpssa-green/30 text-gpssa-green",
+  services: "bg-adl-blue/20 border-adl-blue/30 text-adl-blue",
+  products: "bg-gold/20 border-gold/30 text-gold",
+  delivery: "bg-teal-400/20 border-teal-400/30 text-teal-400",
 } as const;
 
 const pillarLayoutId = {
@@ -17,6 +21,10 @@ const pillarLayoutId = {
   requirements: "section-tab-requirements",
   roadmap: "section-tab-roadmap",
   admin: "section-tab-admin",
+  atlas: "section-tab-atlas",
+  services: "section-tab-services",
+  products: "section-tab-products",
+  delivery: "section-tab-delivery",
 } as const;
 
 interface SectionTabItem {
