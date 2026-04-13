@@ -467,7 +467,7 @@ export default function AgentsPage() {
             const isExpanded = expandedPillars.has(pillarKey);
 
             return (
-              <Card key={pillarKey} variant="glass" padding="none" className="overflow-hidden border border-white/[0.06]">
+              <Card key={pillarKey} variant="glass" padding="sm" className="!p-0 overflow-hidden border border-white/[0.06]">
                 <button
                   onClick={() => togglePillar(pillarKey)}
                   className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
