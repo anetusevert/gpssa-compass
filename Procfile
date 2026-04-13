@@ -1,1 +1,1 @@
-web: npx prisma migrate deploy && node .next/standalone/server.js
+web: npx prisma migrate deploy && HOSTNAME=0.0.0.0 node .next/standalone/server.js
