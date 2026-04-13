@@ -73,7 +73,11 @@ export const authOptions: AuthOptions = {
             where: { id: token.id as string },
             select: { avatar: true, name: true },
           });
-          (session.user as any).avatar = dbUser?.avatar || token.avatar;
+          let avatar = dbUser?.avatar || (token.avatar as string | undefined);
+          if (avatar && avatar.startsWith("/uploads/avatars/")) {
+            avatar = `/api/avatars/${token.id}?t=${Date.now()}`;
+          }
+          (session.user as any).avatar = avatar;
           if (dbUser?.name) session.user.name = dbUser.name;
         } catch {
           (session.user as any).avatar = token.avatar;

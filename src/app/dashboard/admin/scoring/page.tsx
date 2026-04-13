@@ -52,9 +52,11 @@ export default function ScoringPage() {
     try {
       const res = await fetch("/api/admin/scoring");
       if (res.ok) {
-        const data: Methodology = await res.json();
-        setMethodology(data);
-        setLocalWeights(data.weights.map((w) => ({ dimension: w.dimension, weight: w.weight })));
+        const data: Methodology | null = await res.json();
+        if (data) {
+          setMethodology(data);
+          setLocalWeights(data.weights.map((w) => ({ dimension: w.dimension, weight: w.weight })));
+        }
       }
     } catch { /* ignore */ }
   }, []);

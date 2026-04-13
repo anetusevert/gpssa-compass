@@ -11,11 +11,7 @@ export async function GET() {
     include: { weights: { orderBy: { dimension: "asc" } } },
   });
 
-  if (!methodology) {
-    return NextResponse.json({ error: "No active methodology found" }, { status: 404 });
-  }
-
-  return NextResponse.json(methodology);
+  return NextResponse.json(methodology ?? null);
 }
 
 export async function PUT(request: NextRequest) {

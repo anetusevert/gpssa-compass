@@ -626,8 +626,8 @@ export function BenchmarkingWorkspace({
 
           <div className="flex h-full w-full items-center justify-center p-2">
             {viewMode === "radar" && (
-              <div className="h-full w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-full w-full min-h-[200px]">
+                <ResponsiveContainer width="100%" height="100%" minHeight={1}>
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="rgba(255,255,255,0.08)" />
                     <PolarAngleAxis dataKey="dimension" tick={{ fill: "#B8C2CF", fontSize: 11 }} />
@@ -665,8 +665,8 @@ export function BenchmarkingWorkspace({
             )}
 
             {viewMode === "bars" && (
-              <div className="h-full w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-full w-full min-h-[200px]">
+                <ResponsiveContainer width="100%" height="100%" minHeight={1}>
                   <BarChart data={overallBars} layout="vertical" margin={{ top: 12, right: 20, bottom: 12, left: 16 }}>
                     <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
                     <XAxis type="number" domain={[0, 100]} tick={{ fill: "#8A9BB0", fontSize: 11 }} />
@@ -690,8 +690,8 @@ export function BenchmarkingWorkspace({
             )}
 
             {viewMode === "quadrant" && (
-              <div className="h-full w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-full w-full min-h-[200px]">
+                <ResponsiveContainer width="100%" height="100%" minHeight={1}>
                   <ScatterChart margin={{ top: 12, right: 20, bottom: 12, left: 18 }}>
                     <CartesianGrid stroke="rgba(255,255,255,0.05)" />
                     <XAxis type="number" dataKey="x" domain={[40, 100]} tick={{ fill: "#8A9BB0", fontSize: 11 }} />

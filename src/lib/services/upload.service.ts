@@ -3,6 +3,7 @@ import { existsSync } from "fs";
 import path from "path";
 
 const UPLOAD_DIR = path.join(process.cwd(), ".uploads", "avatars");
+const LEGACY_UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "avatars");
 
 export class UploadService {
   private async ensureUploadDir() {
@@ -28,6 +29,10 @@ export class UploadService {
     const extensions = ["jpg", "jpeg", "png", "gif", "webp"];
     for (const ext of extensions) {
       const filepath = path.join(UPLOAD_DIR, `${userId}.${ext}`);
+      if (existsSync(filepath)) return filepath;
+    }
+    for (const ext of extensions) {
+      const filepath = path.join(LEGACY_UPLOAD_DIR, `${userId}.${ext}`);
       if (existsSync(filepath)) return filepath;
     }
     return null;

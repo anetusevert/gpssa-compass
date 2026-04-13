@@ -23,12 +23,11 @@ export async function POST() {
   try {
     const jobId = await createResearchJob();
 
-    // Fire-and-forget: start processing in background
     runResearchJob(jobId).catch((err) => {
       console.error("Research job failed:", err);
     });
 
-    return NextResponse.json({ jobId, status: "running" });
+    return NextResponse.json({ id: jobId, status: "running" });
   } catch (err) {
     console.error("Failed to create research job:", err);
     return NextResponse.json({ error: "Failed to create research job" }, { status: 500 });
