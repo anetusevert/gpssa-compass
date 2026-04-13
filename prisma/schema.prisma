@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -60,6 +60,101 @@ model AgentExecution {
   @@index([agentId])
 }
 
+model Country {
+  id              String   @id @default(cuid())
+  iso3            String   @unique
+  iso2            String?
+  name            String   @unique
+  flag            String?
+  region          String
+  subRegion       String?
+  institution     String?
+  systemType      String?
+  yearEstablished Int?
+  maturityScore   Float?
+  maturityLabel   String?
+  coverageRate    Float?
+  replacementRate Float?
+  sustainability  Float?
+  digitalLevel    String?
+  keyFeatures     String?
+  challenges      String?
+  insights        String?
+  researchStatus  String   @default("pending")
+  researchedAt    DateTime?
+  researchSource  String?
+  rawResearchData String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  institutions    Institution[]
+
+  @@index([region])
+  @@index([researchStatus])
+}
+
+model ResearchJob {
+  id             String   @id @default(cuid())
+  type           String   @default("country-research")
+  status         String   @default("pending")
+  totalItems     Int      @default(0)
+  completedItems Int      @default(0)
+  failedItems    Int      @default(0)
+  currentItem    String?
+  model          String   @default("gpt-4o")
+  batchSize      Int      @default(3)
+  totalTokens    Int      @default(0)
+  totalCost      Float    @default(0)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  pausedAt       DateTime?
+  lastError      String?
+  errorCount     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  items          ResearchJobItem[]
+}
+
+model ResearchJobItem {
+  id          String   @id @default(cuid())
+  jobId       String
+  job         ResearchJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  countryIso3 String
+  status      String   @default("pending")
+  tokensUsed  Int      @default(0)
+  durationMs  Int      @default(0)
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([jobId, countryIso3])
+  @@index([jobId])
+}
+
+model ScoringMethodology {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  weights     ScoringWeight[]
+}
+
+model ScoringWeight {
+  id            String   @id @default(cuid())
+  methodologyId String
+  methodology   ScoringMethodology @relation(fields: [methodologyId], references: [id], onDelete: Cascade)
+  dimension     String
+  weight        Float    @default(1.0)
+  maxScore      Float    @default(100)
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([methodologyId, dimension])
+  @@index([methodologyId])
+}
+
 model Institution {
   id              String   @id @default(cuid())
   name            String   @unique
@@ -67,6 +162,8 @@ model Institution {
   country         String
   countryCode     String
   region          String
+  countryId       String?
+  countryRef      Country? @relation(fields: [countryId], references: [id])
   isBenchmarkTarget Boolean @default(false)
   description     String?
   services        String?
@@ -80,8 +177,10 @@ model Institution {
   benchmarksOf    BenchmarkReport[] @relation("BenchmarkComparison")
   benchmarkDatasets BenchmarkDataset[] @relation("BenchmarkTargetInstitution")
   benchmarkScores BenchmarkInstitutionScore[]
+  sourceCitations InstitutionSourceCitation[]
 
   @@index([countryCode])
+  @@index([countryId])
 }
 
 model BenchmarkDataset {
@@ -235,6 +334,7 @@ model GPSSAService {
   painPoints    String?
   opportunities String?
   analyses      ServiceAnalysis[]
+  sourceCitations ServiceSourceCitation[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -262,6 +362,7 @@ model Opportunity {
   status        String   @default("identified")
   sourceSection String?
   conceptSheet  ConceptSheet?
+  sourceCitations OpportunitySourceCitation[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -283,6 +384,7 @@ model Requirement {
   details     String?
   priority    String   @default("medium")
   status      String   @default("identified")
+  sourceCitations RequirementSourceCitation[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -352,4 +454,81 @@ model Activity {
   action    String
   details   String?
   createdAt DateTime @default(now())
+}
+
+// ── Universal Data Source & Citation Models ──
+
+model DataSource {
+  id          String   @id @default(cuid())
+  title       String
+  url         String
+  publisher   String?
+  sourceType  String   @default("website")
+  description String?
+  region      String?
+  publishedAt DateTime?
+  accessedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  serviceCitations     ServiceSourceCitation[]
+  institutionCitations InstitutionSourceCitation[]
+  opportunityCitations OpportunitySourceCitation[]
+  requirementCitations RequirementSourceCitation[]
+}
+
+model ServiceSourceCitation {
+  id           String       @id @default(cuid())
+  serviceId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime     @default(now())
+  service      GPSSAService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  source       DataSource   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, sourceId])
+  @@index([sourceId])
+}
+
+model InstitutionSourceCitation {
+  id            String      @id @default(cuid())
+  institutionId String
+  sourceId      String
+  citation      String?
+  evidenceNote  String?
+  createdAt     DateTime    @default(now())
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  source        DataSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([institutionId, sourceId])
+  @@index([sourceId])
+}
+
+model OpportunitySourceCitation {
+  id            String      @id @default(cuid())
+  opportunityId String
+  sourceId      String
+  citation      String?
+  evidenceNote  String?
+  createdAt     DateTime    @default(now())
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  source        DataSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([opportunityId, sourceId])
+  @@index([sourceId])
+}
+
+model RequirementSourceCitation {
+  id            String      @id @default(cuid())
+  requirementId String
+  sourceId      String
+  citation      String?
+  evidenceNote  String?
+  createdAt     DateTime    @default(now())
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  source        DataSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([requirementId, sourceId])
+  @@index([sourceId])
 }

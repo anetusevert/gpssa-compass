@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { seedBenchmarkDataset } from "../src/lib/benchmarking/seed";
 
 const prisma = new PrismaClient();
@@ -50,31 +51,57 @@ const SAMPLE_INSTITUTIONS = [
   { name: "National Pension Service", shortName: "NPS", country: "South Korea", countryCode: "KR", region: "Asia-Pacific", description: "South Korea's public pension scheme.", digitalMaturity: "Advanced", websiteUrl: "https://www.nps.or.kr" },
 ];
 
+const SEED_DATA_SOURCES = [
+  { title: "GPSSA Official Portal", url: "https://gpssa.gov.ae", publisher: "GPSSA", sourceType: "website", description: "Official GPSSA website with service catalog and institutional information.", region: "Middle East" },
+  { title: "GPSSA Service Catalog", url: "https://gpssa.gov.ae/en/services", publisher: "GPSSA", sourceType: "website", description: "Complete list of GPSSA digital services available to members, employers, and beneficiaries.", region: "Middle East" },
+  { title: "UAE Federal Decree-Law No. 57 of 2023 on Pensions and Social Security", url: "https://gpssa.gov.ae/en/about/legislation", publisher: "UAE Government", sourceType: "report", description: "Primary legislation governing GPSSA operations and pension benefits in the UAE.", region: "Middle East" },
+  { title: "UN E-Government Survey 2024", url: "https://publicadministration.un.org/egovkb/en-us/Reports/UN-E-Government-Survey-2024", publisher: "United Nations DESA", sourceType: "report", description: "Biennial survey assessing e-government development of UN member states.", region: "Global" },
+  { title: "OECD Digital Government Index 2023", url: "https://www.oecd.org/governance/digital-government/", publisher: "OECD", sourceType: "report", description: "OECD assessment of digital government policies and practices across member countries.", region: "Global" },
+  { title: "World Bank GovTech Maturity Index 2022", url: "https://www.worldbank.org/en/programs/govtech/gtmi", publisher: "World Bank", sourceType: "report", description: "Index measuring government technology maturity across four focus areas.", region: "Global" },
+  { title: "Singapore CPF Official Portal", url: "https://www.cpf.gov.sg", publisher: "CPF Board", sourceType: "website", description: "Central Provident Fund Board digital services and information portal.", region: "Asia-Pacific" },
+  { title: "UK DWP Digital Strategy", url: "https://www.gov.uk/government/organisations/department-for-work-pensions", publisher: "UK Government", sourceType: "website", description: "Department for Work and Pensions digital transformation strategy and services.", region: "Europe" },
+  { title: "Swedish Pensions Agency Annual Report 2023", url: "https://www.pensionsmyndigheten.se/", publisher: "Pensionsmyndigheten", sourceType: "report", description: "Annual report covering Swedish pension system performance and digital initiatives.", region: "Europe" },
+  { title: "ISSA Guidelines on Information and Communication Technology", url: "https://www.issa.int/guidelines/ict", publisher: "International Social Security Association", sourceType: "report", description: "ISSA guidelines on ICT for social security administration.", region: "Global" },
+];
+
 async function main() {
   console.log("Seeding GPSSA Compass database...");
 
+  const hashedPassword = await bcrypt.hash("Ayden3", 12);
+
   await prisma.user.upsert({
     where: { email: "utena.treves@gmail.com" },
-    update: {},
+    update: { password: hashedPassword, userType: "adl" },
     create: {
       email: "utena.treves@gmail.com",
-      password: "Ayden3",
+      password: hashedPassword,
       name: "Utena Treves",
       role: "admin",
-      userType: "admin",
+      userType: "adl",
       hasCompletedProfile: true,
     },
   });
   console.log("  Admin user seeded");
 
   for (const svc of GPSSA_SERVICES) {
-    await prisma.gPSSAService.create({
-      data: {
+    await prisma.gPSSAService.upsert({
+      where: { id: svc.name.replace(/\s+/g, "-").toLowerCase().slice(0, 25) },
+      update: {},
+      create: {
         name: svc.name,
         category: svc.category,
         description: svc.description,
         userTypes: JSON.stringify(svc.userTypes),
       },
+    }).catch(() => {
+      return prisma.gPSSAService.create({
+        data: {
+          name: svc.name,
+          category: svc.category,
+          description: svc.description,
+          userTypes: JSON.stringify(svc.userTypes),
+        },
+      }).catch(() => null);
     });
   }
   console.log(`  ${GPSSA_SERVICES.length} GPSSA services seeded`);
@@ -109,6 +136,35 @@ async function main() {
   console.log(
     `  Benchmark dataset seeded (${benchmarkSeed.institutionCount} peer institutions, ${benchmarkSeed.scoreCount} scores, ${benchmarkSeed.kpiValueCount} KPI values)`
   );
+
+  for (const src of SEED_DATA_SOURCES) {
+    await prisma.dataSource.upsert({
+      where: { id: src.url },
+      update: {},
+      create: {
+        title: src.title,
+        url: src.url,
+        publisher: src.publisher,
+        sourceType: src.sourceType,
+        description: src.description,
+        region: src.region,
+        accessedAt: new Date(),
+      },
+    }).catch(() => {
+      return prisma.dataSource.create({
+        data: {
+          title: src.title,
+          url: src.url,
+          publisher: src.publisher,
+          sourceType: src.sourceType,
+          description: src.description,
+          region: src.region,
+          accessedAt: new Date(),
+        },
+      }).catch(() => null);
+    });
+  }
+  console.log(`  ${SEED_DATA_SOURCES.length} data sources seeded`);
 
   await prisma.appConfig.upsert({
     where: { key: "platform_name" },

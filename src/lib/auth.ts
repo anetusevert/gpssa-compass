@@ -1,12 +1,6 @@
 import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma } from "./db";
-
-function detectUserType(email: string): string {
-  if (email === "utena.treves@gmail.com") return "admin";
-  if (email.endsWith("@adlittle.com")) return "adl";
-  return "gpssa";
-}
+import { authService } from "@/lib/services";
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -19,23 +13,24 @@ export const authOptions: AuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        let user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        let user = await authService.findUserByEmail(credentials.email);
 
         if (user) {
-          if (user.password !== credentials.password) return null;
+          const valid = await authService.verifyPassword(
+            credentials.password,
+            user.password
+          );
+          if (!valid) return null;
         } else {
-          const userType = detectUserType(credentials.email);
-          user = await prisma.user.create({
-            data: {
-              email: credentials.email,
-              password: credentials.password,
-              name: credentials.email.split("@")[0],
-              role: userType === "admin" ? "admin" : "user",
-              userType,
-              hasCompletedProfile: userType === "admin",
-            },
+          const userType = authService.detectUserType(credentials.email);
+          const role = authService.detectRole(credentials.email);
+          user = await authService.createUser({
+            email: credentials.email,
+            password: credentials.password,
+            name: credentials.email.split("@")[0],
+            role,
+            userType,
+            hasCompletedProfile: role === "admin",
           });
         }
 
@@ -45,6 +40,7 @@ export const authOptions: AuthOptions = {
           name: user.name,
           role: user.role,
           userType: user.userType,
+          image: user.avatar,
         };
       },
     }),
@@ -52,11 +48,16 @@ export const authOptions: AuthOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/" },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
         token.userType = (user as any).userType;
+        token.avatar = (user as any).image;
+      }
+      if (trigger === "update" && session) {
+        token.name = session.name ?? token.name;
+        token.avatar = session.avatar ?? token.avatar;
       }
       return token;
     },
@@ -65,6 +66,7 @@ export const authOptions: AuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
         (session.user as any).userType = token.userType;
+        (session.user as any).avatar = token.avatar;
       }
       return session;
     },

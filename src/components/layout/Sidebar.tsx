@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/lib/store";
+import { UserMenu } from "./UserMenu";
 import {
   Globe,
   GitCompare,
@@ -29,6 +30,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   ChevronRight,
+  Cpu,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -104,7 +106,8 @@ const NAV_SECTIONS: NavSection[] = [
     activeColor: "bg-gray-muted/15 text-cream",
     adminOnly: true,
     items: [
-      { label: "AI Configuration", href: "/dashboard/admin/ai-config", icon: Bot },
+      { label: "AI Configuration", href: "/dashboard/admin/ai-config", icon: Cpu },
+      { label: "Agents", href: "/dashboard/admin/agents", icon: Bot },
       { label: "Users", href: "/dashboard/admin/users", icon: Users },
       { label: "Data Management", href: "/dashboard/admin/data", icon: Database },
       { label: "Activity Logs", href: "/dashboard/admin/activity", icon: ScrollText },
@@ -200,7 +203,6 @@ export function Sidebar() {
 
           return (
             <div key={section.title} className="mb-2">
-              {/* Section header -- always visible */}
               {!sidebarCollapsed ? (
                 <Link
                   href={section.items[0].href}
@@ -234,7 +236,6 @@ export function Sidebar() {
                 </Link>
               )}
 
-              {/* Section items -- only when active (or when sidebar is collapsed, show all icons) */}
               <AnimatePresence initial={false}>
                 {(isSectionActive || sidebarCollapsed) && (
                   <motion.ul
@@ -291,7 +292,7 @@ export function Sidebar() {
       </nav>
 
       {/* Collapse toggle */}
-      <div className="border-t border-[var(--border)] p-3">
+      <div className="border-t border-[var(--border)] px-3 pt-3 pb-1">
         <button
           onClick={toggleSidebar}
           className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-muted transition-colors duration-200 hover:bg-white/5 hover:text-cream"
@@ -306,6 +307,11 @@ export function Sidebar() {
             </>
           )}
         </button>
+      </div>
+
+      {/* User Menu */}
+      <div className="border-t border-[var(--border)] px-3 py-2">
+        <UserMenu collapsed={sidebarCollapsed} />
       </div>
     </motion.aside>
   );
