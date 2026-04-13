@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Globe,
@@ -394,15 +395,19 @@ export default function DashboardHome() {
 
       {/* Footer */}
       <motion.footer
-        className="relative z-10 mt-12 flex items-center justify-center gap-2"
+        className="relative z-10 mt-12 flex items-center justify-center gap-2.5"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.0, duration: 0.6 }}
       >
         <span className="text-xs text-gray-muted/50">powered by</span>
-        <span className="font-playfair text-sm font-semibold tracking-wide text-gray-muted/70">
-          Arthur D. Little
-        </span>
+        <Image
+          src="/images/adl-logo.png"
+          alt="Arthur D. Little"
+          width={64}
+          height={22}
+          className="object-contain opacity-50"
+        />
       </motion.footer>
     </div>
   );

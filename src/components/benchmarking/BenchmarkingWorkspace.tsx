@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -272,6 +272,57 @@ export function BenchmarkingWorkspace({
   const [selectedIds, setSelectedIds] = useState<string[]>(
     workspace.peerInstitutions.slice(0, 3).map((institution) => institution.id)
   );
+  const [selectorTab, setSelectorTab] = useState<"institutions" | "countries">("institutions");
+  const [countryPeers, setCountryPeers] = useState<Array<{ iso3: string; name: string; flag: string; region: string; maturityLabel: string | null; maturityScore: number | null }>>([]);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [addingCountry, setAddingCountry] = useState<string | null>(null);
+
+  const fetchCountryPeers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/countries?status=completed");
+      if (res.ok) {
+        const data = await res.json();
+        setCountryPeers(data.map((c: Record<string, unknown>) => ({
+          iso3: c.iso3 as string,
+          name: c.name as string,
+          flag: (c.flag as string) ?? "",
+          region: (c.region as string) ?? "",
+          maturityLabel: c.maturityLabel as string | null,
+          maturityScore: c.maturityScore as number | null,
+        })));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (selectorOpen && selectorTab === "countries" && countryPeers.length === 0) {
+      fetchCountryPeers();
+    }
+  }, [selectorOpen, selectorTab, countryPeers.length, fetchCountryPeers]);
+
+  async function addCountryAsPeer(iso3: string) {
+    setAddingCountry(iso3);
+    try {
+      const res = await fetch("/api/research/benchmarking/compute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ countryIso3: iso3 }),
+      });
+      if (res.ok) {
+        const { institutionId } = await res.json();
+        toggleInstitution(institutionId);
+        window.location.reload();
+      }
+    } finally {
+      setAddingCountry(null);
+    }
+  }
+
+  const filteredCountryPeers = useMemo(() => {
+    if (!countrySearch) return countryPeers;
+    const q = countrySearch.toLowerCase();
+    return countryPeers.filter((c) => c.name.toLowerCase().includes(q) || c.iso3.toLowerCase().includes(q));
+  }, [countryPeers, countrySearch]);
 
   const regions = useMemo(
     () => [
@@ -710,7 +761,7 @@ export function BenchmarkingWorkspace({
                 <button
                   key={kpi.slug}
                   onClick={() => setEvidenceTarget({ type: "kpi", payload: kpi })}
-                  className="group inline-flex min-w-[110px] items-center justify-between gap-2 rounded-full bg-white/[0.04] px-3 py-1.5 text-left transition-all hover:bg-white/[0.08]"
+                  className="group inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full bg-white/[0.04] px-3 py-1.5 text-left transition-all hover:bg-white/[0.08]"
                 >
                   <div>
                     <p className="text-[9px] uppercase tracking-[0.16em] text-gray-muted">{kpi.ribbonLabel}</p>
@@ -740,48 +791,120 @@ export function BenchmarkingWorkspace({
         isOpen={selectorOpen}
         onClose={() => setSelectorOpen(false)}
         title="Peer Selection"
-        description="Choose up to three comparison institutions"
+        description="Choose up to three comparison institutions or countries"
         size="xl"
       >
         <div className="space-y-4">
-          <div className="relative">
-            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-muted" />
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search peers"
-              className="w-full rounded-2xl bg-white/[0.05] py-3 pl-9 pr-3 text-sm text-cream outline-none"
-            />
+          {/* Tab switcher */}
+          <div className="flex gap-1 rounded-xl bg-white/[0.04] p-1">
+            <button
+              onClick={() => setSelectorTab("institutions")}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${selectorTab === "institutions" ? "bg-white/10 text-cream" : "text-gray-muted hover:text-cream"}`}
+            >
+              Institutions ({workspace.peerInstitutions.length})
+            </button>
+            <button
+              onClick={() => setSelectorTab("countries")}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${selectorTab === "countries" ? "bg-white/10 text-cream" : "text-gray-muted hover:text-cream"}`}
+            >
+              Countries ({countryPeers.length})
+            </button>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredPeers.map((institution) => {
-              const selected = selectedInstitutions.some((item) => item.id === institution.id);
-              return (
-                <button
-                  key={institution.id}
-                  onClick={() => toggleInstitution(institution.id)}
-                  className={`rounded-[22px] p-4 text-left transition-all ${
-                    selected ? "bg-gpssa-green/14 text-cream" : "bg-white/[0.04] text-cream hover:bg-white/[0.06]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {countryCodeToFlag(institution.countryCode)} {institution.shortName}
+
+          {selectorTab === "institutions" && (
+            <>
+              <div className="relative">
+                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-muted" />
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search institutions"
+                  className="w-full rounded-2xl bg-white/[0.05] py-3 pl-9 pr-3 text-sm text-cream outline-none"
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredPeers.map((institution) => {
+                  const selected = selectedInstitutions.some((item) => item.id === institution.id);
+                  return (
+                    <button
+                      key={institution.id}
+                      onClick={() => toggleInstitution(institution.id)}
+                      className={`rounded-[22px] p-4 text-left transition-all ${
+                        selected ? "bg-gpssa-green/14 text-cream" : "bg-white/[0.04] text-cream hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold">
+                            {countryCodeToFlag(institution.countryCode)} {institution.shortName}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-muted">{institution.country}</p>
+                        </div>
+                        {selected && <span className="h-2.5 w-2.5 rounded-full bg-gpssa-green" />}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-gray-muted">
+                        <span>{institution.region}</span>
+                        <span>•</span>
+                        <span>{institution.digitalMaturity}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {selectorTab === "countries" && (
+            <>
+              <div className="relative">
+                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-muted" />
+                <input
+                  value={countrySearch}
+                  onChange={(e) => setCountrySearch(e.target.value)}
+                  placeholder="Search researched countries"
+                  className="w-full rounded-2xl bg-white/[0.05] py-3 pl-9 pr-3 text-sm text-cream outline-none"
+                />
+              </div>
+              {countryPeers.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-muted">
+                  No researched countries available. Run the Research Agent from Admin to populate country data.
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredCountryPeers.map((country) => (
+                    <button
+                      key={country.iso3}
+                      onClick={() => addCountryAsPeer(country.iso3)}
+                      disabled={addingCountry === country.iso3}
+                      className="rounded-[22px] bg-white/[0.04] p-4 text-left transition-all hover:bg-white/[0.06] disabled:opacity-50"
+                    >
+                      <p className="text-sm font-semibold text-cream">
+                        {country.flag} {country.name}
                       </p>
-                      <p className="mt-1 text-xs text-gray-muted">{institution.country}</p>
-                    </div>
-                    {selected && <span className="h-2.5 w-2.5 rounded-full bg-gpssa-green" />}
-                  </div>
-                  <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-gray-muted">
-                    <span>{institution.region}</span>
-                    <span>•</span>
-                    <span>{institution.digitalMaturity}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                      <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-gray-muted">
+                        <span>{country.region}</span>
+                        {country.maturityLabel && (
+                          <>
+                            <span>•</span>
+                            <span>{country.maturityLabel}</span>
+                          </>
+                        )}
+                        {country.maturityScore && (
+                          <>
+                            <span>•</span>
+                            <span>{country.maturityScore.toFixed(1)}</span>
+                          </>
+                        )}
+                      </div>
+                      {addingCountry === country.iso3 && (
+                        <p className="mt-2 text-[10px] text-gpssa-green animate-pulse">Adding to benchmark...</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </Modal>
 

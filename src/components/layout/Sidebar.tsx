@@ -148,9 +148,9 @@ export function Sidebar() {
               <Image
                 src="/images/adl-logo.png"
                 alt="Arthur D. Little"
-                width={28}
-                height={14}
-                className="object-contain brightness-0 invert"
+                width={32}
+                height={20}
+                className="object-contain"
               />
               <span className="font-playfair text-[13px] font-bold text-cream">
                 GPSSA
@@ -169,9 +169,9 @@ export function Sidebar() {
                 <Image
                   src="/images/adl-logo.png"
                   alt="Arthur D. Little"
-                  width={36}
-                  height={18}
-                  className="object-contain brightness-0 invert"
+                  width={44}
+                  height={28}
+                  className="object-contain"
                 />
                 <div className="h-5 w-px bg-[var(--border)]" />
                 <span className="font-playfair text-xl font-bold text-cream">

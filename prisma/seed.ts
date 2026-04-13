@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { seedBenchmarkDataset } from "../src/lib/benchmarking/seed";
+import { COUNTRIES, SCORING_DIMENSIONS } from "../src/lib/countries/catalog";
 
 const prisma = new PrismaClient();
 
@@ -165,6 +166,50 @@ async function main() {
     });
   }
   console.log(`  ${SEED_DATA_SOURCES.length} data sources seeded`);
+
+  // Seed countries
+  let countryCount = 0;
+  for (const c of COUNTRIES) {
+    await prisma.country.upsert({
+      where: { iso3: c.iso3 },
+      update: { iso2: c.iso2, flag: c.flag, region: c.region, subRegion: c.subRegion },
+      create: {
+        iso3: c.iso3,
+        iso2: c.iso2,
+        name: c.name,
+        flag: c.flag,
+        region: c.region,
+        subRegion: c.subRegion,
+      },
+    });
+    countryCount += 1;
+  }
+  console.log(`  ${countryCount} countries seeded`);
+
+  // Seed default scoring methodology
+  const methodology = await prisma.scoringMethodology.upsert({
+    where: { name: "GPSSA Benchmark Standard" },
+    update: {},
+    create: {
+      name: "GPSSA Benchmark Standard",
+      description: "Equal-weighted scoring across all benchmark dimensions. Weights can be adjusted by administrators.",
+      isActive: true,
+    },
+  });
+  for (const dim of SCORING_DIMENSIONS) {
+    await prisma.scoringWeight.upsert({
+      where: { methodologyId_dimension: { methodologyId: methodology.id, dimension: dim.dimension } },
+      update: { description: dim.description },
+      create: {
+        methodologyId: methodology.id,
+        dimension: dim.dimension,
+        weight: 1.0,
+        maxScore: 100,
+        description: dim.description,
+      },
+    });
+  }
+  console.log(`  Scoring methodology seeded with ${SCORING_DIMENSIONS.length} dimension weights`);
 
   await prisma.appConfig.upsert({
     where: { key: "platform_name" },

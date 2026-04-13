@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Cpu, Bot, Users, Database, ScrollText } from "lucide-react";
+import { Cpu, Bot, Users, Database, ScrollText, Globe, Scale } from "lucide-react";
 import { SectionTabs } from "@/components/ui/SectionTabs";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
@@ -12,6 +12,8 @@ const adminTabs = [
   { id: "agents", label: "Agents", href: "/dashboard/admin/agents", icon: Bot },
   { id: "users", label: "Users", href: "/dashboard/admin/users", icon: Users },
   { id: "data", label: "Data Management", href: "/dashboard/admin/data", icon: Database },
+  { id: "research", label: "Research", href: "/dashboard/admin/research", icon: Globe },
+  { id: "scoring", label: "Scoring", href: "/dashboard/admin/scoring", icon: Scale },
   { id: "activity", label: "Activity Logs", href: "/dashboard/admin/activity", icon: ScrollText },
 ];
 

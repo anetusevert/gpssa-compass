@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, memo, useCallback } from "react";
+import { useState, useMemo, memo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ComposableMap,
@@ -263,10 +263,11 @@ interface MapProps {
   onSelect: (iso: string) => void;
   onHover: (iso: string | null) => void;
   hoveredIso: string | null;
+  countryData: Record<string, CountryProfile>;
 }
 
 const GPSSAWorldMap = memo(function GPSSAWorldMap({
-  metric, selectedIso, onSelect, onHover, hoveredIso,
+  metric, selectedIso, onSelect, onHover, hoveredIso, countryData,
 }: MapProps) {
   const [tooltip, setTooltip] = useState<{ name: string; iso: string; profile?: CountryProfile; x: number; y: number } | null>(null);
 
@@ -275,10 +276,10 @@ const GPSSAWorldMap = memo(function GPSSAWorldMap({
     e: React.MouseEvent
   ) => {
     const iso = getIso3(geo);
-    const profile = iso ? COUNTRIES[iso] : undefined;
+    const profile = iso ? countryData[iso] : undefined;
     setTooltip({ name: geo.properties.name, iso: iso ?? "—", profile, x: e.clientX, y: e.clientY });
     onHover(iso ?? null);
-  }, [onHover]);
+  }, [onHover, countryData]);
 
   const handleMouseLeave = useCallback(() => {
     setTooltip(null);
@@ -297,7 +298,7 @@ const GPSSAWorldMap = memo(function GPSSAWorldMap({
             {({ geographies }) =>
               geographies.map((geo) => {
                 const iso = getIso3(geo);
-                const profile = iso ? COUNTRIES[iso] : undefined;
+                const profile = iso ? countryData[iso] : undefined;
                 const isSelected = iso === selectedIso;
                 const isHovered  = iso === hoveredIso;
                 const fill = profile
@@ -410,7 +411,10 @@ function CompareBar({ label, gpssaVal, otherVal, maxVal, unit }: {
   );
 }
 
+type DetailTab = "intelligence" | "features" | "compare";
+
 function CountryDetailPanel({ profile, onClose }: { profile: CountryProfile; onClose: () => void }) {
+  const [tab, setTab] = useState<DetailTab>("intelligence");
   const accentColor = maturityBadgeColor(profile.maturityLabel);
   const isGPSSA = profile.iso3 === "ARE";
 
@@ -421,128 +425,127 @@ function CountryDetailPanel({ profile, onClose }: { profile: CountryProfile; onC
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 24 }}
       transition={{ duration: 0.35, ease: EASE }}
-      className="flex h-full flex-col"
+      className="flex h-full flex-col overflow-hidden"
     >
-      {/* Header */}
-      <div className="flex items-start justify-between p-4 pb-3 border-b border-[var(--border)]">
-        <div className="flex items-start gap-3">
-          <span className="text-4xl leading-none mt-0.5">{profile.flag}</span>
+      {/* Header — compact */}
+      <div className="flex items-start justify-between p-3 pb-2 border-b border-[var(--border)] shrink-0">
+        <div className="flex items-start gap-2.5">
+          <span className="text-3xl leading-none mt-0.5">{profile.flag}</span>
           <div>
-            <h3 className="font-playfair text-base font-semibold text-cream leading-tight">{profile.name}</h3>
-            <p className="text-xs text-gray-muted mt-0.5">{profile.region}</p>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: accentColor }}
-              />
-              <span className="text-xs font-semibold" style={{ color: accentColor }}>
-                {profile.maturityLabel}
-              </span>
+            <h3 className="font-playfair text-sm font-semibold text-cream leading-tight">{profile.name}</h3>
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-[10px] text-gray-muted">{profile.region}</span>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
+              <span className="text-[10px] font-semibold" style={{ color: accentColor }}>{profile.maturityLabel}</span>
               {isGPSSA && (
-                <span className="ml-1 rounded-full bg-gpssa-green/15 px-2 py-0.5 text-[10px] font-bold text-gpssa-green">
-                  YOUR INSTITUTION
-                </span>
+                <span className="rounded-full bg-gpssa-green/15 px-1.5 py-0.5 text-[9px] font-bold text-gpssa-green">GPSSA</span>
               )}
             </div>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="rounded-lg p-1.5 text-gray-muted transition-colors hover:bg-white/5 hover:text-cream"
-        >
-          <X size={15} />
+        <button onClick={onClose} className="rounded-lg p-1 text-gray-muted transition-colors hover:bg-white/5 hover:text-cream">
+          <X size={14} />
         </button>
       </div>
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ scrollbarWidth: "thin" }}>
-
-        {/* Institution */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-1">Institution</p>
-          <p className="text-sm font-medium text-cream">{profile.institution}</p>
-          <p className="text-xs text-gray-muted mt-0.5">Est. {profile.yearEstablished} · {profile.systemType}</p>
+      {/* Institution line */}
+      <div className="px-3 py-2 shrink-0 border-b border-[var(--border)]">
+        <p className="text-xs font-medium text-cream truncate">{profile.institution}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[10px] text-gray-muted">Est. {profile.yearEstablished} · {profile.systemType}</span>
+          <span className="text-[10px] text-gray-muted">·</span>
+          <Zap size={10} style={{ color: accentColor }} className="inline" />
+          <span className="text-[10px] text-cream">{profile.digitalLevel}</span>
         </div>
+      </div>
 
-        {/* Key metrics grid */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-2">Key Metrics</p>
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              { label: "Digital Maturity", value: profile.maturityScore.toFixed(1), sub: "/ 4.0" },
-              { label: "Coverage Rate",    value: `${profile.coverageRate}%`,        sub: "of workforce" },
-              { label: "Replacement Rate", value: `${profile.replacementRate}%`,     sub: "of salary" },
-              { label: "Sustainability",   value: profile.sustainability.toFixed(1), sub: "/ 4.0" },
-            ] as const).map(({ label, value, sub }) => (
-              <div
-                key={label}
-                className="rounded-xl p-3"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
-              >
-                <p className="text-[10px] text-gray-muted mb-1">{label}</p>
-                <p className="font-playfair text-lg font-bold" style={{ color: accentColor }}>{value}</p>
-                <p className="text-[10px] text-gray-muted/60">{sub}</p>
-              </div>
-            ))}
+      {/* Metrics grid — compact 2x2 */}
+      <div className="grid grid-cols-2 gap-1.5 p-3 shrink-0">
+        {([
+          { label: "Digital Maturity", value: profile.maturityScore.toFixed(1), sub: "/ 4.0" },
+          { label: "Coverage", value: `${profile.coverageRate}%`, sub: "of workforce" },
+          { label: "Replacement", value: `${profile.replacementRate}%`, sub: "of salary" },
+          { label: "Sustainability", value: profile.sustainability.toFixed(1), sub: "/ 4.0" },
+        ] as const).map(({ label, value, sub }) => (
+          <div key={label} className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <p className="text-[9px] text-gray-muted">{label}</p>
+            <p className="font-playfair text-base font-bold" style={{ color: accentColor }}>{value}</p>
+            <p className="text-[9px] text-gray-muted/60">{sub}</p>
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Digital level */}
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <Zap size={13} style={{ color: accentColor }} />
-          <span className="text-xs text-gray-muted">Digital Level:</span>
-          <span className="text-xs font-semibold text-cream">{profile.digitalLevel}</span>
-        </div>
+      {/* Tab switcher */}
+      <div className="flex gap-1 px-3 shrink-0">
+        {([
+          { id: "intelligence" as DetailTab, label: "Intelligence" },
+          { id: "features" as DetailTab, label: "Features" },
+          ...(!isGPSSA ? [{ id: "compare" as DetailTab, label: "Compare" }] : []),
+        ]).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`rounded-lg px-2.5 py-1.5 text-[10px] font-medium transition-all ${
+              tab === t.id ? "bg-white/10 text-cream" : "text-gray-muted hover:text-cream hover:bg-white/5"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Key features */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-2">Key Features</p>
-          <ul className="space-y-1.5">
-            {profile.keyFeatures.map((f) => (
-              <li key={f} className="flex items-start gap-2 text-xs text-gray-muted">
-                <span className="mt-0.5 h-1 w-1 shrink-0 rounded-full" style={{ background: accentColor }} />
-                {f}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* Tab content — fills remaining space, overflow hidden */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 pt-2" style={{ scrollbarWidth: "thin" }}>
+        {tab === "intelligence" && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-1.5">Key Features</p>
+              <ul className="space-y-1">
+                {profile.keyFeatures.map((f) => (
+                  <li key={f} className="flex items-start gap-1.5 text-[11px] text-gray-muted">
+                    <span className="mt-1 h-1 w-1 shrink-0 rounded-full" style={{ background: accentColor }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
 
-        {/* Insights / innovations */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-2">Insights & Innovations</p>
-          <ul className="space-y-1.5">
-            {profile.insights.map((ins) => (
-              <li key={ins} className="flex items-start gap-2 text-xs text-gray-muted">
-                <ArrowRight size={11} className="mt-0.5 shrink-0" style={{ color: accentColor }} />
-                {ins}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {tab === "features" && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-1.5">Insights & Innovations</p>
+              <ul className="space-y-1">
+                {profile.insights.map((ins) => (
+                  <li key={ins} className="flex items-start gap-1.5 text-[11px] text-gray-muted">
+                    <ArrowRight size={10} className="mt-0.5 shrink-0" style={{ color: accentColor }} />
+                    {ins}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-1.5">Challenges</p>
+              <ul className="space-y-1">
+                {profile.challenges.map((c) => (
+                  <li key={c} className="flex items-start gap-1.5 text-[11px] text-gray-muted">
+                    <Info size={10} className="mt-0.5 shrink-0 text-amber-400/70" />
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
 
-        {/* Challenges */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-2">Challenges</p>
-          <ul className="space-y-1.5">
-            {profile.challenges.map((c) => (
-              <li key={c} className="flex items-start gap-2 text-xs text-gray-muted">
-                <Info size={11} className="mt-0.5 shrink-0 text-amber-400/70" />
-                {c}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* GPSSA Comparison (only if not GPSSA itself) */}
-        {!isGPSSA && (
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-2">
-              vs. GPSSA (UAE)
-            </p>
-            <CompareBar label="Digital Maturity"  gpssaVal={GPSSA_REF.maturityScore}    otherVal={profile.maturityScore}    maxVal={4}   unit="" />
-            <CompareBar label="Coverage Rate"      gpssaVal={GPSSA_REF.coverageRate}     otherVal={profile.coverageRate}     maxVal={100} unit="%" />
-            <CompareBar label="Replacement Rate"   gpssaVal={GPSSA_REF.replacementRate}  otherVal={profile.replacementRate}  maxVal={100} unit="%" />
-            <CompareBar label="Sustainability"     gpssaVal={GPSSA_REF.sustainability}   otherVal={profile.sustainability}   maxVal={4}   unit="" />
+        {tab === "compare" && !isGPSSA && (
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-muted mb-2">vs. GPSSA (UAE)</p>
+            <CompareBar label="Digital Maturity" gpssaVal={GPSSA_REF.maturityScore} otherVal={profile.maturityScore} maxVal={4} unit="" />
+            <CompareBar label="Coverage Rate" gpssaVal={GPSSA_REF.coverageRate} otherVal={profile.coverageRate} maxVal={100} unit="%" />
+            <CompareBar label="Replacement Rate" gpssaVal={GPSSA_REF.replacementRate} otherVal={profile.replacementRate} maxVal={100} unit="%" />
+            <CompareBar label="Sustainability" gpssaVal={GPSSA_REF.sustainability} otherVal={profile.sustainability} maxVal={4} unit="" />
           </div>
         )}
       </div>
@@ -554,9 +557,13 @@ function CountryDetailPanel({ profile, onClose }: { profile: CountryProfile; onC
    PAGE
 ═══════════════════════════════════════════════════════════════ */
 
-const ALL_PROFILES = Object.values(COUNTRIES);
-const REGIONS = ["All", ...Array.from(new Set(ALL_PROFILES.map((c) => c.region))).sort()];
+const STATIC_PROFILES = Object.values(COUNTRIES);
 const MATURITY_LABELS = ["All", "Leader", "Advanced", "Developing", "Emerging"];
+
+function parseJsonArr(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
+}
 
 export default function GlobalAtlasPage() {
   const [metric,       setMetric]       = useState<MetricKey>("maturityScore");
@@ -568,27 +575,66 @@ export default function GlobalAtlasPage() {
   const [metricOpen,   setMetricOpen]   = useState(false);
   const [listOpen,     setListOpen]     = useState(false);
   const [statsOpen,    setStatsOpen]    = useState(false);
+  const [dbProfiles,   setDbProfiles]   = useState<Record<string, CountryProfile>>({});
 
-  const selectedProfile = selectedIso ? COUNTRIES[selectedIso] ?? null : null;
+  useEffect(() => {
+    fetch("/api/countries?status=completed")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: Array<Record<string, unknown>>) => {
+        const map: Record<string, CountryProfile> = {};
+        for (const c of rows) {
+          const iso3 = c.iso3 as string;
+          map[iso3] = {
+            iso3,
+            name: c.name as string,
+            flag: (c.flag as string) ?? "",
+            region: c.region as string,
+            institution: (c.institution as string) ?? "Unknown",
+            maturityScore: (c.maturityScore as number) ?? 0,
+            maturityLabel: ((c.maturityLabel as string) ?? "Emerging") as CountryProfile["maturityLabel"],
+            coverageRate: (c.coverageRate as number) ?? 0,
+            replacementRate: (c.replacementRate as number) ?? 0,
+            sustainability: (c.sustainability as number) ?? 0,
+            systemType: (c.systemType as string) ?? "Unknown",
+            yearEstablished: (c.yearEstablished as number) ?? 0,
+            digitalLevel: (c.digitalLevel as string) ?? "Unknown",
+            keyFeatures: parseJsonArr(c.keyFeatures as string),
+            challenges: parseJsonArr(c.challenges as string),
+            insights: parseJsonArr(c.insights as string),
+          };
+        }
+        setDbProfiles(map);
+      })
+      .catch(() => {});
+  }, []);
+
+  const mergedCountries = useMemo<Record<string, CountryProfile>>(() => {
+    return { ...COUNTRIES, ...dbProfiles };
+  }, [dbProfiles]);
+
+  const ALL_PROFILES = useMemo(() => Object.values(mergedCountries), [mergedCountries]);
+  const REGIONS = useMemo(() => ["All", ...Array.from(new Set(ALL_PROFILES.map((c) => c.region))).sort()], [ALL_PROFILES]);
+
+  const selectedProfile = selectedIso ? mergedCountries[selectedIso] ?? null : null;
 
   const filteredList = useMemo(() => {
     return ALL_PROFILES.filter((p) => {
-      const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.institution.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.institution ?? "").toLowerCase().includes(search.toLowerCase());
       const matchRegion = regionFilter === "All" || p.region === regionFilter;
       const matchMat    = matFilter === "All"    || p.maturityLabel === matFilter;
       return matchSearch && matchRegion && matchMat;
     }).sort((a, b) => b.maturityScore - a.maturityScore);
-  }, [search, regionFilter, matFilter]);
+  }, [search, regionFilter, matFilter, ALL_PROFILES]);
 
   const stats = useMemo(() => {
     const leaders   = ALL_PROFILES.filter((p) => p.maturityLabel === "Leader").length;
     const advanced  = ALL_PROFILES.filter((p) => p.maturityLabel === "Advanced").length;
-    const avgMat    = (ALL_PROFILES.reduce((s, p) => s + p.maturityScore, 0) / ALL_PROFILES.length).toFixed(1);
-    const avgCov    = Math.round(ALL_PROFILES.reduce((s, p) => s + p.coverageRate, 0) / ALL_PROFILES.length);
-    const avgRep    = Math.round(ALL_PROFILES.reduce((s, p) => s + p.replacementRate, 0) / ALL_PROFILES.length);
+    const avgMat    = ALL_PROFILES.length > 0 ? (ALL_PROFILES.reduce((s, p) => s + p.maturityScore, 0) / ALL_PROFILES.length).toFixed(1) : "0";
+    const avgCov    = ALL_PROFILES.length > 0 ? Math.round(ALL_PROFILES.reduce((s, p) => s + p.coverageRate, 0) / ALL_PROFILES.length) : 0;
+    const avgRep    = ALL_PROFILES.length > 0 ? Math.round(ALL_PROFILES.reduce((s, p) => s + p.replacementRate, 0) / ALL_PROFILES.length) : 0;
     const regions   = new Set(ALL_PROFILES.map((p) => p.region)).size;
     return { leaders, advanced, avgMat, avgCov, avgRep, regions };
-  }, []);
+  }, [ALL_PROFILES]);
 
   const currentMetricCfg = METRICS[metric];
 
@@ -620,6 +666,7 @@ export default function GlobalAtlasPage() {
             onSelect={handleSelectCountry}
             onHover={setHoveredIso}
             hoveredIso={hoveredIso}
+            countryData={mergedCountries}
           />
         </div>
 

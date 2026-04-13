@@ -1,6 +1,7 @@
 import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { authService } from "@/lib/services";
+import { prisma } from "@/lib/db";
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -62,11 +63,21 @@ export const authOptions: AuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.id) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
         (session.user as any).userType = token.userType;
-        (session.user as any).avatar = token.avatar;
+
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { avatar: true, name: true },
+          });
+          (session.user as any).avatar = dbUser?.avatar || token.avatar;
+          if (dbUser?.name) session.user.name = dbUser.name;
+        } catch {
+          (session.user as any).avatar = token.avatar;
+        }
       }
       return session;
     },
