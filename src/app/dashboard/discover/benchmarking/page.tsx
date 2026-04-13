@@ -2,6 +2,8 @@ import { BenchmarkingWorkspace } from "@/components/benchmarking/BenchmarkingWor
 import { Card } from "@/components/ui/Card";
 import { getBenchmarkWorkspace } from "@/lib/benchmarking/workspace";
 
+export const dynamic = "force-dynamic";
+
 export default async function BenchmarkingPage() {
   const workspace = await getBenchmarkWorkspace();
 
