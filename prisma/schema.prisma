@@ -1,0 +1,355 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  name                String
+  email               String   @unique
+  password            String
+  role                String   @default("user")
+  userType            String   @default("gpssa")
+  department          String?
+  avatar              String?
+  hasCompletedProfile Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model AppConfig {
+  key   String @id
+  value String
+}
+
+model AgentConfig {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  description      String?
+  systemPrompt     String
+  userPromptTemplate String
+  model            String   @default("gpt-4o")
+  provider         String   @default("openai")
+  maxTokens        Int      @default(4096)
+  temperature      Float    @default(0.7)
+  isActive         Boolean  @default(true)
+  executionCount   Int      @default(0)
+  lastRunAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  executions       AgentExecution[]
+}
+
+model AgentExecution {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       AgentConfig @relation(fields: [agentId], references: [id])
+  input       String
+  output      String?
+  model       String
+  tokensUsed  Int?
+  durationMs  Int?
+  status      String   @default("running")
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([agentId])
+}
+
+model Institution {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  shortName       String?
+  country         String
+  countryCode     String
+  region          String
+  isBenchmarkTarget Boolean @default(false)
+  description     String?
+  services        String?
+  digitalMaturity String?
+  keyInnovations  String?
+  aiAnalysis      String?
+  websiteUrl      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  benchmarksAs    BenchmarkReport[] @relation("BenchmarkTarget")
+  benchmarksOf    BenchmarkReport[] @relation("BenchmarkComparison")
+  benchmarkDatasets BenchmarkDataset[] @relation("BenchmarkTargetInstitution")
+  benchmarkScores BenchmarkInstitutionScore[]
+
+  @@index([countryCode])
+}
+
+model BenchmarkDataset {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  name              String
+  description       String?
+  methodology       String?
+  coverageNote      String?
+  targetInstitutionId String?
+  targetInstitution Institution? @relation("BenchmarkTargetInstitution", fields: [targetInstitutionId], references: [id])
+  publishedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  scores            BenchmarkInstitutionScore[]
+  kpiValues         BenchmarkKpiValue[]
+}
+
+model BenchmarkDimension {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  category    String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  scores      BenchmarkInstitutionScore[]
+}
+
+model BenchmarkSource {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  publisher     String?
+  url           String
+  sourceType    String   @default("website")
+  description   String?
+  region        String?
+  publishedAt   DateTime?
+  accessedAt    DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  scoreLinks    BenchmarkInstitutionScoreSource[]
+  kpiLinks      BenchmarkKpiValueSource[]
+}
+
+model BenchmarkInstitutionScore {
+  id            String   @id @default(cuid())
+  datasetId     String
+  institutionId String
+  dimensionId   String
+  score         Float
+  maturityLabel String?
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  dataset       BenchmarkDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  dimension     BenchmarkDimension @relation(fields: [dimensionId], references: [id], onDelete: Cascade)
+  sourceLinks   BenchmarkInstitutionScoreSource[]
+
+  @@unique([datasetId, institutionId, dimensionId])
+  @@index([institutionId])
+  @@index([dimensionId])
+}
+
+model BenchmarkInstitutionScoreSource {
+  id           String   @id @default(cuid())
+  scoreId       String
+  sourceId      String
+  citation      String?
+  evidenceNote  String?
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  score         BenchmarkInstitutionScore @relation(fields: [scoreId], references: [id], onDelete: Cascade)
+  source        BenchmarkSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([scoreId, sourceId])
+  @@index([sourceId])
+}
+
+model BenchmarkKpi {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  category    String?
+  unit        String?
+  direction   String   @default("higher-better")
+  ribbonLabel String?
+  ribbonOrder Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  values      BenchmarkKpiValue[]
+}
+
+model BenchmarkKpiValue {
+  id         String   @id @default(cuid())
+  datasetId   String
+  kpiId       String
+  comparator  String
+  label       String
+  value       Float
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  dataset     BenchmarkDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  kpi         BenchmarkKpi @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  sourceLinks BenchmarkKpiValueSource[]
+
+  @@unique([datasetId, kpiId, comparator])
+  @@index([kpiId])
+}
+
+model BenchmarkKpiValueSource {
+  id           String   @id @default(cuid())
+  valueId      String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  value        BenchmarkKpiValue @relation(fields: [valueId], references: [id], onDelete: Cascade)
+  source       BenchmarkSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([valueId, sourceId])
+  @@index([sourceId])
+}
+
+model BenchmarkReport {
+  id           String      @id @default(cuid())
+  targetId     String
+  target       Institution @relation("BenchmarkTarget", fields: [targetId], references: [id])
+  comparisonId String
+  comparison   Institution @relation("BenchmarkComparison", fields: [comparisonId], references: [id])
+  analysis     String
+  createdAt    DateTime    @default(now())
+
+  @@index([targetId])
+}
+
+model GPSSAService {
+  id            String   @id @default(cuid())
+  name          String
+  category      String
+  description   String?
+  userTypes     String?
+  currentState  String?
+  painPoints    String?
+  opportunities String?
+  analyses      ServiceAnalysis[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ServiceAnalysis {
+  id        String       @id @default(cuid())
+  serviceId String
+  service   GPSSAService @relation(fields: [serviceId], references: [id])
+  analysis  String
+  model     String?
+  createdAt DateTime     @default(now())
+
+  @@index([serviceId])
+}
+
+model Opportunity {
+  id            String   @id @default(cuid())
+  title         String
+  category      String
+  description   String?
+  impact        String   @default("medium")
+  effort        String   @default("medium")
+  strategicFit  Float?
+  feasibility   Float?
+  status        String   @default("identified")
+  sourceSection String?
+  conceptSheet  ConceptSheet?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ConceptSheet {
+  id            String      @id @default(cuid())
+  opportunityId String      @unique
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+  content       String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Requirement {
+  id          String   @id @default(cuid())
+  category    String
+  title       String
+  description String?
+  details     String?
+  priority    String   @default("medium")
+  status      String   @default("identified")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RoadmapPhase {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  startDate   String?
+  endDate     String?
+  objectives  String?
+  sortOrder   Int      @default(0)
+  initiatives RoadmapInitiative[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RoadmapInitiative {
+  id            String       @id @default(cuid())
+  phaseId       String
+  phase         RoadmapPhase @relation(fields: [phaseId], references: [id])
+  title         String
+  description   String?
+  status        String       @default("planned")
+  owner         String?
+  dependencies  String?
+  estimatedImpact String?
+  sortOrder     Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([phaseId])
+}
+
+model Risk {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String?
+  probability String   @default("medium")
+  impact      String   @default("medium")
+  mitigation  String?
+  owner       String?
+  status      String   @default("open")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model KPI {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String?
+  target      String?
+  actual      String?
+  unit        String?
+  frequency   String   @default("monthly")
+  owner       String?
+  pillar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+}
