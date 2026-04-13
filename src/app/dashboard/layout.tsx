@@ -2,16 +2,16 @@
 
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { useAppStore } from "@/lib/store";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageTransitionLoader } from "@/components/ui/PageTransitionLoader";
+
+const SIDEBAR_WIDTH = 280;
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const pathname = usePathname();
   const isBenchmarkingStage = pathname === "/dashboard/atlas/benchmarking";
 
@@ -23,7 +23,7 @@ export default function DashboardLayout({
         className={`flex-1 ${
           isBenchmarkingStage ? "h-screen overflow-hidden" : "overflow-y-auto"
         }`}
-        animate={{ marginLeft: sidebarCollapsed ? 72 : 260 }}
+        animate={{ marginLeft: SIDEBAR_WIDTH }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
         <motion.div

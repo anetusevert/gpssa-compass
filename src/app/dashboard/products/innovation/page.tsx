@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Lightbulb, Gauge, Target, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -22,7 +23,7 @@ interface Opportunity {
   innovationType: InnovationType;
 }
 
-const OPPORTUNITIES: Opportunity[] = [
+const STATIC_OPPORTUNITIES: Opportunity[] = [
   {
     id: "i1",
     title: "Gig Worker Pension Scheme",
@@ -189,12 +190,37 @@ function ScoreBar({
   );
 }
 
-const avgImpact =
-  OPPORTUNITIES.reduce((s, o) => s + o.impactScore, 0) / OPPORTUNITIES.length;
-const avgFeasibility =
-  OPPORTUNITIES.reduce((s, o) => s + o.feasibilityScore, 0) / OPPORTUNITIES.length;
-
 export default function ProductInnovationPage() {
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(STATIC_OPPORTUNITIES);
+
+  useEffect(() => {
+    fetch("/api/products/innovations")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setOpportunities(data.map((d: Record<string, unknown>) => ({
+            id: String(d.id),
+            title: String(d.title ?? ""),
+            description: String(d.description ?? ""),
+            targetSegment: String(d.targetSegment ?? ""),
+            impactScore: Number(d.impactScore ?? 0),
+            feasibilityScore: Number(d.feasibilityScore ?? 0),
+            status: String(d.status ?? "Research") as InnovationStatus,
+            estimatedPopulation: String(d.estimatedPopulation ?? ""),
+            innovationType: String(d.innovationType ?? "Digital") as InnovationType,
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const avgImpact = opportunities.length > 0
+    ? opportunities.reduce((s, o) => s + o.impactScore, 0) / opportunities.length
+    : 0;
+  const avgFeasibility = opportunities.length > 0
+    ? opportunities.reduce((s, o) => s + o.feasibilityScore, 0) / opportunities.length
+    : 0;
+
   return (
     <motion.div
       variants={stagger}
@@ -214,7 +240,7 @@ export default function ProductInnovationPage() {
         <StatCard
           icon={Lightbulb}
           label="Opportunities tracked"
-          value={OPPORTUNITIES.length}
+          value={opportunities.length}
           trend="up"
           change="Pipeline"
         />
@@ -238,7 +264,7 @@ export default function ProductInnovationPage() {
         animate="show"
         className="grid md:grid-cols-2 xl:grid-cols-3 gap-4"
       >
-        {OPPORTUNITIES.map((opp) => (
+        {opportunities.map((opp) => (
           <motion.div key={opp.id} variants={fadeUp}>
             <Card
               variant="glass"

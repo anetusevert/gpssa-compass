@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Package,
@@ -27,7 +28,7 @@ interface Product {
   keyFeatures: string[];
 }
 
-const PRODUCTS: Product[] = [
+const STATIC_PRODUCTS: Product[] = [
   {
     id: "p-core-1",
     name: "Retirement / Pension Coverage",
@@ -227,10 +228,32 @@ const fadeUp = {
   },
 };
 
-const activeCount = PRODUCTS.filter((p) => p.status === "Active").length;
-const pilotCount = PRODUCTS.filter((p) => p.status === "Pilot").length;
-
 export default function ProductPortfolioPage() {
+  const [products, setProducts] = useState<Product[]>(STATIC_PRODUCTS);
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setProducts(data.map((d: Record<string, unknown>) => ({
+            id: String(d.id),
+            name: String(d.name),
+            description: String(d.description ?? ""),
+            tier: String(d.tier ?? "Core") as ProductTier,
+            status: String(d.status ?? "Active") as ProductStatus,
+            targetSegments: Array.isArray(d.targetSegments) ? d.targetSegments.map(String) : [],
+            coverageType: String(d.coverageType ?? ""),
+            keyFeatures: Array.isArray(d.keyFeatures) ? d.keyFeatures.map(String) : [],
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const activeCount = products.filter((p) => p.status === "Active").length;
+  const pilotCount = products.filter((p) => p.status === "Pilot").length;
+
   return (
     <motion.div
       variants={stagger}
@@ -253,7 +276,7 @@ export default function ProductPortfolioPage() {
         <StatCard
           icon={Package}
           label="Products in portfolio"
-          value={PRODUCTS.length}
+          value={products.length}
           trend="neutral"
           change="+2 YoY"
         />
@@ -280,7 +303,7 @@ export default function ProductPortfolioPage() {
       </motion.div>
 
       {tierOrder.map((tier) => {
-        const items = PRODUCTS.filter((p) => p.tier === tier);
+        const items = products.filter((p) => p.tier === tier);
         const meta = tierMeta[tier];
         return (
           <motion.section key={tier} variants={fadeUp} className="space-y-4">

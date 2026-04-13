@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, FormEvent } from "react";
 import { signIn } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { ArrowRight, ShieldCheck, Sparkles, Workflow } from "lucide-react";
 import { GPSSALogo } from "@/components/ui/GPSSALogo";
 import { LoginTransition } from "@/components/ui/LoginTransition";
 
@@ -11,95 +12,73 @@ type Phase = "entry" | "hero" | "login";
 
 const ease = [0.16, 1, 0.3, 1] as [number, number, number, number];
 
-// --- Constellation / particle CSS background ---
+const highlightItems = [
+  { label: "Dynamic intelligence layers", icon: Sparkles },
+  { label: "Secure executive workspace", icon: ShieldCheck },
+  { label: "Roadmap-driven analysis flow", icon: Workflow },
+];
 
-function ConstellationBg() {
+const statItems = [
+  { value: "31", label: "services in scope" },
+  { value: "12M", label: "roadmap horizon" },
+  { value: "360", label: "journey intelligence" },
+];
+
+function AmbientBackdrop() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Grid */}
-      <div className="absolute inset-0 grid-overlay opacity-40" />
+      <div className="absolute inset-0 grid-overlay opacity-50" />
 
-      {/* Floating orbs */}
       <div
-        className="orb"
+        className="orb halo-pulse"
         style={{
-          width: 500,
-          height: 500,
-          left: "15%",
-          top: "20%",
+          width: 620,
+          height: 620,
+          left: "-6%",
+          top: "-8%",
           background:
-            "radial-gradient(circle, rgba(0,168,107,0.06) 0%, transparent 70%)",
-          animationDelay: "0s",
-          animationDuration: "8s",
+            "radial-gradient(circle, rgba(0,168,107,0.16) 0%, transparent 70%)",
         }}
       />
       <div
-        className="orb"
+        className="orb drift-slow drift-reverse"
         style={{
-          width: 400,
-          height: 400,
-          right: "10%",
-          top: "50%",
+          width: 480,
+          height: 480,
+          right: "-4%",
+          top: "15%",
           background:
-            "radial-gradient(circle, rgba(45,74,140,0.05) 0%, transparent 70%)",
-          animationDelay: "2s",
-          animationDuration: "10s",
+            "radial-gradient(circle, rgba(45,74,140,0.14) 0%, transparent 72%)",
         }}
       />
       <div
-        className="orb"
+        className="orb drift-slow"
         style={{
-          width: 300,
-          height: 300,
-          left: "50%",
-          bottom: "10%",
+          width: 360,
+          height: 360,
+          left: "52%",
+          bottom: "-4%",
           background:
-            "radial-gradient(circle, rgba(197,165,114,0.04) 0%, transparent 70%)",
-          animationDelay: "4s",
-          animationDuration: "7s",
+            "radial-gradient(circle, rgba(197,165,114,0.14) 0%, transparent 75%)",
         }}
       />
 
-      {/* Constellation dots */}
-      <style jsx>{`
-        @keyframes twinkle {
-          0%,
-          100% {
-            opacity: 0.15;
-          }
-          50% {
-            opacity: 0.6;
-          }
-        }
-        .star {
-          position: absolute;
-          width: 2px;
-          height: 2px;
-          background: var(--cream);
-          border-radius: 50%;
-          animation: twinkle var(--dur) ease-in-out infinite;
-          animation-delay: var(--delay);
-        }
-      `}</style>
-      {Array.from({ length: 40 }).map((_, i) => (
-        <div
-          key={i}
-          className="star"
-          style={
-            {
-              left: `${(i * 37 + 13) % 100}%`,
-              top: `${(i * 53 + 7) % 100}%`,
-              "--dur": `${3 + (i % 4)}s`,
-              "--delay": `${(i * 0.3) % 5}s`,
-            } as React.CSSProperties
-          }
-        />
-      ))}
+      <div className="ambient-ring left-[8%] top-[16%] h-80 w-80 opacity-40" />
+      <div className="ambient-ring bottom-[12%] right-[10%] h-[28rem] w-[28rem] opacity-25" />
+
+      <motion.div
+        className="absolute left-[12%] top-[28%] h-px w-40 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+        animate={{ x: [0, 40, -10, 0], opacity: [0.2, 0.7, 0.35, 0.2] }}
+        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-[24%] right-[14%] h-px w-56 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+        animate={{ x: [0, -60, 18, 0], opacity: [0.15, 0.55, 0.2, 0.15] }}
+        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+      />
     </div>
   );
 }
-
-// --- Login Form ---
 
 function LoginForm({
   onSuccess,
@@ -139,26 +118,31 @@ function LoginForm({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 40, filter: "blur(12px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      exit={{ opacity: 0, y: -30, filter: "blur(12px)" }}
-      transition={{ duration: 0.7, ease }}
-      className="w-full max-w-sm mx-auto"
+      initial={{ opacity: 0, y: 36, scale: 0.98, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      exit={{ opacity: 0, y: -20, scale: 0.98, filter: "blur(10px)" }}
+      transition={{ duration: 0.55, ease }}
+      className="w-full max-w-md"
     >
-      <div className="glass-card p-8 glow-green">
-        <div className="flex flex-col items-center mb-8">
+      <div className="glass-card surface-depth tile-no-frame rounded-[28px] p-8 md:p-9">
+        <div className="mb-8 flex flex-col gap-4">
           <GPSSALogo size="sm" />
-          <p className="text-caption mt-3" style={{ color: "var(--gray-muted)" }}>
-            Sign in to access the platform
-          </p>
+          <div>
+            <p className="text-caption uppercase tracking-[0.28em] text-white/45">
+              Secure Access
+            </p>
+            <p className="mt-2 text-sm text-gray-muted">
+              Sign in to access the intelligence workspace and continue into the
+              platform.
+            </p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="email"
-              className="text-micro uppercase font-medium"
-              style={{ color: "var(--gray-muted)" }}
+              className="text-micro uppercase font-medium text-white/55"
             >
               Email Address
             </label>
@@ -169,12 +153,7 @@ function LoginForm({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@organization.com"
               required
-              className="w-full px-4 py-3 rounded-xl border text-body focus:outline-none focus:ring-2 transition-all duration-300"
-              style={{
-                borderColor: "var(--border)",
-                background: "rgba(10, 22, 40, 0.65)",
-              }}
-              // focus ring applied via Tailwind
+              className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 text-body transition-all duration-300 focus:border-white/10 focus:outline-none focus:ring-2 focus:ring-white/10"
               autoComplete="email"
             />
           </div>
@@ -182,8 +161,7 @@ function LoginForm({
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="password"
-              className="text-micro uppercase font-medium"
-              style={{ color: "var(--gray-muted)" }}
+              className="text-micro uppercase font-medium text-white/55"
             >
               Password
             </label>
@@ -194,11 +172,7 @@ function LoginForm({
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full px-4 py-3 rounded-xl border text-body focus:outline-none focus:ring-2 transition-all duration-300"
-              style={{
-                borderColor: "var(--border)",
-                background: "rgba(10, 22, 40, 0.65)",
-              }}
+              className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 text-body transition-all duration-300 focus:border-white/10 focus:outline-none focus:ring-2 focus:ring-white/10"
               autoComplete="current-password"
             />
           </div>
@@ -209,49 +183,45 @@ function LoginForm({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="text-caption text-red-400 text-center"
+                className="text-caption text-center text-red-400"
               >
                 {error}
               </motion.p>
             )}
           </AnimatePresence>
 
-          <button
+          <motion.button
             type="submit"
             disabled={loading}
-            className="relative mt-2 w-full py-3 rounded-xl font-medium text-body transition-all duration-300 overflow-hidden group disabled:opacity-60"
+            whileHover={{ y: -2, scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            className="group relative mt-2 overflow-hidden rounded-2xl px-4 py-3 text-body font-medium text-white disabled:opacity-60"
             style={{
               background:
-                "linear-gradient(135deg, var(--gpssa-green), var(--gpssa-green-light))",
-              color: "#fff",
+                "linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.08))",
             }}
           >
-            <span className="relative z-10">
+            <span className="relative z-10 flex items-center justify-center gap-2">
               {loading ? "Authenticating..." : "Access Platform"}
+              <ArrowRight
+                size={16}
+                className="icon-white transition-transform duration-300 group-hover:translate-x-1"
+              />
             </span>
-            <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--gpssa-green-light), var(--gpssa-green))",
-              }}
-            />
-          </button>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          </motion.button>
         </form>
 
         <button
           onClick={onBack}
-          className="w-full mt-4 text-caption text-center transition-colors duration-200 hover:opacity-80"
-          style={{ color: "var(--gray-muted)" }}
+          className="mt-4 w-full text-center text-caption text-gray-muted transition-colors duration-200 hover:text-white/80"
         >
-          &larr; Back
+          Back to overview
         </button>
       </div>
     </motion.div>
   );
 }
-
-// --- Main Landing Page ---
 
 export default function LandingPage() {
   const [phase, setPhase] = useState<Phase>("entry");
@@ -259,7 +229,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (phase !== "entry") return;
-    const timer = setTimeout(() => setPhase("hero"), 3000);
+    const timer = setTimeout(() => setPhase("hero"), 1800);
     return () => clearTimeout(timer);
   }, [phase]);
 
@@ -272,209 +242,273 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[var(--navy)]">
-      <ConstellationBg />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--navy)]">
+      <AmbientBackdrop />
 
-      {/* Content container */}
-      <div className="relative z-10 flex flex-col items-center w-full px-6">
+      <div className="relative z-10 w-full px-5 py-8 sm:px-8 lg:px-12">
         <AnimatePresence mode="wait">
-          {/* ── ENTRY PHASE ── */}
           {phase === "entry" && (
             <motion.div
               key="entry"
-              className="flex flex-col items-center"
+              className="mx-auto flex min-h-[80vh] max-w-5xl flex-col items-center justify-center text-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, filter: "blur(8px)" }}
-              transition={{ duration: 0.8, ease }}
+              exit={{ opacity: 0, scale: 0.98, filter: "blur(8px)" }}
+              transition={{ duration: 0.7, ease }}
             >
               <motion.div
-                initial={{ opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1.2, ease, delay: 0.3 }}
-                style={{
-                  filter: "drop-shadow(0 0 80px rgba(0,168,107,0.25))",
-                }}
+                initial={{ opacity: 0, y: 18, scale: 0.94 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.95, ease }}
+                style={{ filter: "drop-shadow(0 0 80px rgba(255,255,255,0.16))" }}
               >
                 <GPSSALogo size="hero" />
               </motion.div>
 
-              {/* Loading pulse */}
+              <motion.p
+                className="mt-6 text-xs uppercase tracking-[0.45em] text-white/45"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.65, ease }}
+              >
+                Social Insurance &amp; Pension Knowledge Intelligence
+              </motion.p>
+
               <motion.div
+                className="mt-12 flex gap-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 1.5, duration: 0.6 }}
-                className="mt-12 flex gap-1.5"
+                transition={{ delay: 0.55, duration: 0.5 }}
               >
                 {[0, 1, 2].map((i) => (
                   <motion.div
                     key={i}
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: "var(--gpssa-green)" }}
-                    animate={{ opacity: [0.2, 1, 0.2] }}
-                    transition={{
-                      duration: 1.2,
-                      repeat: Infinity,
-                      delay: i * 0.2,
-                    }}
+                    className="h-1.5 w-10 rounded-full bg-white/20"
+                    animate={{ opacity: [0.25, 1, 0.25], scaleX: [0.92, 1.08, 0.92] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
                   />
                 ))}
               </motion.div>
             </motion.div>
           )}
 
-          {/* ── HERO PHASE ── */}
           {phase === "hero" && (
-            <motion.div
+            <motion.section
               key="hero"
-              className="flex flex-col items-center text-center max-w-2xl"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, y: -20, filter: "blur(8px)" }}
+              className="mx-auto max-w-6xl"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -18, filter: "blur(8px)" }}
               transition={{ duration: 0.6, ease }}
             >
-              {/* Badge */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, ease, delay: 0.1 }}
-                className="glass px-5 py-2 rounded-full mb-8"
-              >
-                <span
-                  className="text-micro uppercase font-medium tracking-widest"
-                  style={{ color: "var(--gpssa-green-light)" }}
-                >
-                  General Pension &amp; Social Security Authority
-                </span>
-              </motion.div>
+              <div className="glass-card surface-depth tile-no-frame overflow-hidden rounded-[32px] px-6 py-8 sm:px-8 lg:px-10 lg:py-10">
+                <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+                  <div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.08, duration: 0.5, ease }}
+                      className="mb-6 inline-flex items-center gap-3 rounded-full bg-white/[0.03] px-4 py-2"
+                    >
+                      <span className="h-2 w-2 rounded-full bg-white/80" />
+                      <span className="text-micro uppercase tracking-[0.28em] text-white/60">
+                        General Pension &amp; Social Security Authority
+                      </span>
+                    </motion.div>
 
-              {/* Title */}
-              <motion.h1
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, ease, delay: 0.25 }}
-                className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.1] mb-6"
-                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
-              >
-                <span className="text-gradient-green">GPSSA</span>{" "}
-                <span style={{ color: "var(--cream)" }}>Compass</span>
-              </motion.h1>
+                    <motion.h1
+                      className="max-w-3xl font-playfair text-5xl font-bold leading-[1.02] text-cream sm:text-6xl lg:text-7xl"
+                      initial={{ opacity: 0, y: 18 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.16, duration: 0.65, ease }}
+                    >
+                      GPSSA <span className="text-white/88">Intelligence</span>
+                    </motion.h1>
 
-              {/* Subtitle */}
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, ease, delay: 0.45 }}
-                className="text-body-lg mb-10 max-w-md"
-                style={{ color: "var(--gray-muted)" }}
-              >
-                Social Insurance &amp; Pension Knowledge Intelligence
-              </motion.p>
+                    <motion.p
+                      className="mt-5 max-w-2xl text-base text-gray-muted sm:text-lg"
+                      initial={{ opacity: 0, y: 18 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.24, duration: 0.6, ease }}
+                    >
+                      Social Insurance &amp; Pension Knowledge Intelligence
+                      across service landscapes, product development, and
+                      delivery execution.
+                    </motion.p>
 
-              {/* CTA Button */}
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, ease, delay: 0.6 }}
-                onClick={() => setPhase("login")}
-                className="glass gradient-border group relative px-10 py-4 rounded-2xl font-medium text-body-lg transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
-                style={{ color: "var(--cream)" }}
-              >
-                <span className="relative z-10 flex items-center gap-3">
-                  Access Platform
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 18 18"
-                    fill="none"
-                    className="transition-transform duration-300 group-hover:translate-x-1"
+                    <motion.div
+                      className="mt-7 grid gap-3 sm:grid-cols-3"
+                      initial={{ opacity: 0, y: 18 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.32, duration: 0.6, ease }}
+                    >
+                      {statItems.map((item) => (
+                        <div
+                          key={item.label}
+                          className="rounded-2xl bg-white/[0.03] px-4 py-4 backdrop-blur-sm"
+                        >
+                          <p className="text-2xl font-semibold text-white">
+                            {item.value}
+                          </p>
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.24em] text-white/45">
+                            {item.label}
+                          </p>
+                        </div>
+                      ))}
+                    </motion.div>
+
+                    <motion.div
+                      className="mt-8 flex flex-col gap-3 sm:flex-row"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.42, duration: 0.6, ease }}
+                    >
+                      <motion.button
+                        onClick={() => setPhase("login")}
+                        whileHover={{ y: -3, scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        className="group inline-flex items-center justify-center gap-3 rounded-2xl bg-white/[0.09] px-7 py-4 text-base font-medium text-white"
+                      >
+                        Access Platform
+                        <ArrowRight
+                          size={18}
+                          className="icon-white transition-transform duration-300 group-hover:translate-x-1"
+                        />
+                      </motion.button>
+
+                      <div className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/[0.03] px-6 py-4 text-sm text-white/65">
+                        <ShieldCheck size={16} className="icon-white" />
+                        Secure executive environment
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  <motion.div
+                    className="grid gap-4"
+                    initial={{ opacity: 0, x: 24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.28, duration: 0.7, ease }}
                   >
-                    <path
-                      d="M3.75 9H14.25M14.25 9L9.75 4.5M14.25 9L9.75 13.5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-              </motion.button>
+                    {highlightItems.map((item, index) => {
+                      const Icon = item.icon;
+                      return (
+                        <motion.div
+                          key={item.label}
+                          className="glass surface-depth tile-no-frame rounded-[26px] px-5 py-5"
+                          initial={{ opacity: 0, y: 24 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{
+                            delay: 0.34 + index * 0.08,
+                            duration: 0.58,
+                            ease,
+                          }}
+                          whileHover={{ y: -4, scale: 1.01 }}
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="rounded-2xl bg-white/[0.05] p-3">
+                              <Icon size={20} className="icon-white" />
+                            </div>
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.28em] text-white/40">
+                                Intelligence layer {index + 1}
+                              </p>
+                              <p className="mt-2 text-lg font-medium text-white">
+                                {item.label}
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
 
-              {/* Logos row */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.9 }}
-                className="flex items-center gap-6 mt-16"
-              >
-                <GPSSALogo size="sm" color="var(--gray-muted)" />
-                <div
-                  className="w-px h-8"
-                  style={{ background: "var(--border)" }}
-                />
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-micro uppercase"
-                    style={{ color: "var(--gray-muted)", opacity: 0.6 }}
-                  >
-                    Powered by
-                  </span>
-                  <Image
-                    src="/images/adl-logo.png"
-                    alt="Arthur D. Little"
-                    width={80}
-                    height={28}
-                    className="opacity-50"
-                  />
+                    <motion.div
+                      className="flex items-center justify-between rounded-[26px] bg-white/[0.03] px-5 py-5"
+                      initial={{ opacity: 0, y: 24 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.62, duration: 0.58, ease }}
+                    >
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.28em] text-white/38">
+                          Powered by
+                        </p>
+                        <p className="mt-2 text-sm text-white/65">
+                          Arthur D. Little
+                        </p>
+                      </div>
+                      <Image
+                        src="/images/adl-logo.png"
+                        alt="Arthur D. Little"
+                        width={92}
+                        height={28}
+                        className="adl-logo-white object-contain opacity-90"
+                      />
+                    </motion.div>
+                  </motion.div>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </motion.section>
           )}
 
-          {/* ── LOGIN PHASE ── */}
           {phase === "login" && (
-            <motion.div
+            <motion.section
               key="login"
-              className="w-full flex flex-col items-center"
+              className="mx-auto max-w-6xl"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <LoginForm
-                onSuccess={handleLoginSuccess}
-                onBack={() => setPhase("hero")}
-              />
+              <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+                <motion.div
+                  className="glass-card surface-depth tile-no-frame rounded-[32px] px-6 py-8 sm:px-8"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.55, ease }}
+                >
+                  <GPSSALogo size="lg" />
+                  <p className="mt-6 max-w-xl text-base text-gray-muted">
+                    Enter the workspace to navigate the atlas, service
+                    intelligence, product intelligence, and delivery insights
+                    with a stronger executive view.
+                  </p>
 
-              {/* Footer logos */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-                className="flex items-center gap-4 mt-10"
-              >
-                <GPSSALogo size="sm" color="var(--gray-muted)" />
-                <div
-                  className="w-px h-6"
-                  style={{ background: "var(--border)" }}
+                  <div className="mt-8 grid gap-3">
+                    {highlightItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <div
+                          key={item.label}
+                          className="flex items-center gap-3 rounded-2xl bg-white/[0.03] px-4 py-4"
+                        >
+                          <div className="rounded-xl bg-white/[0.05] p-2.5">
+                            <Icon size={18} className="icon-white" />
+                          </div>
+                          <span className="text-sm text-white/82">{item.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-10 flex items-center gap-4">
+                    <span className="text-[11px] uppercase tracking-[0.28em] text-white/36">
+                      Powered by
+                    </span>
+                    <Image
+                      src="/images/adl-logo.png"
+                      alt="Arthur D. Little"
+                      width={88}
+                      height={26}
+                      className="adl-logo-white object-contain opacity-85"
+                    />
+                  </div>
+                </motion.div>
+
+                <LoginForm
+                  onSuccess={handleLoginSuccess}
+                  onBack={() => setPhase("hero")}
                 />
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-micro"
-                    style={{ color: "var(--gray-muted)", opacity: 0.5 }}
-                  >
-                    Powered by
-                  </span>
-                  <Image
-                    src="/images/adl-logo.png"
-                    alt="Arthur D. Little"
-                    width={64}
-                    height={22}
-                    className="opacity-40"
-                  />
-                </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </motion.section>
           )}
         </AnimatePresence>
       </div>

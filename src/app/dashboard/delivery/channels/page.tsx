@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   LayoutGrid,
@@ -36,7 +37,16 @@ interface DeliveryChannel {
   extra?: string;
 }
 
-const CHANNELS: DeliveryChannel[] = [
+const ICON_MAP: Record<string, LucideIcon> = {
+  "Digital Portal": LayoutGrid,
+  "Mobile Application": Smartphone,
+  "Service Centers": Building2,
+  "Call Center": Headphones,
+  "Partner Channels": Link2,
+  "API / Integration": Code2,
+};
+
+const STATIC_CHANNELS: DeliveryChannel[] = [
   {
     id: "portal",
     name: "Digital Portal",
@@ -190,17 +200,36 @@ function statusVariant(
 }
 
 export default function DeliveryChannelsPage() {
-  const totalChannels = CHANNELS.length;
-  const avgMaturity = Math.round(
-    CHANNELS.reduce((acc, c) => acc + c.maturity, 0) / totalChannels
-  );
-  const portal = CHANNELS.find((c) => c.id === "portal");
-  const digitalFirstPct = portal
-    ? Math.round((portal.servicesAvailable / portal.servicesTotal) * 100)
-    : 0;
-  const fullyCoveredServices = Math.max(
-    ...CHANNELS.map((c) => c.servicesAvailable)
-  );
+  const [channels, setChannels] = useState<DeliveryChannel[]>(STATIC_CHANNELS);
+
+  useEffect(() => {
+    fetch("/api/delivery/channels")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setChannels(data.map((d: Record<string, unknown>) => ({
+            id: String(d.id),
+            name: String(d.name ?? ""),
+            subtitle: String(d.channelType ?? ""),
+            icon: ICON_MAP[String(d.name)] ?? LayoutGrid,
+            maturity: Number(d.maturity ?? 0),
+            servicesAvailable: Number(d.servicesAvailable ?? 0),
+            servicesTotal: Number(d.servicesTotal ?? 31),
+            status: String(d.status ?? "Active") as ChannelStatus,
+            capabilities: String(d.capabilities ?? ""),
+            strengths: Array.isArray(d.strengths) ? d.strengths.map(String) : [],
+            gaps: Array.isArray(d.gaps) ? d.gaps.map(String) : [],
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const totalChannels = channels.length;
+  const avgMaturity = totalChannels > 0 ? Math.round(channels.reduce((acc, c) => acc + c.maturity, 0) / totalChannels) : 0;
+  const portal = channels.find((c) => c.name === "Digital Portal" || c.id === "portal");
+  const digitalFirstPct = portal ? Math.round((portal.servicesAvailable / portal.servicesTotal) * 100) : 0;
+  const fullyCoveredServices = channels.length > 0 ? Math.max(...channels.map((c) => c.servicesAvailable)) : 0;
 
   return (
     <div className="space-y-8">
@@ -251,7 +280,7 @@ export default function DeliveryChannelsPage() {
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {CHANNELS.map((channel, index) => {
+        {channels.map((channel, index) => {
           const Icon = channel.icon;
           return (
             <motion.div

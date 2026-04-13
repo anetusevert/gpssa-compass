@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 interface AppState {
   sidebarCollapsed: boolean;
@@ -9,15 +8,10 @@ interface AppState {
   setActiveSection: (s: string) => void;
 }
 
-export const useAppStore = create<AppState>()(
-  persist(
-    (set) => ({
-      sidebarCollapsed: false,
-      toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-      setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
-      activeSection: "dashboard",
-      setActiveSection: (s) => set({ activeSection: s }),
-    }),
-    { name: "gpssa-compass-store" }
-  )
-);
+export const useAppStore = create<AppState>()((set) => ({
+  sidebarCollapsed: false,
+  toggleSidebar: () => set({ sidebarCollapsed: false }),
+  setSidebarCollapsed: () => set({ sidebarCollapsed: false }),
+  activeSection: "dashboard",
+  setActiveSection: (s) => set({ activeSection: s }),
+}));

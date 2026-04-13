@@ -94,6 +94,7 @@ export function PageTransitionLoader() {
               style={{
                 backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)",
                 backgroundSize: "60px 60px",
+                maskImage: "radial-gradient(circle at center, rgba(0,0,0,0.9), transparent 92%)",
               }}
             />
 
@@ -124,7 +125,7 @@ export function PageTransitionLoader() {
                   alt="Arthur D. Little"
                   width={44}
                   height={22}
-                  className="object-contain opacity-50"
+                  className="adl-logo-white object-contain opacity-85"
                   priority
                 />
                 <div className="w-px h-6 bg-white/20" />
@@ -144,7 +145,7 @@ export function PageTransitionLoader() {
 
               {/* Route name */}
               <div className="flex items-center gap-3 mb-6">
-                <Icon size={20} strokeWidth={1.6} style={{ color: accentColor }} />
+                <Icon size={20} strokeWidth={1.6} className="icon-white" />
                 <span className="font-playfair text-xl text-cream font-semibold">
                   {route.label}
                 </span>
@@ -161,9 +162,9 @@ export function PageTransitionLoader() {
                 />
               </div>
 
-              {/* Compass label */}
+              {/* Intelligence label */}
               <p className="mt-5 text-[10px] uppercase tracking-[0.35em] font-medium" style={{ color: `${accentColor}80` }}>
-                Compass
+                Intelligence
               </p>
             </motion.div>
           </motion.div>

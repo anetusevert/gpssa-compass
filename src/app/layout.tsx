@@ -16,9 +16,9 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "GPSSA Compass | Product & Service Development Roadmap",
+  title: "GPSSA Intelligence | Product & Service Development Roadmap",
   description:
-    "Strategic intelligence platform for GPSSA's Product & Service Development Roadmap — powered by Arthur D. Little",
+    "Strategic intelligence platform for GPSSA's Product & Service Development Roadmap, powered by Arthur D. Little.",
 };
 
 export default function RootLayout({

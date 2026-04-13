@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Users2, AlertTriangle, ShieldCheck, Table2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -26,8 +27,7 @@ interface SegmentRow {
   cells: Record<CoverageColumn, CoverageLevel>;
 }
 
-/** Illustrative matrix aligned to Bain Technical Proposal labor-market segmentation (KSA). */
-const SEGMENT_MATRIX: SegmentRow[] = [
+const STATIC_SEGMENT_MATRIX: SegmentRow[] = [
   {
     id: "s1",
     name: "Saudi — Formal employment",
@@ -145,13 +145,41 @@ function countGaps(rows: SegmentRow[]): number {
   return n;
 }
 
-const totalPopulationM = SEGMENT_MATRIX.reduce(
-  (acc, r) => acc + (r.populationM ?? 0),
-  0
-);
-const gapCount = countGaps(SEGMENT_MATRIX);
-
 export default function SegmentCoveragePage() {
+  const [segmentMatrix, setSegmentMatrix] = useState<SegmentRow[]>(STATIC_SEGMENT_MATRIX);
+
+  useEffect(() => {
+    fetch("/api/products/segments")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        const rowMap = new Map<string, SegmentRow>();
+        for (const item of data) {
+          const seg = String(item.segment ?? "");
+          const covType = String(item.coverageType ?? "") as CoverageColumn;
+          const level = String(item.level ?? "Limited") as CoverageLevel;
+          if (!seg || !COVERAGE_COLUMNS.includes(covType)) continue;
+          if (!rowMap.has(seg)) {
+            rowMap.set(seg, {
+              id: seg,
+              name: seg,
+              detail: String(item.notes ?? ""),
+              populationLabel: String(item.population ?? "N/A"),
+              populationM: null,
+              cells: Object.fromEntries(COVERAGE_COLUMNS.map((c) => [c, "Limited" as CoverageLevel])) as Record<CoverageColumn, CoverageLevel>,
+            });
+          }
+          const row = rowMap.get(seg)!;
+          row.cells[covType] = level;
+        }
+        if (rowMap.size > 0) setSegmentMatrix(Array.from(rowMap.values()));
+      })
+      .catch(() => {});
+  }, []);
+
+  const totalPopulationM = segmentMatrix.reduce((acc, r) => acc + (r.populationM ?? 0), 0);
+  const gapCount = countGaps(segmentMatrix);
+
   return (
     <motion.div
       variants={stagger}
@@ -171,7 +199,7 @@ export default function SegmentCoveragePage() {
         <StatCard
           icon={Users2}
           label="Segments in view"
-          value={SEGMENT_MATRIX.length}
+          value={segmentMatrix.length}
           trend="neutral"
         />
         <StatCard
@@ -219,7 +247,7 @@ export default function SegmentCoveragePage() {
               </tr>
             </thead>
             <tbody>
-              {SEGMENT_MATRIX.map((row, idx) => (
+              {segmentMatrix.map((row, idx) => (
                 <motion.tr
                   key={row.id}
                   initial={{ opacity: 0, x: -8 }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   LayoutGrid,
@@ -51,7 +51,7 @@ interface ServiceChannelRow {
 
 const PORTFOLIO_TOTAL = 31;
 
-const SERVICE_MATRIX: ServiceChannelRow[] = [
+const STATIC_SERVICE_MATRIX: ServiceChannelRow[] = [
   {
     id: "s-01",
     name: "Registration of an Insured",
@@ -280,15 +280,45 @@ function CapabilityCell({ level }: { level: Capability }) {
 }
 
 export default function ChannelCapabilitiesPage() {
+  const [serviceMatrix, setServiceMatrix] = useState<ServiceChannelRow[]>(STATIC_SERVICE_MATRIX);
   const [category, setCategory] = useState<string>("All");
 
+  useEffect(() => {
+    fetch("/api/services/channels")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        const rowMap = new Map<string, ServiceChannelRow>();
+        for (const item of data) {
+          const svc = item.service;
+          if (!svc) continue;
+          const serviceId = String(svc.id);
+          if (!rowMap.has(serviceId)) {
+            rowMap.set(serviceId, {
+              id: serviceId,
+              name: String(svc.name ?? ""),
+              category: String(svc.category ?? "General") as Category,
+              channels: { portal: "None", mobile: "None", centers: "None", call: "None", partner: "None", api: "None" },
+            });
+          }
+          const row = rowMap.get(serviceId)!;
+          const chName = String(item.channelName ?? "") as ChannelId;
+          if (chName in row.channels) {
+            row.channels[chName] = String(item.capabilityLevel ?? "None") as Capability;
+          }
+        }
+        if (rowMap.size > 0) setServiceMatrix(Array.from(rowMap.values()));
+      })
+      .catch(() => {});
+  }, []);
+
   const filtered = useMemo(() => {
-    if (category === "All") return SERVICE_MATRIX;
-    return SERVICE_MATRIX.filter((r) => r.category === category);
-  }, [category]);
+    if (category === "All") return serviceMatrix;
+    return serviceMatrix.filter((r) => r.category === category);
+  }, [category, serviceMatrix]);
 
   const stats = useMemo(() => {
-    const rows = SERVICE_MATRIX;
+    const rows = serviceMatrix;
     const fullyDigital = rows.filter(
       (r) => r.channels.portal === "Full" && r.channels.mobile === "Full"
     ).length;
@@ -306,7 +336,7 @@ export default function ChannelCapabilitiesPage() {
       omniStrong: highTouch,
       apiSurface: withApiFullOrPartial,
     };
-  }, []);
+  }, [serviceMatrix]);
 
   const maturityByChannel = useMemo(() => {
     const rows = filtered;
@@ -380,7 +410,7 @@ export default function ChannelCapabilitiesPage() {
       </div>
 
       <p className="text-xs text-gray-muted -mt-4">
-        Matrix shows {SERVICE_MATRIX.length} representative services from the{" "}
+        Matrix shows {serviceMatrix.length} representative services from the{" "}
         {PORTFOLIO_TOTAL}-service catalog; filters apply to this knowledge slice.
       </p>
 

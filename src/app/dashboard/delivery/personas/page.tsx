@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Users, UserCircle2, MapPin, Briefcase } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -28,7 +28,7 @@ interface Persona {
   needs: PersonaNeed[];
 }
 
-const PERSONAS: Persona[] = [
+const STATIC_PERSONAS: Persona[] = [
   {
     id: "khaled",
     name: "Khaled",
@@ -182,23 +182,48 @@ function needLabel(coverage: Coverage): string {
 }
 
 export default function CustomerPersonasPage() {
+  const [personas, setPersonas] = useState<Persona[]>(STATIC_PERSONAS);
   const [openId, setOpenId] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetch("/api/delivery/personas")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setPersonas(data.map((d: Record<string, unknown>) => ({
+            id: String(d.id),
+            name: String(d.name ?? ""),
+            headline: String(d.occupation ?? d.segment ?? ""),
+            ageRange: String(d.ageRange ?? ""),
+            city: String(d.city ?? ""),
+            occupation: String(d.occupation ?? ""),
+            summary: String(d.description ?? "").substring(0, 200),
+            detail: String(d.description ?? ""),
+            needs: Array.isArray(d.needs) ? d.needs.map((n: Record<string, unknown>) => ({
+              label: String(n.label ?? ""),
+              coverage: String(n.coverage ?? "none") as Coverage,
+            })) : [],
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const active = useMemo(
-    () => PERSONAS.find((p) => p.id === openId) ?? null,
-    [openId]
+    () => personas.find((p) => p.id === openId) ?? null,
+    [openId, personas]
   );
 
   const stats = useMemo(() => {
-    const total = PERSONAS.length;
-    const crossBorder = PERSONAS.filter((p) =>
+    const total = personas.length;
+    const crossBorder = personas.filter((p) =>
       p.needs.some((n) => n.label.toLowerCase().includes("cross-border"))
     ).length;
-    const vulnerable = PERSONAS.filter((p) =>
+    const vulnerable = personas.filter((p) =>
       p.needs.some((n) => n.coverage === "none")
     ).length;
     return { total, crossBorder, vulnerable };
-  }, []);
+  }, [personas]);
 
   return (
     <div className="space-y-8">
@@ -238,7 +263,7 @@ export default function CustomerPersonasPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {PERSONAS.map((persona, index) => (
+        {personas.map((persona, index) => (
           <motion.div
             key={persona.id}
             initial={{ opacity: 0, y: 10 }}

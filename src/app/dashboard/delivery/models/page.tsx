@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Cpu,
@@ -28,7 +29,14 @@ interface DeliveryModel {
   enablers: string[];
 }
 
-const MODELS: DeliveryModel[] = [
+const MODEL_ICON_MAP: Record<string, LucideIcon> = {
+  "Direct Digital": Cpu,
+  "In-Person Assisted": Building2,
+  "Partnership Ecosystem": Share2,
+  "Outreach & Awareness": Megaphone,
+};
+
+const STATIC_MODELS: DeliveryModel[] = [
   {
     id: "direct-digital",
     title: "Direct Digital",
@@ -109,6 +117,32 @@ function maturityWidth(level: MaturityLevel): string {
 }
 
 export default function DeliveryModelsPage() {
+  const [deliveryModels, setDeliveryModels] = useState<DeliveryModel[]>(STATIC_MODELS);
+
+  useEffect(() => {
+    fetch("/api/delivery/models")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setDeliveryModels(data.map((d: Record<string, unknown>) => {
+            const matScore = Number(d.maturity ?? 0);
+            const matLevel: MaturityLevel = matScore >= 70 ? "High" : matScore >= 40 ? "Medium" : "Low";
+            return {
+              id: String(d.id),
+              title: String(d.name ?? ""),
+              icon: MODEL_ICON_MAP[String(d.name)] ?? Cpu,
+              description: String(d.description ?? ""),
+              covers: Array.isArray(d.channelMix) ? d.channelMix.map(String) : [],
+              targets: Array.isArray(d.targetSegments) ? d.targetSegments.map(String) : [],
+              maturity: matLevel,
+              enablers: Array.isArray(d.enablers) ? d.enablers.map(String) : [],
+            };
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -118,7 +152,7 @@ export default function DeliveryModelsPage() {
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {MODELS.map((model, index) => {
+        {deliveryModels.map((model, index) => {
           const Icon = model.icon;
           return (
             <motion.div

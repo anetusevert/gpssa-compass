@@ -42,9 +42,6 @@ interface KnowledgePillar {
   subtitle: string;
   description: string;
   accentVar: string;
-  accentClass: string;
-  borderClass: string;
-  bgClass: string;
   icon: LucideIcon;
   href: string;
   stats: { label: string; value: string; icon: LucideIcon }[];
@@ -58,9 +55,6 @@ const PILLARS: KnowledgePillar[] = [
     description:
       "Deep knowledge on GPSSA's 31 services, their capabilities across channels, digital readiness, and enhancement opportunities.",
     accentVar: "--adl-blue",
-    accentClass: "text-adl-blue",
-    borderClass: "border-adl-blue/30",
-    bgClass: "bg-adl-blue/5",
     icon: Layers,
     href: "/dashboard/services/catalog",
     stats: [
@@ -76,9 +70,6 @@ const PILLARS: KnowledgePillar[] = [
     description:
       "Comprehensive product portfolio covering pension, insurance, and social protection products across core, complementary, and non-core offerings.",
     accentVar: "--gold",
-    accentClass: "text-gold",
-    borderClass: "border-gold/30",
-    bgClass: "bg-gold/5",
     icon: Package,
     href: "/dashboard/products/portfolio",
     stats: [
@@ -94,9 +85,6 @@ const PILLARS: KnowledgePillar[] = [
     description:
       "How services and products reach customers through digital portals, mobile apps, service centers, partnerships, and cross-border channels.",
     accentVar: "--teal",
-    accentClass: "text-teal-400",
-    borderClass: "border-teal-400/30",
-    bgClass: "bg-teal-400/5",
     icon: Truck,
     href: "/dashboard/delivery/channels",
     stats: [
@@ -111,23 +99,30 @@ function AtlasHero({ onClick }: { onClick: () => void }) {
   return (
     <motion.button
       onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-2xl border border-gpssa-green/20 transition-colors duration-300 hover:border-gpssa-green/40 text-left"
+      className="group glass-card surface-depth tile-no-frame relative w-full overflow-hidden rounded-[28px] text-left"
       style={{
         background:
-          "linear-gradient(135deg, rgba(0,168,107,0.06) 0%, rgba(10,22,40,0.8) 50%, rgba(45,74,140,0.06) 100%)",
+          "linear-gradient(135deg, rgba(0,168,107,0.12) 0%, rgba(10,22,40,0.88) 48%, rgba(45,74,140,0.14) 100%)",
       }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: EASE }}
-      whileHover={{ scale: 1.005 }}
+      whileHover={{ y: -4, scale: 1.006 }}
     >
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="grid-overlay" />
       </div>
+      <div
+        className="absolute -right-20 top-1/2 h-52 w-52 -translate-y-1/2 rounded-full opacity-60 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(0,168,107,0.22) 0%, transparent 72%)",
+        }}
+      />
 
       <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 px-8 py-8 md:py-10">
-        <div className="flex-shrink-0 flex items-center justify-center w-20 h-20 rounded-2xl bg-gpssa-green/10 border border-gpssa-green/20">
-          <Globe size={36} className="text-gpssa-green" strokeWidth={1.5} />
+        <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-[22px] bg-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <Globe size={34} className="icon-white" strokeWidth={1.5} />
         </div>
 
         <div className="flex-1 min-w-0 text-center md:text-left">
@@ -171,7 +166,7 @@ function AtlasHero({ onClick }: { onClick: () => void }) {
 
         <ChevronRight
           size={24}
-          className="shrink-0 text-gpssa-green/50 transition-transform duration-300 group-hover:translate-x-1"
+          className="icon-white shrink-0 transition-transform duration-300 group-hover:translate-x-1"
         />
       </div>
 
@@ -201,9 +196,9 @@ function PillarCard({
   return (
     <motion.button
       onClick={onClick}
-      className={`group relative w-full overflow-hidden rounded-2xl border ${pillar.borderClass} transition-all duration-300 hover:border-opacity-60 text-left`}
+      className="group glass-card surface-depth tile-no-frame relative w-full overflow-hidden rounded-[28px] text-left"
       style={{
-        background: `linear-gradient(145deg, color-mix(in srgb, var(${pillar.accentVar}) 5%, transparent), rgba(10,22,40,0.6))`,
+        background: `linear-gradient(145deg, color-mix(in srgb, var(${pillar.accentVar}) 12%, transparent), rgba(10,22,40,0.82))`,
       }}
       initial={{ opacity: 0, y: 24, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -212,29 +207,28 @@ function PillarCard({
         ease: EASE,
         delay: 0.3 + index * 0.12,
       }}
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -4, scale: 1.01 }}
     >
+      <div
+        className="absolute -right-12 top-8 h-28 w-28 rounded-full opacity-60 blur-3xl"
+        style={{
+          background: `radial-gradient(circle, color-mix(in srgb, var(${pillar.accentVar}) 30%, transparent) 0%, transparent 75%)`,
+        }}
+      />
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div
-            className="flex items-center justify-center w-12 h-12 rounded-xl border"
+            className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/[0.05]"
             style={{
-              backgroundColor: `color-mix(in srgb, var(${pillar.accentVar}) 10%, transparent)`,
-              borderColor: `color-mix(in srgb, var(${pillar.accentVar}) 20%, transparent)`,
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.05), 0 14px 34px rgba(0,0,0,0.18)",
             }}
           >
-            <Icon
-              size={22}
-              style={{ color: `var(${pillar.accentVar})` }}
-              strokeWidth={1.5}
-            />
+            <Icon size={22} className="icon-white" strokeWidth={1.5} />
           </div>
           <ChevronRight
             size={18}
-            className="text-gray-muted/40 transition-all duration-300 group-hover:translate-x-1"
-            style={{
-              color: `color-mix(in srgb, var(${pillar.accentVar}) 50%, transparent)`,
-            }}
+            className="icon-white opacity-80 transition-all duration-300 group-hover:translate-x-1"
           />
         </div>
 
@@ -268,10 +262,7 @@ function PillarCard({
             return (
               <div key={stat.label} className="text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <StatIcon
-                    size={12}
-                    className="text-gray-muted/50 mr-1"
-                  />
+                  <StatIcon size={12} className="icon-white mr-1 opacity-80" />
                   <span className="text-lg font-bold text-cream">
                     {stat.value}
                   </span>
@@ -333,6 +324,8 @@ export default function DashboardHome() {
       />
 
       <div className="grid-overlay pointer-events-none absolute inset-0" />
+      <div className="ambient-ring left-[18%] top-[20%] h-72 w-72 opacity-20" />
+      <div className="ambient-ring bottom-[8%] right-[18%] h-96 w-96 opacity-10" />
 
       <motion.header
         className="relative z-10 mb-8 text-center"
@@ -378,7 +371,7 @@ export default function DashboardHome() {
           alt="Arthur D. Little"
           width={64}
           height={22}
-          className="object-contain opacity-50"
+          className="adl-logo-white object-contain opacity-85"
         />
       </motion.footer>
     </div>

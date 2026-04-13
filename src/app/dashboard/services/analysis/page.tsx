@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Brain,
@@ -59,7 +60,7 @@ const THEME_META: Record<
   },
 };
 
-const INSIGHTS: Insight[] = [
+const STATIC_INSIGHTS: Insight[] = [
   {
     id: "i-1",
     theme: "digital",
@@ -200,6 +201,35 @@ function impactBadgeVariant(
 const THEME_ORDER: ThemeId[] = ["digital", "automation", "cx", "synergy"];
 
 export default function ServiceAnalysisPage() {
+  const [insights, setInsights] = useState<Insight[]>(STATIC_INSIGHTS);
+
+  useEffect(() => {
+    fetch("/api/research/screen-jobs")
+      .then((r) => r.ok ? r.json() : null)
+      .then((jobs) => {
+        if (!Array.isArray(jobs)) return;
+        const analysisJob = jobs.find((j: Record<string, unknown>) => j.type === "services-analysis" && j.status === "completed" && j.rawOutput);
+        if (!analysisJob?.rawOutput) return;
+        try {
+          const parsed = JSON.parse(String(analysisJob.rawOutput));
+          const results = Array.isArray(parsed) ? parsed : (parsed.results ?? []);
+          if (results.length > 0) {
+            setInsights(results.map((r: Record<string, unknown>, i: number) => ({
+              id: `db-${i}`,
+              theme: String(r.theme ?? "digital") as ThemeId,
+              title: String(r.title ?? ""),
+              description: String(r.description ?? ""),
+              impact: String(r.impact ?? "Medium") as Impact,
+              metrics: Array.isArray(r.metrics)
+                ? r.metrics.map((m: Record<string, unknown>) => ({ label: String(m.label ?? ""), value: String(m.value ?? "") }))
+                : [],
+            })));
+          }
+        } catch { /* keep static */ }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -241,7 +271,7 @@ export default function ServiceAnalysisPage() {
         {THEME_ORDER.map((themeId) => {
           const meta = THEME_META[themeId];
           const ThemeIcon = meta.icon;
-          const items = INSIGHTS.filter((i) => i.theme === themeId);
+          const items = insights.filter((i) => i.theme === themeId);
 
           return (
             <section key={themeId}>

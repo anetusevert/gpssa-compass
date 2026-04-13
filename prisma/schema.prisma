@@ -37,11 +37,14 @@ model AgentConfig {
   maxTokens        Int      @default(4096)
   temperature      Float    @default(0.7)
   isActive         Boolean  @default(true)
+  targetScreen     String?
+  researchType     String?
   executionCount   Int      @default(0)
   lastRunAt        DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   executions       AgentExecution[]
+  researchJobs     ResearchJob[]
 }
 
 model AgentExecution {
@@ -80,6 +83,16 @@ model Country {
   keyFeatures     String?
   challenges      String?
   insights        String?
+  legislativeFramework String?
+  contributionRates    String?
+  retirementAge        String?
+  benefitTypes         String?
+  fundManagement       String?
+  recentReforms        String?
+  internationalRankings String?
+  iloConventionsRatified String?
+  populationCovered      String?
+  dataSources            String?
   researchStatus  String   @default("pending")
   researchedAt    DateTime?
   researchSource  String?
@@ -104,6 +117,9 @@ model ResearchJob {
   batchSize      Int      @default(3)
   totalTokens    Int      @default(0)
   totalCost      Float    @default(0)
+  agentConfigId  String?
+  agentConfig    AgentConfig? @relation(fields: [agentConfigId], references: [id])
+  rawOutput      String?
   startedAt      DateTime?
   completedAt    DateTime?
   pausedAt       DateTime?
@@ -112,22 +128,29 @@ model ResearchJob {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   items          ResearchJobItem[]
+
+  @@index([agentConfigId])
+  @@index([type])
 }
 
 model ResearchJobItem {
   id          String   @id @default(cuid())
   jobId       String
   job         ResearchJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  countryIso3 String
+  countryIso3 String?
+  itemKey     String?
+  itemLabel   String?
   status      String   @default("pending")
   tokensUsed  Int      @default(0)
   durationMs  Int      @default(0)
+  output      String?
   error       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@unique([jobId, countryIso3])
   @@index([jobId])
+  @@index([itemKey])
 }
 
 model ScoringMethodology {
@@ -333,7 +356,10 @@ model GPSSAService {
   currentState  String?
   painPoints    String?
   opportunities String?
+  researchStatus  String   @default("pending")
+  researchSource  String?
   analyses      ServiceAnalysis[]
+  channelCapabilities ServiceChannelCapability[]
   sourceCitations ServiceSourceCitation[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -471,10 +497,16 @@ model DataSource {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  serviceCitations     ServiceSourceCitation[]
-  institutionCitations InstitutionSourceCitation[]
-  opportunityCitations OpportunitySourceCitation[]
-  requirementCitations RequirementSourceCitation[]
+  serviceCitations       ServiceSourceCitation[]
+  institutionCitations   InstitutionSourceCitation[]
+  opportunityCitations   OpportunitySourceCitation[]
+  requirementCitations   RequirementSourceCitation[]
+  productCitations       ProductSourceCitation[]
+  segmentCitations       SegmentSourceCitation[]
+  innovationCitations    InnovationSourceCitation[]
+  channelCitations       ChannelSourceCitation[]
+  personaCitations       PersonaSourceCitation[]
+  deliveryModelCitations DeliveryModelSourceCitation[]
 }
 
 model ServiceSourceCitation {
@@ -530,5 +562,211 @@ model RequirementSourceCitation {
   source        DataSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@unique([requirementId, sourceId])
+  @@index([sourceId])
+}
+
+// ── Screen Research Domain Models ──
+
+model Product {
+  id               String   @id @default(cuid())
+  name             String
+  tier             String
+  status           String   @default("active")
+  description      String?
+  targetSegments   String?
+  coverageType     String?
+  keyFeatures      String?
+  researchStatus   String   @default("pending")
+  researchSource   String?
+  sourceCitations  ProductSourceCitation[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tier])
+}
+
+model SegmentCoverage {
+  id              String   @id @default(cuid())
+  segment         String
+  coverageType    String
+  level           String
+  population      String?
+  notes           String?
+  researchStatus  String   @default("pending")
+  researchSource  String?
+  sourceCitations SegmentSourceCitation[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([segment, coverageType])
+}
+
+model ProductInnovation {
+  id                 String   @id @default(cuid())
+  title              String
+  description        String?
+  targetSegment      String?
+  impactScore        Float?
+  feasibilityScore   Float?
+  status             String   @default("identified")
+  innovationType     String?
+  estimatedPopulation String?
+  researchStatus     String   @default("pending")
+  researchSource     String?
+  sourceCitations    InnovationSourceCitation[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model DeliveryChannel {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  channelType      String
+  maturity         Float    @default(0)
+  servicesAvailable Int     @default(0)
+  servicesTotal    Int      @default(0)
+  status           String   @default("active")
+  capabilities     String?
+  strengths        String?
+  gaps             String?
+  researchStatus   String   @default("pending")
+  researchSource   String?
+  sourceCitations  ChannelSourceCitation[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model CustomerPersona {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  ageRange        String?
+  city            String?
+  occupation      String?
+  incomeRange     String?
+  description     String?
+  needs           String?
+  coverageMap     String?
+  segment         String?
+  researchStatus  String   @default("pending")
+  researchSource  String?
+  sourceCitations PersonaSourceCitation[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DeliveryModel {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  description     String?
+  channelMix      String?
+  targetSegments  String?
+  maturity        Float    @default(0)
+  enablers        String?
+  researchStatus  String   @default("pending")
+  researchSource  String?
+  sourceCitations DeliveryModelSourceCitation[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ServiceChannelCapability {
+  id              String       @id @default(cuid())
+  serviceId       String
+  service         GPSSAService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  channelName     String
+  capabilityLevel String       @default("None")
+  notes           String?
+  researchStatus  String       @default("pending")
+  researchSource  String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([serviceId, channelName])
+  @@index([serviceId])
+}
+
+// ── Citation Join Tables for New Models ──
+
+model ProductSourceCitation {
+  id           String     @id @default(cuid())
+  productId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime   @default(now())
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  source       DataSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, sourceId])
+  @@index([sourceId])
+}
+
+model SegmentSourceCitation {
+  id           String          @id @default(cuid())
+  segmentId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime        @default(now())
+  segment      SegmentCoverage @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  source       DataSource      @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([segmentId, sourceId])
+  @@index([sourceId])
+}
+
+model InnovationSourceCitation {
+  id           String            @id @default(cuid())
+  innovationId String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime          @default(now())
+  innovation   ProductInnovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  source       DataSource        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([innovationId, sourceId])
+  @@index([sourceId])
+}
+
+model ChannelSourceCitation {
+  id           String          @id @default(cuid())
+  channelId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime        @default(now())
+  channel      DeliveryChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  source       DataSource      @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, sourceId])
+  @@index([sourceId])
+}
+
+model PersonaSourceCitation {
+  id           String          @id @default(cuid())
+  personaId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime        @default(now())
+  persona      CustomerPersona @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  source       DataSource      @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([personaId, sourceId])
+  @@index([sourceId])
+}
+
+model DeliveryModelSourceCitation {
+  id              String        @id @default(cuid())
+  deliveryModelId String
+  sourceId        String
+  citation        String?
+  evidenceNote    String?
+  createdAt       DateTime      @default(now())
+  deliveryModel   DeliveryModel @relation(fields: [deliveryModelId], references: [id], onDelete: Cascade)
+  source          DataSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([deliveryModelId, sourceId])
   @@index([sourceId])
 }

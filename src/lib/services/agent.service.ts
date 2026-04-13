@@ -7,7 +7,10 @@ export class AgentService {
       DEFAULT_AGENTS.map((agent) =>
         prisma.agentConfig.upsert({
           where: { name: agent.name },
-          update: {},
+          update: {
+            targetScreen: agent.targetScreen ?? null,
+            researchType: agent.researchType ?? null,
+          },
           create: {
             id: agent.id,
             name: agent.name,
@@ -17,6 +20,8 @@ export class AgentService {
             model: agent.model,
             maxTokens: agent.maxTokens,
             temperature: agent.temperature,
+            targetScreen: agent.targetScreen ?? null,
+            researchType: agent.researchType ?? null,
           },
         })
       )

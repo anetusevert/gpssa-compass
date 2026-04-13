@@ -1,10 +1,10 @@
 "use client";
 
 const sizeMap = {
-  sm: { width: 120, gpssa: 28, compass: 10, gap: 2 },
-  md: { width: 180, gpssa: 40, compass: 13, gap: 4 },
-  lg: { width: 260, gpssa: 56, compass: 16, gap: 6 },
-  hero: { width: 360, gpssa: 72, compass: 20, gap: 8 },
+  sm: { width: 160, gpssa: 28, submark: 8, gap: 2 },
+  md: { width: 220, gpssa: 40, submark: 10, gap: 4 },
+  lg: { width: 320, gpssa: 56, submark: 12, gap: 6 },
+  hero: { width: 430, gpssa: 72, submark: 15, gap: 8 },
 } as const;
 
 interface GPSSALogoProps {
@@ -19,7 +19,7 @@ export function GPSSALogo({
   className = "",
 }: GPSSALogoProps) {
   const s = sizeMap[size];
-  const totalHeight = s.gpssa + s.gap + s.compass + 4;
+  const totalHeight = s.gpssa + s.gap + s.submark + 4;
 
   return (
     <svg
@@ -29,7 +29,7 @@ export function GPSSALogo({
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label="GPSSA Compass"
+      aria-label="GPSSA Intelligence"
     >
       <text
         x="50%"
@@ -56,16 +56,16 @@ export function GPSSALogo({
 
       <text
         x="50%"
-        y={s.gpssa + s.gap + s.compass + 2}
+        y={s.gpssa + s.gap + s.submark + 2}
         textAnchor="middle"
         fill={color}
         fontFamily="var(--font-dm-sans), system-ui, sans-serif"
-        fontSize={s.compass}
+        fontSize={s.submark}
         fontWeight="400"
-        letterSpacing="0.35em"
+        letterSpacing="0.18em"
         opacity={0.7}
       >
-        COMPASS
+        INTELLIGENCE
       </text>
     </svg>
   );
