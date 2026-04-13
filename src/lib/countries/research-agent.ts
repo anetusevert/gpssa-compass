@@ -65,7 +65,7 @@ export async function runResearchJob(jobId: string): Promise<void> {
     }
 
     const countries = await prisma.country.findMany({
-      where: { iso3: { in: pendingItems.map((i) => i.countryIso3) } },
+      where: { iso3: { in: pendingItems.map((i) => i.countryIso3).filter((v): v is string => v != null) } },
       select: { iso3: true, name: true },
     });
 
@@ -83,7 +83,7 @@ export async function runResearchJob(jobId: string): Promise<void> {
     });
 
     await prisma.country.updateMany({
-      where: { iso3: { in: pendingItems.map((i) => i.countryIso3) } },
+      where: { iso3: { in: pendingItems.map((i) => i.countryIso3).filter((v): v is string => v != null) } },
       data: { researchStatus: "researching" },
     });
 
