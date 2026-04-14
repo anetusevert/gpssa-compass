@@ -158,7 +158,7 @@ export default function UsersPage() {
     try {
       const formData = new FormData();
       formData.append("avatar", file);
-      const res = await fetch("/api/users/avatar", {
+      const res = await fetch(`/api/admin/users/${userId}/avatar`, {
         method: "POST",
         body: formData,
       });

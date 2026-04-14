@@ -1,9 +1,10 @@
-import { writeFile, mkdir, readFile } from "fs/promises";
+import { writeFile, mkdir, readFile, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 
 const UPLOAD_DIR = path.join(process.cwd(), ".uploads", "avatars");
 const LEGACY_UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "avatars");
+const AVATAR_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 
 export class UploadService {
   private async ensureUploadDir() {
@@ -12,26 +13,37 @@ export class UploadService {
     }
   }
 
+  private async removeOldAvatars(userId: string, keepExt: string) {
+    const normalizedKeep = keepExt.toLowerCase();
+    for (const ext of AVATAR_EXTENSIONS) {
+      if (ext === normalizedKeep) continue;
+      const filepath = path.join(UPLOAD_DIR, `${userId}.${ext}`);
+      if (existsSync(filepath)) {
+        try { await unlink(filepath); } catch { /* best effort */ }
+      }
+    }
+  }
+
   async saveAvatar(userId: string, file: File): Promise<string> {
     await this.ensureUploadDir();
 
-    const ext = file.name.split(".").pop() || "jpg";
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const filename = `${userId}.${ext}`;
     const filepath = path.join(UPLOAD_DIR, filename);
 
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(filepath, buffer);
+    await this.removeOldAvatars(userId, ext);
 
     return `/api/avatars/${userId}?t=${Date.now()}`;
   }
 
   async getAvatarPath(userId: string): Promise<string | null> {
-    const extensions = ["jpg", "jpeg", "png", "gif", "webp"];
-    for (const ext of extensions) {
+    for (const ext of AVATAR_EXTENSIONS) {
       const filepath = path.join(UPLOAD_DIR, `${userId}.${ext}`);
       if (existsSync(filepath)) return filepath;
     }
-    for (const ext of extensions) {
+    for (const ext of AVATAR_EXTENSIONS) {
       const filepath = path.join(LEGACY_UPLOAD_DIR, `${userId}.${ext}`);
       if (existsSync(filepath)) return filepath;
     }
