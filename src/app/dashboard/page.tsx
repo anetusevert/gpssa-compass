@@ -188,9 +188,9 @@ function PillarTile({
           }}
         />
 
-        <div className="relative z-10 flex items-center gap-4 px-6 py-5">
+        <div className="relative z-10 flex flex-col items-center justify-center gap-3 px-6 py-6 text-center">
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.06]"
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.06]"
             style={{
               boxShadow:
                 "inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 24px rgba(0,0,0,0.15)",
@@ -199,11 +199,11 @@ function PillarTile({
             <Icon size={20} className="icon-white" strokeWidth={1.5} />
           </div>
 
-          <div className="flex-1 min-w-0">
+          <div>
             <h3 className="font-playfair text-lg font-bold text-cream">
               {pillar.title}
             </h3>
-            <p className="text-[11px] text-white/40 mt-0.5 truncate">
+            <p className="text-[11px] text-white/40 mt-0.5">
               {pillar.subtitle}
             </p>
           </div>
@@ -211,9 +211,9 @@ function PillarTile({
           <motion.div
             animate={{ rotate: isOpen ? 45 : 0 }}
             transition={{ duration: 0.25, ease: EASE }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.06]"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-white/[0.06]"
           >
-            <span className="text-white/70 text-sm leading-none select-none">
+            <span className="text-white/50 text-xs leading-none select-none">
               +
             </span>
           </motion.div>
