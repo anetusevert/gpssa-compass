@@ -193,7 +193,15 @@ export async function pauseScreenResearchJob(jobId: string): Promise<void> {
   });
 }
 
+export async function retryFailedItems(jobId: string): Promise<void> {
+  await prisma.researchJobItem.updateMany({
+    where: { jobId, status: "failed" },
+    data: { status: "pending", error: null },
+  });
+}
+
 export async function resumeScreenResearchJob(jobId: string): Promise<void> {
+  await retryFailedItems(jobId);
   await prisma.researchJob.update({
     where: { id: jobId },
     data: { status: "running", pausedAt: null },

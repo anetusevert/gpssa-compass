@@ -3,8 +3,11 @@ import { prisma } from "@/lib/db";
 import { createScreenResearchJob } from "@/lib/research/dispatcher";
 import { runScreenResearchJob } from "@/lib/research/engine";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const latestOnly = searchParams.get("latest") === "true";
+
     const jobs = await prisma.researchJob.findMany({
       where: {
         type: {
@@ -20,8 +23,18 @@ export async function GET() {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: latestOnly ? 200 : 50,
     });
+
+    if (latestOnly) {
+      const latestByAgent = new Map<string, typeof jobs[number]>();
+      for (const job of jobs) {
+        if (job.agentConfigId && !latestByAgent.has(job.agentConfigId)) {
+          latestByAgent.set(job.agentConfigId, job);
+        }
+      }
+      return NextResponse.json(Array.from(latestByAgent.values()));
+    }
 
     return NextResponse.json(jobs);
   } catch (error) {
