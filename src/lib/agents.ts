@@ -24,8 +24,8 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
     systemPrompt: `USE_CANONICAL_PROMPT`,
     userPromptTemplate: `Research the social security and pension systems for the following countries: {ITEMS}`,
     model: "gpt-4o",
-    maxTokens: 12288,
-    temperature: 0.3,
+    maxTokens: 16384,
+    temperature: 0.2,
   },
   {
     id: "atlas-benchmarking",

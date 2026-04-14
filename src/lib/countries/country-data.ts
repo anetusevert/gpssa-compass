@@ -48,6 +48,13 @@ export interface CountryProfile {
   internationalRankings?: InternationalRankings;
   iloConventionsRatified?: string;
   populationCovered?: string;
+  socialProtectionExpenditure?: string;
+  dependencyRatio?: string;
+  pensionFundAssets?: string;
+  benefitCalculation?: string;
+  indexationMechanism?: string;
+  vestingPeriod?: string;
+  governanceQuality?: string;
   dataSources?: DataSourceRef[];
 }
 

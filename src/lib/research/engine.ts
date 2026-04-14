@@ -33,7 +33,11 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
     return;
   }
 
-  const systemPrompt = job.agentConfig?.systemPrompt ?? promptModule.systemPrompt;
+  const agentSysPrompt = job.agentConfig?.systemPrompt;
+  const systemPrompt =
+    !agentSysPrompt || agentSysPrompt === "USE_CANONICAL_PROMPT"
+      ? promptModule.systemPrompt
+      : agentSysPrompt;
   const agentLabel = `agent-${job.model}-${screenType}`;
 
   while (true) {

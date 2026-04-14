@@ -62,6 +62,13 @@ interface DbCountry {
   iloConventionsRatified?: string | null;
   populationCovered?: string | null;
   dataSources?: string | null;
+  socialProtectionExpenditure?: string | null;
+  dependencyRatio?: string | null;
+  pensionFundAssets?: string | null;
+  benefitCalculation?: string | null;
+  indexationMechanism?: string | null;
+  vestingPeriod?: string | null;
+  governanceQuality?: string | null;
   researchStatus?: string;
   institutions?: Array<{
     id: string;
@@ -101,6 +108,13 @@ function dbToProfile(c: DbCountry): CountryProfile {
     internationalRankings: parseJsonObj<InternationalRankings>(c.internationalRankings),
     iloConventionsRatified: c.iloConventionsRatified ?? undefined,
     populationCovered: c.populationCovered ?? undefined,
+    socialProtectionExpenditure: c.socialProtectionExpenditure ?? undefined,
+    dependencyRatio: c.dependencyRatio ?? undefined,
+    pensionFundAssets: c.pensionFundAssets ?? undefined,
+    benefitCalculation: c.benefitCalculation ?? undefined,
+    indexationMechanism: c.indexationMechanism ?? undefined,
+    vestingPeriod: c.vestingPeriod ?? undefined,
+    governanceQuality: c.governanceQuality ?? undefined,
     dataSources: parseJsonObj<DataSourceRef[]>(c.dataSources) ?? undefined,
   };
 }

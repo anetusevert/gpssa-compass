@@ -93,6 +93,13 @@ model Country {
   iloConventionsRatified String?
   populationCovered      String?
   dataSources            String?
+  socialProtectionExpenditure String?
+  dependencyRatio            String?
+  pensionFundAssets           String?
+  benefitCalculation          String?
+  indexationMechanism         String?
+  vestingPeriod               String?
+  governanceQuality           String?
   researchStatus  String   @default("pending")
   researchedAt    DateTime?
   researchSource  String?

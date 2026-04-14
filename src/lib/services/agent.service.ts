@@ -10,6 +10,11 @@ export class AgentService {
           update: {
             targetScreen: agent.targetScreen ?? null,
             researchType: agent.researchType ?? null,
+            description: agent.description,
+            systemPrompt: agent.systemPrompt,
+            userPromptTemplate: agent.userPromptTemplate,
+            maxTokens: agent.maxTokens,
+            temperature: agent.temperature,
           },
           create: {
             id: agent.id,

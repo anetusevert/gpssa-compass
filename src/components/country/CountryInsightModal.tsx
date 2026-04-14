@@ -163,6 +163,32 @@ export function CountryInsightModal({ isOpen, onClose, category, profile, instit
                       </div>
                     )}
 
+                    {(profile.benefitCalculation || profile.vestingPeriod || profile.indexationMechanism) && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-3">Benefit Design & Rules</p>
+                        <div className="space-y-3">
+                          {profile.benefitCalculation && (
+                            <div className="rounded-xl p-4 border border-white/5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Benefit Calculation Formula</p>
+                              <p className="text-sm text-white/70 leading-relaxed">{profile.benefitCalculation}</p>
+                            </div>
+                          )}
+                          {profile.vestingPeriod && (
+                            <div className="rounded-xl p-4 border border-white/5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Vesting & Eligibility Requirements</p>
+                              <p className="text-sm text-white/70 leading-relaxed">{profile.vestingPeriod}</p>
+                            </div>
+                          )}
+                          {profile.indexationMechanism && (
+                            <div className="rounded-xl p-4 border border-white/5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Indexation & Adjustment Mechanism</p>
+                              <p className="text-sm text-white/70 leading-relaxed">{profile.indexationMechanism}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {(profile.iloConventionsRatified || profile.populationCovered) && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {profile.iloConventionsRatified && (
@@ -256,6 +282,38 @@ export function CountryInsightModal({ isOpen, onClose, category, profile, instit
                             <div className="rounded-lg p-3 text-center" style={{ background: "rgba(255,255,255,0.03)" }}>
                               <p className="text-[9px] uppercase tracking-wider text-white/30 mb-1">World Bank</p>
                               <p className="text-xs text-cream font-medium">{profile.internationalRankings.worldBankCoverage}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {(profile.socialProtectionExpenditure || profile.dependencyRatio || profile.pensionFundAssets || profile.governanceQuality) && (
+                      <div className="mt-4 pt-4 border-t border-white/5">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-3">Fiscal & Demographic Indicators</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {profile.socialProtectionExpenditure && (
+                            <div className="rounded-xl p-4 border border-white/5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Social Protection Expenditure</p>
+                              <p className="text-sm text-cream font-medium leading-relaxed">{profile.socialProtectionExpenditure}</p>
+                            </div>
+                          )}
+                          {profile.dependencyRatio && (
+                            <div className="rounded-xl p-4 border border-white/5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Dependency Ratio</p>
+                              <p className="text-sm text-cream font-medium leading-relaxed">{profile.dependencyRatio}</p>
+                            </div>
+                          )}
+                          {profile.pensionFundAssets && (
+                            <div className="rounded-xl p-4 border border-white/5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Pension Fund Assets</p>
+                              <p className="text-sm text-cream font-medium leading-relaxed">{profile.pensionFundAssets}</p>
+                            </div>
+                          )}
+                          {profile.governanceQuality && (
+                            <div className="rounded-xl p-4 border border-white/5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Governance Quality</p>
+                              <p className="text-sm text-cream font-medium leading-relaxed">{profile.governanceQuality}</p>
                             </div>
                           )}
                         </div>
