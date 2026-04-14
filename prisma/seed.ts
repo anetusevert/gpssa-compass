@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { seedBenchmarkDataset } from "../src/lib/benchmarking/seed";
 import { COUNTRIES, SCORING_DIMENSIONS } from "../src/lib/countries/catalog";
+import { DEFAULT_AGENTS } from "../src/lib/agents";
 
 const prisma = new PrismaClient();
 
@@ -217,6 +218,32 @@ async function main() {
     create: { key: "platform_name", value: "GPSSA Compass" },
   });
   console.log("  App config seeded");
+
+  // Seed default AI research agents
+  await prisma.$transaction(
+    DEFAULT_AGENTS.map((agent) =>
+      prisma.agentConfig.upsert({
+        where: { name: agent.name },
+        update: {
+          targetScreen: agent.targetScreen ?? null,
+          researchType: agent.researchType ?? null,
+        },
+        create: {
+          id: agent.id,
+          name: agent.name,
+          description: agent.description,
+          systemPrompt: agent.systemPrompt,
+          userPromptTemplate: agent.userPromptTemplate,
+          model: agent.model,
+          maxTokens: agent.maxTokens,
+          temperature: agent.temperature,
+          targetScreen: agent.targetScreen ?? null,
+          researchType: agent.researchType ?? null,
+        },
+      })
+    )
+  );
+  console.log(`  ${DEFAULT_AGENTS.length} research agents seeded`);
 
   console.log("Seeding complete!");
 }

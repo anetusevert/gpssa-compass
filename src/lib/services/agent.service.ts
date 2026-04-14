@@ -29,20 +29,12 @@ export class AgentService {
   }
 
   async listAgents() {
-    let agents = await prisma.agentConfig.findMany({
+    await this.seedDefaults();
+
+    return prisma.agentConfig.findMany({
       orderBy: { name: "asc" },
       include: { _count: { select: { executions: true } } },
     });
-
-    if (agents.length === 0) {
-      await this.seedDefaults();
-      agents = await prisma.agentConfig.findMany({
-        orderBy: { name: "asc" },
-        include: { _count: { select: { executions: true } } },
-      });
-    }
-
-    return agents;
   }
 
   async getAgent(id: string) {
