@@ -188,6 +188,7 @@ export async function createScreenResearchJob(
         create: items.map((item) => ({
           itemKey: item.key,
           itemLabel: item.label,
+          itemContext: item.context ?? null,
           status: "pending",
         })),
       },

@@ -1,4 +1,5 @@
 import type { PromptModule } from "../types";
+import { parseJsonResponse } from "../types";
 
 const systemPrompt = `You are an AI-powered service intelligence analyst specializing in social insurance and pension service delivery optimization. You identify cross-cutting insights, automation opportunities, customer experience gaps, and synergies across service portfolios.
 
@@ -35,18 +36,8 @@ Return a JSON object with a "results" array:
 Ground insights in real patterns from GPSSA, GOSI, Singapore CPF, UK DWP, Estonian SKAIS, and other leading social security administrations.`;
 }
 
-function parseResponse(raw: string): Record<string, unknown>[] {
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  const parsed = JSON.parse(cleaned);
-  if (Array.isArray(parsed)) return parsed;
-  if (parsed.results && Array.isArray(parsed.results)) return parsed.results;
-  const firstArrayKey = Object.keys(parsed).find((k) => Array.isArray(parsed[k]));
-  if (firstArrayKey) return parsed[firstArrayKey];
-  return [parsed];
-}
-
 export const servicesAnalysisPrompt: PromptModule = {
   systemPrompt,
   buildUserPrompt,
-  parseResponse,
+  parseResponse: parseJsonResponse,
 };

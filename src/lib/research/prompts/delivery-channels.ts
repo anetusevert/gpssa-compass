@@ -1,4 +1,5 @@
 import type { PromptModule } from "../types";
+import { parseJsonResponse } from "../types";
 
 const systemPrompt = `You are a government service delivery channel strategist with deep expertise in omnichannel delivery for social insurance institutions. You evaluate digital portals, mobile apps, service centers, call centers, partner channels, and API integrations.
 
@@ -36,18 +37,8 @@ Return a JSON object with a "results" array:
 Reference GPSSA gpssa.gov.ae, GOSI, Singapore CPF, and UAE government digital standards.`;
 }
 
-function parseResponse(raw: string): Record<string, unknown>[] {
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  const parsed = JSON.parse(cleaned);
-  if (Array.isArray(parsed)) return parsed;
-  if (parsed.results && Array.isArray(parsed.results)) return parsed.results;
-  const firstArrayKey = Object.keys(parsed).find((k) => Array.isArray(parsed[k]));
-  if (firstArrayKey) return parsed[firstArrayKey];
-  return [parsed];
-}
-
 export const deliveryChannelsPrompt: PromptModule = {
   systemPrompt,
   buildUserPrompt,
-  parseResponse,
+  parseResponse: parseJsonResponse,
 };

@@ -1,4 +1,5 @@
 import type { PromptModule } from "../types";
+import { parseJsonResponse } from "../types";
 
 const systemPrompt = `You are a social insurance innovation strategist specializing in identifying and evaluating new product opportunities, digital enhancements, and coverage extensions for pension and social protection systems.
 
@@ -36,18 +37,8 @@ Return a JSON object with a "results" array:
 Reference innovations from Singapore CPF, Australia Super, Estonia e-pension, UK State Pension digital, and GCC peer institutions.`;
 }
 
-function parseResponse(raw: string): Record<string, unknown>[] {
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  const parsed = JSON.parse(cleaned);
-  if (Array.isArray(parsed)) return parsed;
-  if (parsed.results && Array.isArray(parsed.results)) return parsed.results;
-  const firstArrayKey = Object.keys(parsed).find((k) => Array.isArray(parsed[k]));
-  if (firstArrayKey) return parsed[firstArrayKey];
-  return [parsed];
-}
-
 export const productsInnovationPrompt: PromptModule = {
   systemPrompt,
   buildUserPrompt,
-  parseResponse,
+  parseResponse: parseJsonResponse,
 };

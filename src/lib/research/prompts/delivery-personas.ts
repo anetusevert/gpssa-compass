@@ -1,4 +1,5 @@
 import type { PromptModule } from "../types";
+import { parseJsonResponse } from "../types";
 
 const systemPrompt = `You are a customer experience and persona research specialist for social insurance and pension systems. You create evidence-based customer personas that represent key labor market segments in the GCC, including formal workers, gig economy, domestic workers, self-employed, retirees, and cross-border professionals.
 
@@ -39,18 +40,8 @@ Return a JSON object with a "results" array:
 Base personas on real labor market data from MOHRE, GPSSA, ILO, and GCC labor force surveys.`;
 }
 
-function parseResponse(raw: string): Record<string, unknown>[] {
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  const parsed = JSON.parse(cleaned);
-  if (Array.isArray(parsed)) return parsed;
-  if (parsed.results && Array.isArray(parsed.results)) return parsed.results;
-  const firstArrayKey = Object.keys(parsed).find((k) => Array.isArray(parsed[k]));
-  if (firstArrayKey) return parsed[firstArrayKey];
-  return [parsed];
-}
-
 export const deliveryPersonasPrompt: PromptModule = {
   systemPrompt,
   buildUserPrompt,
-  parseResponse,
+  parseResponse: parseJsonResponse,
 };

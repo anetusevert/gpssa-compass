@@ -1,4 +1,5 @@
 import type { PromptModule } from "../types";
+import { parseJsonResponse } from "../types";
 
 const systemPrompt = `You are a service design and government operations expert specializing in social insurance service delivery. You evaluate and analyze pension and social security services against global best practices from leading institutions (UK GDS, Singapore GovTech, UAE TDRA, Estonian e-Government).
 
@@ -36,18 +37,8 @@ Return a JSON object with a "results" array:
 Ground analysis in comparable services from GOSI (Saudi Arabia), SIO (Bahrain), PIFSS (Kuwait), and leading international examples.`;
 }
 
-function parseResponse(raw: string): Record<string, unknown>[] {
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  const parsed = JSON.parse(cleaned);
-  if (Array.isArray(parsed)) return parsed;
-  if (parsed.results && Array.isArray(parsed.results)) return parsed.results;
-  const firstArrayKey = Object.keys(parsed).find((k) => Array.isArray(parsed[k]));
-  if (firstArrayKey) return parsed[firstArrayKey];
-  return [parsed];
-}
-
 export const servicesCatalogPrompt: PromptModule = {
   systemPrompt,
   buildUserPrompt,
-  parseResponse,
+  parseResponse: parseJsonResponse,
 };

@@ -76,6 +76,7 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
       const promptItems = pendingItems.map((item) => ({
         key: item.itemKey ?? item.id,
         label: item.itemLabel ?? item.itemKey ?? "Unknown",
+        context: item.itemContext ?? undefined,
       }));
 
       const userPrompt = promptModule.buildUserPrompt(promptItems);
@@ -113,17 +114,25 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
 
       for (const item of pendingItems) {
         const itemName = (item.itemLabel ?? item.itemKey ?? "").toLowerCase().trim();
+        const itemContext = (item.itemContext ?? "").toLowerCase().trim();
         const itemResult = results.find((r) => {
           const rName = String(
             r.countryName ?? r.institutionName ?? r.serviceName ?? r.name ?? r.title ?? r.segment ?? r.theme ?? ""
           ).toLowerCase().trim();
           if (!rName || !itemName) return false;
-          return rName === itemName || rName.includes(itemName) || itemName.includes(rName);
+          const nameMatch = rName === itemName || rName.includes(itemName) || itemName.includes(rName);
+          if (!nameMatch) return false;
+          if (itemContext && r.coverageType) {
+            return String(r.coverageType).toLowerCase().includes(itemContext);
+          }
+          return true;
         });
 
         if (itemResult) {
           itemResult._itemKey = item.itemKey;
           itemResult._itemLabel = item.itemLabel;
+          const idx = results.indexOf(itemResult);
+          if (idx !== -1) results.splice(idx, 1);
         }
 
         await prisma.researchJobItem.update({

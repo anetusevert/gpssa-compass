@@ -148,6 +148,7 @@ model ResearchJobItem {
   countryIso3 String?
   itemKey     String?
   itemLabel   String?
+  itemContext String?
   status      String   @default("pending")
   tokensUsed  Int      @default(0)
   durationMs  Int      @default(0)
@@ -156,7 +157,6 @@ model ResearchJobItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([jobId, countryIso3])
   @@index([jobId])
   @@index([itemKey])
 }

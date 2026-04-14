@@ -67,5 +67,24 @@ export interface PromptModule {
   parseResponse: (raw: string) => Record<string, unknown>[];
 }
 
+export function parseJsonResponse(raw: string): Record<string, unknown>[] {
+  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  const parsed = JSON.parse(cleaned);
+  if (Array.isArray(parsed)) return parsed;
+  for (const key of ["results", "data", "countries", "items"]) {
+    if (parsed[key] && Array.isArray(parsed[key])) return parsed[key];
+  }
+  const firstObjArrayKey = Object.keys(parsed).find(
+    (k) =>
+      Array.isArray(parsed[k]) &&
+      parsed[k].length > 0 &&
+      typeof parsed[k][0] === "object" &&
+      parsed[k][0] !== null
+  );
+  if (firstObjArrayKey) return parsed[firstObjArrayKey];
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return [parsed];
+  return [];
+}
+
 export const GPT4O_INPUT_COST = 2.5 / 1_000_000;
 export const GPT4O_OUTPUT_COST = 10.0 / 1_000_000;
