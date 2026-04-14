@@ -16,17 +16,21 @@ export async function writeAtlasWorldmap(
 ): Promise<number> {
   let written = 0;
   for (const r of results) {
+    const iso3Key = r._itemKey as string | undefined;
     const countryName = String(r.countryName ?? r.name ?? "");
-    if (!countryName) continue;
 
-    const country = await prisma.country.findFirst({
-      where: {
-        OR: [
-          { name: { equals: countryName, mode: "insensitive" } },
-          { name: { contains: countryName, mode: "insensitive" } },
-        ],
-      },
-    });
+    let country = null;
+
+    if (iso3Key) {
+      country = await prisma.country.findUnique({ where: { iso3: iso3Key } });
+    }
+
+    if (!country && countryName) {
+      country = await prisma.country.findFirst({
+        where: { name: { equals: countryName, mode: "insensitive" } },
+      });
+    }
+
     if (!country) continue;
 
     await prisma.country.update({

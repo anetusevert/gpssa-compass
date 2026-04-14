@@ -322,6 +322,16 @@ export default function AgentsPage() {
     }
   }
 
+  async function handleRewriteData(jobId: string, agentId: string) {
+    markBusy(agentId);
+    try {
+      await fetch(`/api/research/screen-jobs/${jobId}/rewrite`, { method: "POST" });
+      await fetchJobs();
+    } catch { /* ignore */ } finally {
+      clearBusy(agentId);
+    }
+  }
+
   async function handleClearProgress(agentId: string) {
     setClearing(true);
     try {
@@ -447,6 +457,11 @@ export default function AgentsPage() {
             {state === "failed" && (
               <button onClick={() => handleResume(job!.id)} className="p-1.5 rounded-lg text-gpssa-green hover:bg-gpssa-green/10 transition-colors" title="Resume (retry failed items)">
                 <Play size={14} />
+              </button>
+            )}
+            {state === "completed" && (
+              <button onClick={() => handleRewriteData(job!.id, agent.id)} className="p-1.5 rounded-lg text-gold hover:bg-gold/10 transition-colors" title="Sync data to screens" disabled={isBusy}>
+                <Database size={14} />
               </button>
             )}
             <button onClick={() => handleRestartEntirely(job!.id, agent.id)} className="p-1.5 rounded-lg text-adl-blue hover:bg-adl-blue/10 transition-colors" title="Restart entirely">

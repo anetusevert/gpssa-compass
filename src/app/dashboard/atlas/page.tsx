@@ -249,12 +249,15 @@ export default function GlobalAtlasPage() {
   const [dbProfiles,   setDbProfiles]   = useState<Record<string, CountryProfile>>({});
 
   useEffect(() => {
-    fetch("/api/countries?status=completed")
+    fetch("/api/countries")
       .then((r) => (r.ok ? r.json() : []))
       .then((rows: Array<Record<string, unknown>>) => {
         const map: Record<string, CountryProfile> = {};
         for (const c of rows) {
-          map[c.iso3 as string] = dbRowToProfile(c);
+          const hasData = c.maturityScore != null || c.researchStatus === "completed";
+          if (hasData) {
+            map[c.iso3 as string] = dbRowToProfile(c);
+          }
         }
         setDbProfiles(map);
       })

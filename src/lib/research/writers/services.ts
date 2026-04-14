@@ -8,12 +8,19 @@ export async function writeServicesCatalog(
 ): Promise<number> {
   let written = 0;
   for (const r of results) {
+    const itemKey = r._itemKey as string | undefined;
     const name = String(r.serviceName ?? r.name ?? "");
-    if (!name) continue;
+    if (!name && !itemKey) continue;
 
-    const existing = await prisma.gPSSAService.findFirst({
-      where: { name: { equals: name, mode: "insensitive" } },
-    });
+    let existing = null;
+    if (itemKey) {
+      existing = await prisma.gPSSAService.findUnique({ where: { id: itemKey } });
+    }
+    if (!existing && name) {
+      existing = await prisma.gPSSAService.findFirst({
+        where: { name: { equals: name, mode: "insensitive" } },
+      });
+    }
 
     const data = {
       category: String(r.category ?? "General"),

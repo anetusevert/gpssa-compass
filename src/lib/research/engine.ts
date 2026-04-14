@@ -102,8 +102,6 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
         results = [];
       }
 
-      const writtenCount = await writeScreenResults(screenType, results, agentLabel);
-
       for (const item of pendingItems) {
         const itemResult = results.find((r) => {
           const rName = String(
@@ -112,6 +110,11 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
           const itemName = (item.itemLabel ?? item.itemKey ?? "").toLowerCase();
           return rName === itemName || rName.includes(itemName) || itemName.includes(rName);
         });
+
+        if (itemResult) {
+          itemResult._itemKey = item.itemKey;
+          itemResult._itemLabel = item.itemLabel;
+        }
 
         await prisma.researchJobItem.update({
           where: { id: item.id },
@@ -124,6 +127,8 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
           },
         });
       }
+
+      await writeScreenResults(screenType, results, agentLabel);
 
       const completedCount = await prisma.researchJobItem.count({
         where: { jobId, status: "completed" },
