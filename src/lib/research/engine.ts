@@ -47,6 +47,7 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
     });
 
     if (pendingItems.length === 0) {
+      await finalRewritePass(jobId, screenType, `agent-${job.model}-${screenType}`);
       await prisma.researchJob.update({
         where: { id: jobId },
         data: { status: "completed", completedAt: new Date() },
@@ -225,4 +226,36 @@ export async function cancelScreenResearchJob(jobId: string): Promise<void> {
     where: { jobId, status: { in: ["pending", "processing"] } },
     data: { status: "skipped" },
   });
+}
+
+async function finalRewritePass(
+  jobId: string,
+  screenType: ScreenType,
+  agentLabel: string
+): Promise<void> {
+  try {
+    const completedItems = await prisma.researchJobItem.findMany({
+      where: { jobId, status: "completed", output: { not: null } },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const results: Record<string, unknown>[] = [];
+    for (const item of completedItems) {
+      if (!item.output) continue;
+      try {
+        const parsed = JSON.parse(item.output);
+        parsed._itemKey = item.itemKey;
+        parsed._itemLabel = item.itemLabel;
+        results.push(parsed);
+      } catch {
+        // skip
+      }
+    }
+
+    if (results.length > 0) {
+      await writeScreenResults(screenType, results, agentLabel);
+    }
+  } catch (err) {
+    console.error(`Final rewrite pass failed for job ${jobId}:`, err);
+  }
 }

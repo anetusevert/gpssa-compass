@@ -249,9 +249,33 @@ export default function GlobalAtlasPage() {
   const [dbProfiles,   setDbProfiles]   = useState<Record<string, CountryProfile>>({});
 
   useEffect(() => {
-    fetch("/api/countries")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: Array<Record<string, unknown>>) => {
+    async function loadCountries() {
+      try {
+        const res = await fetch("/api/countries");
+        if (!res.ok) return;
+        let rows: Array<Record<string, unknown>> = await res.json();
+
+        const completedCount = rows.filter(
+          (c) => c.researchStatus === "completed" && c.maturityScore != null
+        ).length;
+        const totalCount = rows.length;
+
+        if (totalCount > 0 && completedCount < totalCount * 0.5) {
+          const jobsRes = await fetch("/api/research/screen-jobs?latest=true");
+          if (jobsRes.ok) {
+            const jobs: Array<{ id: string; type: string; status: string; completedItems: number }> =
+              await jobsRes.json();
+            const atlasJob = jobs.find(
+              (j) => j.type === "atlas-worldmap" && j.status === "completed" && j.completedItems > 0
+            );
+            if (atlasJob) {
+              await fetch(`/api/research/screen-jobs/${atlasJob.id}/rewrite`, { method: "POST" });
+              const refreshed = await fetch("/api/countries");
+              if (refreshed.ok) rows = await refreshed.json();
+            }
+          }
+        }
+
         const map: Record<string, CountryProfile> = {};
         for (const c of rows) {
           const hasData = c.maturityScore != null || c.researchStatus === "completed";
@@ -260,8 +284,9 @@ export default function GlobalAtlasPage() {
           }
         }
         setDbProfiles(map);
-      })
-      .catch(() => {});
+      } catch { /* ignore */ }
+    }
+    loadCountries();
   }, []);
 
   const mergedCountries = useMemo<Record<string, CountryProfile>>(() => {

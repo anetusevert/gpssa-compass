@@ -118,17 +118,38 @@ export default function CountryDetailPage() {
   useEffect(() => {
     if (!iso3) return;
     setLoading(true);
-    fetch(`/api/countries/${iso3}`)
-      .then((r) => {
-        if (!r.ok) throw new Error("not found");
-        return r.json();
-      })
-      .then((data: DbCountry) => {
+
+    async function load() {
+      try {
+        const res = await fetch(`/api/countries/${iso3}`);
+        if (!res.ok) throw new Error("not found");
+        let data: DbCountry = await res.json();
+
+        if (data.maturityScore == null && data.researchStatus !== "completed") {
+          const jobsRes = await fetch("/api/research/screen-jobs?latest=true");
+          if (jobsRes.ok) {
+            const jobs: Array<{ id: string; type: string; status: string; completedItems: number }> =
+              await jobsRes.json();
+            const atlasJob = jobs.find(
+              (j) => j.type === "atlas-worldmap" && j.status === "completed" && j.completedItems > 0
+            );
+            if (atlasJob) {
+              await fetch(`/api/research/screen-jobs/${atlasJob.id}/rewrite`, { method: "POST" });
+              const refreshed = await fetch(`/api/countries/${iso3}`);
+              if (refreshed.ok) data = await refreshed.json();
+            }
+          }
+        }
+
         setDbData(data);
         setError(null);
-      })
-      .catch(() => setError("not found"))
-      .finally(() => setLoading(false));
+      } catch {
+        setError("not found");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, [iso3]);
 
   const profile: CountryProfile | null = useMemo(() => {
@@ -221,9 +242,9 @@ export default function CountryDetailPage() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 p-4 overflow-hidden flex flex-col gap-4 min-h-0">
+      <main className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 min-h-0">
         {/* Top Row: 2 Quadrants */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[280px]">
           {/* Left: System Overview */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -356,7 +377,7 @@ export default function CountryDetailPage() {
         </div>
 
         {/* Bottom Row: 4 tiles */}
-        <div className="flex-shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" style={{ minHeight: "180px" }}>
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[200px]">
           {/* Insights tile */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
