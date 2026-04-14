@@ -195,7 +195,6 @@ export default function AgentsPage() {
   const [savingAgent, setSavingAgent] = useState(false);
 
   const [busyAgents, setBusyAgents] = useState<Set<string>>(new Set());
-  const [selectedModels, setSelectedModels] = useState<Record<string, string>>({});
 
   const [confirmClear, setConfirmClear] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
@@ -267,15 +266,24 @@ export default function AgentsPage() {
     });
   }
 
+  async function handleModelChange(agentId: string, newModel: string) {
+    setAgents((prev) => prev.map((a) => a.id === agentId ? { ...a, model: newModel } : a));
+    try {
+      await fetch(`/api/agents/${agentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: newModel }),
+      });
+    } catch { /* ignore */ }
+  }
+
   async function handleRun(agentId: string) {
     markBusy(agentId);
     try {
-      const body: Record<string, string> = { agentConfigId: agentId };
-      if (selectedModels[agentId]) body.model = selectedModels[agentId];
       await fetch("/api/research/screen-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ agentConfigId: agentId }),
       });
       await fetchJobs();
     } catch { /* ignore */ } finally {
@@ -301,12 +309,10 @@ export default function AgentsPage() {
   async function handleRestartEntirely(jobId: string, agentId: string) {
     markBusy(agentId);
     try {
-      const body: Record<string, string> = {};
-      if (selectedModels[agentId]) body.model = selectedModels[agentId];
       await fetch(`/api/research/screen-jobs/${jobId}/restart`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({}),
       });
       await fetchJobs();
     } catch { /* ignore */ } finally {
@@ -339,20 +345,16 @@ export default function AgentsPage() {
       const state = getAgentState(job);
       if (state === "idle" || state === "completed" || state === "failed" || state === "cancelled") {
         if (job && (state === "completed" || state === "failed" || state === "cancelled")) {
-          const body: Record<string, string> = {};
-          if (selectedModels[agent.id]) body.model = selectedModels[agent.id];
           await fetch(`/api/research/screen-jobs/${job.id}/restart`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify({}),
           });
         } else {
-          const body: Record<string, string> = { agentConfigId: agent.id };
-          if (selectedModels[agent.id]) body.model = selectedModels[agent.id];
           await fetch("/api/research/screen-jobs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ agentConfigId: agent.id }),
           });
         }
       }
@@ -620,12 +622,11 @@ export default function AgentsPage() {
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                  {/* Model selector */}
                                   <select
-                                    value={selectedModels[agent.id] ?? agent.model}
-                                    onChange={(e) => setSelectedModels((prev) => ({ ...prev, [agent.id]: e.target.value }))}
-                                    className="px-2 py-1.5 rounded-lg glass text-cream text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-gpssa-green/50 max-w-[140px]"
-                                    title="Model"
+                                    value={agent.model}
+                                    onChange={(e) => handleModelChange(agent.id, e.target.value)}
+                                    className="px-2 py-1.5 rounded-lg glass text-cream text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-gpssa-green/50 max-w-[160px]"
+                                    title="Model (saved automatically)"
                                   >
                                     {!models.find((m) => m.id === agent.model) && <option value={agent.model}>{agent.model}</option>}
                                     {models.map((m) => <option key={m.id} value={m.id}>{m.id}</option>)}

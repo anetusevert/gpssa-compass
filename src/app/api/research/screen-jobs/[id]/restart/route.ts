@@ -25,17 +25,8 @@ export async function POST(
       await cancelScreenResearchJob(params.id);
     }
 
-    let model = existingJob.model;
-    try {
-      const body = await request.json();
-      if (body.model) model = body.model;
-    } catch {
-      // no body provided, use existing model
-    }
-
     const newJobId = await createScreenResearchJob(
-      existingJob.agentConfigId,
-      model
+      existingJob.agentConfigId
     );
 
     runScreenResearchJob(newJobId).catch((err) => {

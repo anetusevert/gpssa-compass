@@ -46,13 +46,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { agentConfigId, model } = body;
+    const { agentConfigId } = body;
 
     if (!agentConfigId) {
       return NextResponse.json({ error: "agentConfigId is required" }, { status: 400 });
     }
 
-    const jobId = await createScreenResearchJob(agentConfigId, model);
+    const jobId = await createScreenResearchJob(agentConfigId);
 
     // Run in background (non-blocking)
     runScreenResearchJob(jobId).catch((err) => {

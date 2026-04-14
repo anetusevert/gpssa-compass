@@ -46,8 +46,10 @@ export async function fetchAvailableModels(): Promise<
     const response = await client.models.list();
     const models: { id: string; name: string }[] = [];
 
+    const CHAT_PREFIXES = ["gpt-", "o1", "o3", "o4", "chatgpt-"];
+
     for await (const model of response) {
-      if (model.id.startsWith("gpt-")) {
+      if (CHAT_PREFIXES.some((p) => model.id.startsWith(p))) {
         models.push({ id: model.id, name: model.id });
       }
     }
