@@ -4,77 +4,66 @@ import { useState, useEffect, useCallback, FormEvent } from "react";
 import { signIn } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, ShieldCheck, Sparkles, Workflow } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { GPSSALogo } from "@/components/ui/GPSSALogo";
 import { LoginTransition } from "@/components/ui/LoginTransition";
 
 type Phase = "entry" | "hero" | "login";
 
 const ease = [0.16, 1, 0.3, 1] as [number, number, number, number];
-
-const highlightItems = [
-  { label: "Dynamic intelligence layers", icon: Sparkles },
-  { label: "Secure executive workspace", icon: ShieldCheck },
-  { label: "Roadmap-driven analysis flow", icon: Workflow },
-];
-
-const statItems = [
-  { value: "31", label: "services in scope" },
-  { value: "12M", label: "roadmap horizon" },
-  { value: "360", label: "journey intelligence" },
-];
+const smoothEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
 function AmbientBackdrop() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0 grid-overlay opacity-50" />
+      <div className="absolute inset-0 grid-overlay opacity-40" />
 
       <div
         className="orb halo-pulse"
         style={{
-          width: 620,
-          height: 620,
-          left: "-6%",
-          top: "-8%",
+          width: 700,
+          height: 700,
+          left: "-10%",
+          top: "-12%",
           background:
-            "radial-gradient(circle, rgba(0,168,107,0.16) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(0,168,107,0.12) 0%, transparent 70%)",
         }}
       />
       <div
         className="orb drift-slow drift-reverse"
         style={{
-          width: 480,
-          height: 480,
-          right: "-4%",
-          top: "15%",
+          width: 520,
+          height: 520,
+          right: "-6%",
+          top: "20%",
           background:
-            "radial-gradient(circle, rgba(45,74,140,0.14) 0%, transparent 72%)",
+            "radial-gradient(circle, rgba(45,74,140,0.1) 0%, transparent 72%)",
         }}
       />
       <div
         className="orb drift-slow"
         style={{
-          width: 360,
-          height: 360,
-          left: "52%",
-          bottom: "-4%",
+          width: 400,
+          height: 400,
+          left: "50%",
+          bottom: "-8%",
           background:
-            "radial-gradient(circle, rgba(197,165,114,0.14) 0%, transparent 75%)",
+            "radial-gradient(circle, rgba(197,165,114,0.1) 0%, transparent 75%)",
         }}
       />
 
-      <div className="ambient-ring left-[8%] top-[16%] h-80 w-80 opacity-40" />
-      <div className="ambient-ring bottom-[12%] right-[10%] h-[28rem] w-[28rem] opacity-25" />
+      <div className="ambient-ring left-[12%] top-[18%] h-72 w-72 opacity-30" />
+      <div className="ambient-ring bottom-[14%] right-[12%] h-96 w-96 opacity-20" />
 
       <motion.div
-        className="absolute left-[12%] top-[28%] h-px w-40 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-        animate={{ x: [0, 40, -10, 0], opacity: [0.2, 0.7, 0.35, 0.2] }}
-        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute left-[15%] top-[35%] h-px w-48 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+        animate={{ x: [0, 50, -15, 0], opacity: [0.15, 0.5, 0.25, 0.15] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-[24%] right-[14%] h-px w-56 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-        animate={{ x: [0, -60, 18, 0], opacity: [0.15, 0.55, 0.2, 0.15] }}
-        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-[30%] right-[18%] h-px w-64 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+        animate={{ x: [0, -70, 20, 0], opacity: [0.1, 0.4, 0.15, 0.1] }}
+        transition={{ duration: 13, repeat: Infinity, ease: "easeInOut" }}
       />
     </div>
   );
@@ -118,31 +107,28 @@ function LoginForm({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 36, scale: 0.98, filter: "blur(8px)" }}
+      initial={{ opacity: 0, y: 30, scale: 0.97, filter: "blur(8px)" }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, y: -20, scale: 0.98, filter: "blur(10px)" }}
-      transition={{ duration: 0.55, ease }}
+      exit={{ opacity: 0, y: -20, scale: 0.97, filter: "blur(10px)" }}
+      transition={{ duration: 0.6, ease }}
       className="w-full max-w-md"
     >
-      <div className="glass-card surface-depth tile-no-frame rounded-[28px] p-8 md:p-9">
-        <div className="mb-8 flex flex-col gap-4">
+      <div className="glass-card surface-depth tile-no-frame rounded-[28px] p-8 md:p-10">
+        <div className="mb-8 flex flex-col items-center text-center">
           <GPSSALogo size="sm" />
-          <div>
-            <p className="text-caption uppercase tracking-[0.28em] text-white/45">
-              Secure Access
-            </p>
-            <p className="mt-2 text-sm text-gray-muted">
-              Sign in to access the intelligence workspace and continue into the
-              platform.
-            </p>
-          </div>
+          <p className="mt-5 text-caption uppercase tracking-[0.3em] text-white/40">
+            Secure Access
+          </p>
+          <p className="mt-2 text-sm text-gray-muted max-w-xs">
+            Sign in to continue into the intelligence platform.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="email"
-              className="text-micro uppercase font-medium text-white/55"
+              className="text-micro uppercase font-medium text-white/50"
             >
               Email Address
             </label>
@@ -161,7 +147,7 @@ function LoginForm({
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="password"
-              className="text-micro uppercase font-medium text-white/55"
+              className="text-micro uppercase font-medium text-white/50"
             >
               Password
             </label>
@@ -195,10 +181,10 @@ function LoginForm({
             disabled={loading}
             whileHover={{ y: -2, scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
-            className="group relative mt-2 overflow-hidden rounded-2xl px-4 py-3 text-body font-medium text-white disabled:opacity-60"
+            className="group relative mt-2 overflow-hidden rounded-2xl px-4 py-3.5 text-body font-medium text-white disabled:opacity-60"
             style={{
               background:
-                "linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.08))",
+                "linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06))",
             }}
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
@@ -214,23 +200,47 @@ function LoginForm({
 
         <button
           onClick={onBack}
-          className="mt-4 w-full text-center text-caption text-gray-muted transition-colors duration-200 hover:text-white/80"
+          className="mt-5 w-full text-center text-caption text-gray-muted transition-colors duration-200 hover:text-white/70"
         >
           Back to overview
         </button>
       </div>
+
+      <motion.div
+        className="mt-8 flex items-center justify-center gap-3"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5, duration: 0.6 }}
+      >
+        <span className="text-[11px] uppercase tracking-[0.28em] text-white/30">
+          Powered by
+        </span>
+        <Image
+          src="/images/adl-logo.png"
+          alt="Arthur D. Little"
+          width={72}
+          height={22}
+          className="adl-logo-white object-contain opacity-70"
+        />
+      </motion.div>
     </motion.div>
   );
 }
 
 export default function LandingPage() {
   const [phase, setPhase] = useState<Phase>("entry");
+  const [entryStep, setEntryStep] = useState(0);
   const [showTransition, setShowTransition] = useState(false);
 
   useEffect(() => {
     if (phase !== "entry") return;
-    const timer = setTimeout(() => setPhase("hero"), 1800);
-    return () => clearTimeout(timer);
+    const timers = [
+      setTimeout(() => setEntryStep(1), 600),
+      setTimeout(() => setEntryStep(2), 1500),
+      setTimeout(() => setEntryStep(3), 2200),
+      setTimeout(() => setPhase("hero"), 3000),
+    ];
+    return () => timers.forEach(clearTimeout);
   }, [phase]);
 
   const handleLoginSuccess = useCallback(() => {
@@ -242,272 +252,238 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--navy)]">
+    <div className="relative h-screen w-screen overflow-hidden bg-[var(--navy)]">
       <AmbientBackdrop />
 
-      <div className="relative z-10 w-full px-5 py-8 sm:px-8 lg:px-12">
+      <div className="relative z-10 flex h-full w-full items-center justify-center">
         <AnimatePresence mode="wait">
+          {/* ── PHASE 1: CINEMATIC ENTRY ── */}
           {phase === "entry" && (
             <motion.div
               key="entry"
-              className="mx-auto flex min-h-[80vh] max-w-5xl flex-col items-center justify-center text-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 0.98, filter: "blur(8px)" }}
-              transition={{ duration: 0.7, ease }}
+              className="flex h-screen w-full flex-col items-center justify-center"
+              exit={{
+                opacity: 0,
+                scale: 1.04,
+                filter: "blur(10px)",
+                transition: { duration: 0.6, ease: smoothEase },
+              }}
             >
+              {/* Bloom glow behind logo */}
               <motion.div
-                initial={{ opacity: 0, y: 18, scale: 0.94 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.95, ease }}
-                style={{ filter: "drop-shadow(0 0 80px rgba(255,255,255,0.16))" }}
+                className="entry-bloom absolute"
+                initial={{ opacity: 0, scale: 0.3 }}
+                animate={{
+                  opacity: [0, 0.4, 0.2],
+                  scale: [0.3, 1.8, 2.2],
+                }}
+                transition={{ duration: 2, ease: "easeOut", delay: 0.1 }}
+              />
+
+              {/* Logo materializes */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1, ease: smoothEase, delay: 0.15 }}
               >
                 <GPSSALogo size="hero" />
               </motion.div>
 
-              <motion.p
-                className="mt-6 text-xs uppercase tracking-[0.45em] text-white/45"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25, duration: 0.65, ease }}
-              >
-                Social Insurance &amp; Pension Knowledge Intelligence
-              </motion.p>
-
-              <motion.div
-                className="mt-12 flex gap-2"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.55, duration: 0.5 }}
-              >
-                {[0, 1, 2].map((i) => (
+              {/* Expanding horizontal line */}
+              <AnimatePresence>
+                {entryStep >= 1 && (
                   <motion.div
-                    key={i}
-                    className="h-1.5 w-10 rounded-full bg-white/20"
-                    animate={{ opacity: [0.25, 1, 0.25], scaleX: [0.92, 1.08, 0.92] }}
-                    transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                    key="entry-line"
+                    className="mt-8 h-px w-48 origin-center"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)",
+                    }}
+                    initial={{ scaleX: 0, opacity: 0 }}
+                    animate={{ scaleX: 1, opacity: 1 }}
+                    transition={{ duration: 0.8, ease: smoothEase, delay: 0.1 }}
                   />
-                ))}
-              </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Tagline fade-up */}
+              <AnimatePresence>
+                {entryStep >= 2 && (
+                  <motion.p
+                    key="entry-tagline"
+                    className="mt-7 text-center text-sm tracking-[0.14em] text-white/50 sm:text-base"
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease, delay: 0.05 }}
+                  >
+                    Social Insurance &amp; Pension Knowledge{" "}
+                    <span className="text-white/90">Intelligence</span>
+                  </motion.p>
+                )}
+              </AnimatePresence>
+
+              {/* Welcome beat */}
+              <AnimatePresence>
+                {entryStep >= 3 && (
+                  <motion.p
+                    key="entry-welcome"
+                    className="mt-10 text-[11px] uppercase tracking-[0.4em] text-white/30"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 0.6, y: 0 }}
+                    transition={{ duration: 0.4, ease }}
+                  >
+                    Welcome
+                  </motion.p>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
+          {/* ── PHASE 2: TYPOGRAPHIC HERO ── */}
           {phase === "hero" && (
             <motion.section
               key="hero"
-              className="mx-auto max-w-6xl"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -18, filter: "blur(8px)" }}
-              transition={{ duration: 0.6, ease }}
+              className="flex h-screen w-full flex-col items-center justify-center px-6 text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{
+                opacity: 0,
+                y: -16,
+                filter: "blur(8px)",
+                transition: { duration: 0.45, ease },
+              }}
+              transition={{ duration: 0.5, ease }}
             >
-              <div className="glass-card surface-depth tile-no-frame overflow-hidden rounded-[32px] px-6 py-8 sm:px-8 lg:px-10 lg:py-10">
-                <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-                  <div>
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.08, duration: 0.5, ease }}
-                      className="mb-6 inline-flex items-center gap-3 rounded-full bg-white/[0.03] px-4 py-2"
-                    >
-                      <span className="h-2 w-2 rounded-full bg-white/80" />
-                      <span className="text-micro uppercase tracking-[0.28em] text-white/60">
-                        General Pension &amp; Social Security Authority
-                      </span>
-                    </motion.div>
+              {/* Eyebrow pill */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05, duration: 0.5, ease }}
+                className="mb-8 inline-flex items-center gap-3 rounded-full bg-white/[0.04] px-5 py-2.5"
+              >
+                <span className="h-2 w-2 rounded-full bg-[var(--gpssa-green)]" />
+                <span className="text-[11px] uppercase tracking-[0.22em] text-white/55">
+                  General Pension &amp; Social Security Authority
+                </span>
+              </motion.div>
 
-                    <motion.h1
-                      className="max-w-3xl font-playfair text-5xl font-bold leading-[1.02] text-cream sm:text-6xl lg:text-7xl"
-                      initial={{ opacity: 0, y: 18 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.16, duration: 0.65, ease }}
-                    >
-                      GPSSA <span className="text-white/88">Intelligence</span>
-                    </motion.h1>
-
-                    <motion.p
-                      className="mt-5 max-w-2xl text-base text-gray-muted sm:text-lg"
-                      initial={{ opacity: 0, y: 18 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.24, duration: 0.6, ease }}
-                    >
-                      Social Insurance &amp; Pension Knowledge Intelligence
-                      across service landscapes, product development, and
-                      delivery execution.
-                    </motion.p>
-
-                    <motion.div
-                      className="mt-7 grid gap-3 sm:grid-cols-3"
-                      initial={{ opacity: 0, y: 18 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.32, duration: 0.6, ease }}
-                    >
-                      {statItems.map((item) => (
-                        <div
-                          key={item.label}
-                          className="rounded-2xl bg-white/[0.03] px-4 py-4 backdrop-blur-sm"
-                        >
-                          <p className="text-2xl font-semibold text-white">
-                            {item.value}
-                          </p>
-                          <p className="mt-1 text-[11px] uppercase tracking-[0.24em] text-white/45">
-                            {item.label}
-                          </p>
-                        </div>
-                      ))}
-                    </motion.div>
-
-                    <motion.div
-                      className="mt-8 flex flex-col gap-3 sm:flex-row"
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.42, duration: 0.6, ease }}
-                    >
-                      <motion.button
-                        onClick={() => setPhase("login")}
-                        whileHover={{ y: -3, scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className="group inline-flex items-center justify-center gap-3 rounded-2xl bg-white/[0.09] px-7 py-4 text-base font-medium text-white"
-                      >
-                        Access Platform
-                        <ArrowRight
-                          size={18}
-                          className="icon-white transition-transform duration-300 group-hover:translate-x-1"
-                        />
-                      </motion.button>
-
-                      <div className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/[0.03] px-6 py-4 text-sm text-white/65">
-                        <ShieldCheck size={16} className="icon-white" />
-                        Secure executive environment
-                      </div>
-                    </motion.div>
-                  </div>
-
+              {/* Split-line headline */}
+              <div className="mb-6">
+                <div className="overflow-hidden">
                   <motion.div
-                    className="grid gap-4"
-                    initial={{ opacity: 0, x: 24 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.28, duration: 0.7, ease }}
+                    initial={{ y: "100%", opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.7, ease, delay: 0.12 }}
                   >
-                    {highlightItems.map((item, index) => {
-                      const Icon = item.icon;
-                      return (
-                        <motion.div
-                          key={item.label}
-                          className="glass surface-depth tile-no-frame rounded-[26px] px-5 py-5"
-                          initial={{ opacity: 0, y: 24 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            delay: 0.34 + index * 0.08,
-                            duration: 0.58,
-                            ease,
-                          }}
-                          whileHover={{ y: -4, scale: 1.01 }}
-                        >
-                          <div className="flex items-start gap-4">
-                            <div className="rounded-2xl bg-white/[0.05] p-3">
-                              <Icon size={20} className="icon-white" />
-                            </div>
-                            <div>
-                              <p className="text-[11px] uppercase tracking-[0.28em] text-white/40">
-                                Intelligence layer {index + 1}
-                              </p>
-                              <p className="mt-2 text-lg font-medium text-white">
-                                {item.label}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-
-                    <motion.div
-                      className="flex items-center justify-between rounded-[26px] bg-white/[0.03] px-5 py-5"
-                      initial={{ opacity: 0, y: 24 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.62, duration: 0.58, ease }}
-                    >
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.28em] text-white/38">
-                          Powered by
-                        </p>
-                        <p className="mt-2 text-sm text-white/65">
-                          Arthur D. Little
-                        </p>
-                      </div>
-                      <Image
-                        src="/images/adl-logo.png"
-                        alt="Arthur D. Little"
-                        width={92}
-                        height={28}
-                        className="adl-logo-white object-contain opacity-90"
-                      />
-                    </motion.div>
+                    <h1 className="font-playfair text-7xl font-bold leading-[0.95] text-cream sm:text-8xl lg:text-9xl">
+                      GPSSA
+                    </h1>
+                  </motion.div>
+                </div>
+                <div className="overflow-hidden">
+                  <motion.div
+                    initial={{ y: "100%", opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.7, ease, delay: 0.26 }}
+                  >
+                    <h1 className="font-playfair text-7xl font-bold leading-[0.95] text-white/80 sm:text-8xl lg:text-9xl">
+                      Intelligence
+                    </h1>
                   </motion.div>
                 </div>
               </div>
+
+              {/* Expanding line under headline */}
+              <motion.div
+                className="mb-7 h-px w-32 origin-center sm:w-44"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(0,168,107,0.5), transparent)",
+                }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.8, ease: smoothEase, delay: 0.45 }}
+              />
+
+              {/* Subcopy */}
+              <motion.p
+                className="mb-10 max-w-lg text-base text-white/50 sm:text-lg"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.6, ease }}
+              >
+                Strategic knowledge platform for social insurance and pension
+                systems worldwide.
+              </motion.p>
+
+              {/* CTA row */}
+              <motion.div
+                className="flex items-center gap-5"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.55, ease }}
+              >
+                <motion.button
+                  onClick={() => setPhase("login")}
+                  whileHover={{ y: -3, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="group inline-flex items-center gap-3 rounded-full bg-white/[0.08] px-8 py-4 text-base font-medium text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white/[0.12]"
+                >
+                  Access Platform
+                  <ArrowRight
+                    size={18}
+                    className="icon-white transition-transform duration-300 group-hover:translate-x-1"
+                  />
+                </motion.button>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] uppercase tracking-[0.2em] text-white/30">
+                    Powered by
+                  </span>
+                  <Image
+                    src="/images/adl-logo.png"
+                    alt="Arthur D. Little"
+                    width={80}
+                    height={24}
+                    className="adl-logo-white object-contain opacity-60"
+                  />
+                </div>
+              </motion.div>
+
+              {/* Scroll / pulse indicator */}
+              <motion.div
+                className="absolute bottom-10 left-1/2 -translate-x-1/2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1, duration: 0.6 }}
+              >
+                <motion.div
+                  className="h-8 w-px bg-gradient-to-b from-white/40 to-transparent"
+                  animate={{ scaleY: [0.6, 1, 0.6], opacity: [0.3, 0.7, 0.3] }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+              </motion.div>
             </motion.section>
           )}
 
+          {/* ── PHASE 3: CENTERED LOGIN ── */}
           {phase === "login" && (
             <motion.section
               key="login"
-              className="mx-auto max-w-6xl"
+              className="flex h-screen w-full flex-col items-center justify-center px-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-                <motion.div
-                  className="glass-card surface-depth tile-no-frame rounded-[32px] px-6 py-8 sm:px-8"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.55, ease }}
-                >
-                  <GPSSALogo size="lg" />
-                  <p className="mt-6 max-w-xl text-base text-gray-muted">
-                    Enter the workspace to navigate the atlas, service
-                    intelligence, product intelligence, and delivery insights
-                    with a stronger executive view.
-                  </p>
-
-                  <div className="mt-8 grid gap-3">
-                    {highlightItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <div
-                          key={item.label}
-                          className="flex items-center gap-3 rounded-2xl bg-white/[0.03] px-4 py-4"
-                        >
-                          <div className="rounded-xl bg-white/[0.05] p-2.5">
-                            <Icon size={18} className="icon-white" />
-                          </div>
-                          <span className="text-sm text-white/82">{item.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-10 flex items-center gap-4">
-                    <span className="text-[11px] uppercase tracking-[0.28em] text-white/36">
-                      Powered by
-                    </span>
-                    <Image
-                      src="/images/adl-logo.png"
-                      alt="Arthur D. Little"
-                      width={88}
-                      height={26}
-                      className="adl-logo-white object-contain opacity-85"
-                    />
-                  </div>
-                </motion.div>
-
-                <LoginForm
-                  onSuccess={handleLoginSuccess}
-                  onBack={() => setPhase("hero")}
-                />
-              </div>
+              <LoginForm
+                onSuccess={handleLoginSuccess}
+                onBack={() => setPhase("hero")}
+              />
             </motion.section>
           )}
         </AnimatePresence>

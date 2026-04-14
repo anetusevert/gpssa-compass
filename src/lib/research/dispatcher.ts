@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { COUNTRIES } from "@/lib/countries/catalog";
 import type { ScreenType } from "./types";
 
 interface DispatchItem {
@@ -10,11 +11,28 @@ interface DispatchItem {
 async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]> {
   switch (screenType) {
     case "atlas-worldmap": {
-      const countries = await prisma.country.findMany({
+      let countries = await prisma.country.findMany({
         where: { researchStatus: { in: ["pending", "failed"] } },
         select: { iso3: true, name: true },
         orderBy: { name: "asc" },
       });
+      if (countries.length === 0) {
+        const total = await prisma.country.count();
+        if (total === 0) {
+          for (const c of COUNTRIES) {
+            await prisma.country.upsert({
+              where: { iso3: c.iso3 },
+              update: {},
+              create: { iso3: c.iso3, iso2: c.iso2, name: c.name, flag: c.flag, region: c.region, subRegion: c.subRegion },
+            });
+          }
+          countries = await prisma.country.findMany({
+            where: { researchStatus: { in: ["pending", "failed"] } },
+            select: { iso3: true, name: true },
+            orderBy: { name: "asc" },
+          });
+        }
+      }
       return countries.map((c) => ({ key: c.iso3, label: c.name }));
     }
 
