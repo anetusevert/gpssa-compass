@@ -126,7 +126,7 @@ export function Sidebar() {
             alt="Arthur D. Little"
             width={52}
             height={30}
-            className="adl-logo-white object-contain opacity-95"
+            className="adl-logo-white object-contain"
           />
           <div className="h-6 w-px bg-white/10" />
           <span className="font-playfair text-2xl font-bold text-cream">
