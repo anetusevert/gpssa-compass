@@ -9,6 +9,7 @@ export interface DefaultAgent {
   temperature: number;
   targetScreen?: string;
   researchType?: string;
+  sortOrder: number;
 }
 
 export const DEFAULT_AGENTS: DefaultAgent[] = [
@@ -26,6 +27,7 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
     model: "gpt-4o",
     maxTokens: 16384,
     temperature: 0.2,
+    sortOrder: 1,
   },
   {
     id: "atlas-benchmarking",
@@ -43,6 +45,7 @@ You MUST respond with valid JSON only. Include source citations grounded in the 
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.3,
+    sortOrder: 2,
   },
 
   // ── Services Pillar ──
@@ -63,6 +66,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.3,
+    sortOrder: 3,
   },
   {
     id: "services-channels",
@@ -80,6 +84,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.3,
+    sortOrder: 4,
   },
   {
     id: "services-analysis",
@@ -97,6 +102,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.5,
+    sortOrder: 5,
   },
 
   // ── Products Pillar ──
@@ -117,6 +123,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.3,
+    sortOrder: 6,
   },
   {
     id: "products-segments",
@@ -134,6 +141,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.3,
+    sortOrder: 7,
   },
   {
     id: "products-innovation",
@@ -151,6 +159,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.5,
+    sortOrder: 8,
   },
 
   // ── Delivery Pillar ──
@@ -171,6 +180,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.3,
+    sortOrder: 9,
   },
   {
     id: "delivery-personas",
@@ -188,6 +198,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.5,
+    sortOrder: 10,
   },
   {
     id: "delivery-models",
@@ -205,5 +216,6 @@ You MUST respond with valid JSON only. Include source citations.`,
     model: "gpt-4o",
     maxTokens: 4096,
     temperature: 0.3,
+    sortOrder: 11,
   },
 ];

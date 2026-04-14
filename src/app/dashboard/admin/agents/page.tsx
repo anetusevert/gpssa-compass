@@ -52,6 +52,7 @@ interface AgentConfig {
   isActive: boolean;
   targetScreen: string | null;
   researchType: string | null;
+  sortOrder: number;
   executionCount: number;
   lastRunAt: string | null;
   createdAt: string;
@@ -241,7 +242,7 @@ export default function AgentsPage() {
     return () => clearInterval(interval);
   }, [researchJobs, fetchJobs]);
 
-  const screenAgents = agents.filter((a) => a.targetScreen);
+  const screenAgents = agents.filter((a) => a.targetScreen).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
   function getLatestJob(agentId: string): ResearchJob | undefined {
     return researchJobs.find((j) => j.agentConfigId === agentId);
@@ -350,7 +351,9 @@ export default function AgentsPage() {
   async function handleRunAllInPillar(pillarKey: string) {
     const meta = PILLAR_META[pillarKey];
     if (!meta) return;
-    const pillarAgents = screenAgents.filter((a) => meta.screens.includes(a.targetScreen!));
+    const pillarAgents = screenAgents
+      .filter((a) => meta.screens.includes(a.targetScreen!))
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
     for (const agent of pillarAgents) {
       const job = getLatestJob(agent.id);
@@ -369,9 +372,9 @@ export default function AgentsPage() {
             body: JSON.stringify({ agentConfigId: agent.id }),
           });
         }
+        await fetchJobs();
       }
     }
-    await fetchJobs();
   }
 
   function openEditModal(agent: AgentConfig) {
@@ -543,16 +546,34 @@ export default function AgentsPage() {
         <StatCard label="Pending" value={stats.pending} icon={Clock} />
       </div>
 
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+        <div className="flex items-start gap-3">
+          <div className="p-1.5 rounded-lg bg-adl-blue/10 shrink-0 mt-0.5">
+            <Zap size={14} className="text-adl-blue" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-cream mb-1">Recommended Execution Order</p>
+            <p className="text-xs text-gray-muted leading-relaxed">
+              Agents are numbered 1–11 in their optimal run sequence. Each agent&apos;s research builds on the previous one&apos;s output.
+              Run them <strong className="text-cream">in order within each pillar</strong>: Global Atlas first (foundation data),
+              then Services, Products, and finally Delivery. Use <strong className="text-cream">Run All</strong> per pillar to
+              execute them in the correct sequence automatically.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {loadingAgents ? (
         <div className="flex justify-center py-12"><LoadingSpinner /></div>
       ) : (
         <div className="space-y-6">
           {Object.entries(PILLAR_META).map(([pillarKey, meta]) => {
             const PillarIcon = meta.icon;
-            const pillarAgents = screenAgents.filter((a) => meta.screens.includes(a.targetScreen!));
+            const pillarAgents = screenAgents.filter((a) => meta.screens.includes(a.targetScreen!)).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
             const isExpanded = expandedPillars.has(pillarKey);
             const pillarRunning = pillarAgents.some((a) => getAgentState(getLatestJob(a.id)) === "running");
             const pillarCompleted = pillarAgents.filter((a) => getAgentState(getLatestJob(a.id)) === "completed").length;
+            const stepRange = pillarAgents.length > 0 ? `Steps ${pillarAgents[0].sortOrder}–${pillarAgents[pillarAgents.length - 1].sortOrder}` : "";
             const hasIdleAgents = pillarAgents.some((a) => {
               const s = getAgentState(getLatestJob(a.id));
               return s === "idle" || s === "completed" || s === "failed" || s === "cancelled";
@@ -571,7 +592,7 @@ export default function AgentsPage() {
                     <div className="text-left">
                       <h3 className={`font-playfair text-lg font-semibold ${meta.color}`}>{meta.label}</h3>
                       <p className="text-xs text-gray-muted">
-                        {pillarAgents.length} agents · {pillarCompleted}/{pillarAgents.length} completed
+                        {stepRange} · {pillarAgents.length} agents · {pillarCompleted}/{pillarAgents.length} completed
                       </p>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
@@ -612,6 +633,7 @@ export default function AgentsPage() {
                               <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
+                                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/10 text-[10px] font-bold text-white/60 shrink-0">{agent.sortOrder ?? "?"}</span>
                                     <h4 className="text-sm font-medium text-cream">{agent.name}</h4>
                                     <Badge variant="gray" size="sm">{SCREEN_LABELS[agent.targetScreen!] ?? agent.targetScreen}</Badge>
                                     <StatusBadge state={state} />

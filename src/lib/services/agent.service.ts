@@ -15,6 +15,7 @@ export class AgentService {
             userPromptTemplate: agent.userPromptTemplate,
             maxTokens: agent.maxTokens,
             temperature: agent.temperature,
+            sortOrder: agent.sortOrder,
           },
           create: {
             id: agent.id,
@@ -27,6 +28,7 @@ export class AgentService {
             temperature: agent.temperature,
             targetScreen: agent.targetScreen ?? null,
             researchType: agent.researchType ?? null,
+            sortOrder: agent.sortOrder,
           },
         })
       )
@@ -37,7 +39,7 @@ export class AgentService {
     await this.seedDefaults();
 
     return prisma.agentConfig.findMany({
-      orderBy: { name: "asc" },
+      orderBy: { sortOrder: "asc" },
       include: { _count: { select: { executions: true } } },
     });
   }

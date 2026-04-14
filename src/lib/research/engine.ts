@@ -102,17 +102,22 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
 
       let results: Record<string, unknown>[];
       try {
-        results = promptModule.parseResponse(rawOutput);
+        const raw = promptModule.parseResponse(rawOutput);
+        results = raw.filter(
+          (r): r is Record<string, unknown> =>
+            r != null && typeof r === "object" && !Array.isArray(r)
+        );
       } catch {
         results = [];
       }
 
       for (const item of pendingItems) {
+        const itemName = (item.itemLabel ?? item.itemKey ?? "").toLowerCase().trim();
         const itemResult = results.find((r) => {
           const rName = String(
             r.countryName ?? r.institutionName ?? r.serviceName ?? r.name ?? r.title ?? r.segment ?? r.theme ?? ""
-          ).toLowerCase();
-          const itemName = (item.itemLabel ?? item.itemKey ?? "").toLowerCase();
+          ).toLowerCase().trim();
+          if (!rName || !itemName) return false;
           return rName === itemName || rName.includes(itemName) || itemName.includes(rName);
         });
 

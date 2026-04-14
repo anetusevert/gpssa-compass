@@ -39,6 +39,7 @@ model AgentConfig {
   isActive         Boolean  @default(true)
   targetScreen     String?
   researchType     String?
+  sortOrder        Int      @default(0)
   executionCount   Int      @default(0)
   lastRunAt        DateTime?
   createdAt        DateTime @default(now())
