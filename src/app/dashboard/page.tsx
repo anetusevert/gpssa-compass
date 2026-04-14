@@ -318,13 +318,24 @@ export default function DashboardHome() {
         </p>
       </motion.header>
 
-      <div className="relative z-10 w-full max-w-2xl px-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {PILLARS.map((pillar, i) => (
+      <div className="relative z-10 w-full max-w-4xl px-6 space-y-3">
+        <PillarTile
+          pillar={PILLARS[0]}
+          index={0}
+          isOpen={openPillar === PILLARS[0].id}
+          onToggle={() =>
+            setOpenPillar((prev) =>
+              prev === PILLARS[0].id ? null : PILLARS[0].id
+            )
+          }
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {PILLARS.slice(1).map((pillar, i) => (
             <PillarTile
               key={pillar.id}
               pillar={pillar}
-              index={i}
+              index={i + 1}
               isOpen={openPillar === pillar.id}
               onToggle={() =>
                 setOpenPillar((prev) =>
