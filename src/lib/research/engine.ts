@@ -75,15 +75,17 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
 
       const userPrompt = promptModule.buildUserPrompt(promptItems);
 
+      const isReasoningModel = /^(o1|o3|o4)/.test(currentJob.model);
+
       const completion = await client.chat.completions.create({
         model: currentJob.model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: job.agentConfig?.maxTokens ?? 4096,
-        temperature: job.agentConfig?.temperature ?? 0.3,
-        response_format: { type: "json_object" },
+        max_completion_tokens: job.agentConfig?.maxTokens ?? 16384,
+        ...(!isReasoningModel && { temperature: job.agentConfig?.temperature ?? 0.3 }),
+        ...(!isReasoningModel && { response_format: { type: "json_object" } }),
       });
 
       const durationMs = Date.now() - startTime;

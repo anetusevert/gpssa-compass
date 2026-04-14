@@ -100,14 +100,16 @@ export async function runAgent(
       variables
     );
 
+    const isReasoningModel = /^(o1|o3|o4)/.test(agentInput.model);
+
     const completion = await client.chat.completions.create({
       model: agentInput.model,
       messages: [
         { role: "system", content: agentInput.systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      max_tokens: agentInput.maxTokens,
-      temperature: agentInput.temperature,
+      max_completion_tokens: agentInput.maxTokens,
+      ...(!isReasoningModel && { temperature: agentInput.temperature }),
     });
 
     const durationMs = Date.now() - startTime;

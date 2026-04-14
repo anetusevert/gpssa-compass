@@ -18,13 +18,11 @@ export async function GET(
             id: true,
             itemKey: true,
             itemLabel: true,
-            countryIso3: true,
             status: true,
+            error: true,
             tokensUsed: true,
             durationMs: true,
-            error: true,
             createdAt: true,
-            updatedAt: true,
           },
         },
       },
@@ -36,7 +34,8 @@ export async function GET(
 
     return NextResponse.json(job);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to fetch job";
+    const message =
+      error instanceof Error ? error.message : "Failed to fetch job";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

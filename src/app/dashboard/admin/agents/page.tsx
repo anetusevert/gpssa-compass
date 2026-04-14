@@ -73,6 +73,8 @@ interface ResearchJob {
   model: string;
   totalTokens: number;
   totalCost: number;
+  lastError: string | null;
+  errorCount: number;
   agentConfigId: string | null;
   startedAt: string | null;
   completedAt: string | null;
@@ -617,6 +619,12 @@ export default function AgentsPage() {
                                         <span>Cost: ${latestJob.totalCost.toFixed(4)}</span>
                                         {latestJob.completedAt && <span>Finished: {new Date(latestJob.completedAt).toLocaleDateString()}</span>}
                                       </div>
+                                      {latestJob.lastError && (state === "failed" || latestJob.failedItems > 0) && (
+                                        <div className="flex items-start gap-1.5 mt-1 p-1.5 rounded bg-red-500/10 border border-red-500/20">
+                                          <XCircle size={10} className="text-red-400 shrink-0 mt-0.5" />
+                                          <span className="text-[10px] text-red-300 break-all line-clamp-3">{latestJob.lastError}</span>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
