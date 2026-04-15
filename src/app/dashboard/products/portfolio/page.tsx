@@ -86,7 +86,6 @@ const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transi
 
 function IntlProductCard({ product }: { product: IntlProduct }) {
   const country = COUNTRIES.find((c) => c.iso3 === product.countryIso3);
-  const features = parseJsonField<string[]>(product.keyFeatures) ?? [];
   const segments = parseJsonField<string[]>(product.targetSegments) ?? [];
   const sb = statusBadge[(product.status as ProductStatus) ?? "Active"] ?? statusBadge.Active;
 

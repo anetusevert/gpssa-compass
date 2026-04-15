@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -10,8 +10,6 @@ import {
   Sparkles,
   FolderOpen,
   Users,
-  ChevronRight,
-  Loader2,
   CheckCircle2,
   Briefcase,
   Shield,
@@ -146,7 +144,6 @@ function ServiceCard({ service, onSelect }: { service: GPSSAService; onSelect: (
 
 function IntlServiceCard({ service }: { service: IntlService }) {
   const config = getCategoryConfig(service.category);
-  const CatIcon = config.icon;
   const country = COUNTRIES.find((c) => c.iso3 === service.countryIso3);
   const strengths = parseJsonField<string[]>(service.strengths) ?? [];
   const painPoints = parseJsonField<string[]>(service.painPoints) ?? [];

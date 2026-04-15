@@ -13,7 +13,6 @@ import {
   Gauge,
   Layers,
   Globe2,
-  ArrowLeftRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -136,7 +135,7 @@ export default function ChannelCapabilitiesPage() {
         const rows: IntlChannelRow[] = data
           .filter((s) => s.channelCapabilities)
           .map((s) => {
-            let channels: Record<ChannelId, Capability> = { portal: "None", mobile: "None", centers: "None", call: "None", partner: "None", api: "None" };
+            const channels: Record<ChannelId, Capability> = { portal: "None", mobile: "None", centers: "None", call: "None", partner: "None", api: "None" };
             try {
               const parsed = typeof s.channelCapabilities === "string" ? JSON.parse(s.channelCapabilities) : s.channelCapabilities;
               for (const [k, v] of Object.entries(parsed)) {
