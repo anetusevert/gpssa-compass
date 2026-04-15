@@ -18,6 +18,12 @@ import {
   ArrowRight,
   Clock,
   RefreshCw,
+  Award,
+  BarChart3,
+  Landmark,
+  Calculator,
+  PiggyBank,
+  Scale,
 } from "lucide-react";
 import {
   type CountryProfile,
@@ -120,6 +126,88 @@ function dbToProfile(c: DbCountry): CountryProfile {
   };
 }
 
+function scoreColor(value: number, max: number): string {
+  const pct = value / max;
+  if (pct >= 0.85) return "#00C896";
+  if (pct >= 0.6) return "#4A9EFF";
+  return "#C5A572";
+}
+
+function maturityContext(score: number): string {
+  if (score >= 3.5) return "Leader tier — top-quartile globally";
+  if (score >= 2.5) return "Advanced — above-median performance";
+  if (score >= 1.5) return "Developing — reform trajectory active";
+  return "Emerging — foundational stage";
+}
+
+/* ─── Tile wrapper ─── */
+
+function Tile({
+  children,
+  onClick,
+  delay = 0,
+  className = "",
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, ease: EASE, duration: 0.45 }}
+      onClick={onClick}
+      className={`rounded-2xl border border-white/10 bg-[var(--bg-secondary)]/50 backdrop-blur-sm overflow-hidden flex flex-col cursor-pointer hover:border-white/20 transition-colors ${className}`}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function TileHeader({ icon: Icon, label, color = "text-white/50" }: { icon: typeof Building2; label: string; color?: string }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 shrink-0">
+      <div className="flex items-center gap-2">
+        <Icon size={13} className={color} />
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">{label}</h3>
+      </div>
+      <ArrowRight size={12} className="text-white/20" />
+    </div>
+  );
+}
+
+function BulletList({ items, max = 3, color = "#4A9EFF" }: { items: string[]; max?: number; color?: string }) {
+  return (
+    <div>
+      <ul className="space-y-1.5">
+        {items.slice(0, max).map((item, i) => (
+          <li key={i} className="flex items-start gap-2 text-xs text-white/60">
+            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
+            <span className="line-clamp-2">{item}</span>
+          </li>
+        ))}
+      </ul>
+      {items.length > max && (
+        <p className="text-[10px] text-white/25 mt-2">+{items.length - max} more — click to view all</p>
+      )}
+    </div>
+  );
+}
+
+function MetricSnippet({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null;
+  return (
+    <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+      <p className="text-[10px] text-white/30 mb-0.5">{label}</p>
+      <p className="text-xs text-cream line-clamp-2">{value}</p>
+    </div>
+  );
+}
+
+/* ─── Main page ─── */
+
 export default function CountryDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -200,10 +288,7 @@ export default function CountryDetailPage() {
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-cream mb-2">Country Not Found</h2>
           <p className="text-white/60 mb-4">Could not find pension data for this country.</p>
-          <button
-            onClick={handleBack}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-cream transition-colors"
-          >
+          <button onClick={handleBack} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-cream transition-colors">
             Return to Atlas
           </button>
         </div>
@@ -212,18 +297,13 @@ export default function CountryDetailPage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-gradient-to-br from-[var(--bg-primary)] via-[var(--bg-secondary)] to-[var(--bg-primary)]">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/10 bg-[var(--bg-primary)]/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleBack}
-            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors group"
-            title="Back to Global Atlas"
-          >
+          <button onClick={handleBack} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors group" title="Back to Global Atlas">
             <ArrowLeft className="w-4 h-4 text-white/60 group-hover:text-cream transition-colors" />
           </button>
-
           <div className="flex items-center gap-3">
             <CountryFlag code={profile.iso3} size="xl" />
             <div>
@@ -232,21 +312,17 @@ export default function CountryDetailPage() {
                 <span className="text-xs text-white/50">{profile.region}</span>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
                 <span className="text-xs font-semibold" style={{ color: accentColor }}>{profile.maturityLabel}</span>
-                {isGPSSA && (
-                  <span className="rounded-full bg-gpssa-green/15 px-2 py-0.5 text-[10px] font-bold text-gpssa-green">GPSSA</span>
-                )}
+                {isGPSSA && <span className="rounded-full bg-gpssa-green/15 px-2 py-0.5 text-[10px] font-bold text-gpssa-green">GPSSA</span>}
               </div>
             </div>
           </div>
         </div>
-
-        {/* Header metric pills */}
         <div className="hidden md:flex items-center gap-3">
           {[
             { label: "Maturity", value: profile.maturityScore.toFixed(1), sub: "/4", color: maturityBadgeColor(profile.maturityLabel) },
-            { label: "Coverage", value: `${profile.coverageRate}%`, sub: "", color: profile.coverageRate >= 85 ? "#00C896" : profile.coverageRate >= 60 ? "#4A9EFF" : "#C5A572" },
-            { label: "Replacement", value: `${profile.replacementRate}%`, sub: "", color: profile.replacementRate >= 75 ? "#00C896" : profile.replacementRate >= 55 ? "#4A9EFF" : "#C5A572" },
-            { label: "Sustainability", value: profile.sustainability.toFixed(1), sub: "/4", color: profile.sustainability >= 3.5 ? "#00C896" : profile.sustainability >= 2.5 ? "#4A9EFF" : "#C5A572" },
+            { label: "Coverage", value: `${profile.coverageRate}%`, sub: "", color: scoreColor(profile.coverageRate, 100) },
+            { label: "Replacement", value: `${profile.replacementRate}%`, sub: "", color: scoreColor(profile.replacementRate, 100) },
+            { label: "Sustainability", value: profile.sustainability.toFixed(1), sub: "/4", color: scoreColor(profile.sustainability, 4) },
           ].map(({ label, value, sub, color }) => (
             <div key={label} className="flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <span className="text-[10px] uppercase tracking-wider text-white/40">{label}</span>
@@ -256,18 +332,14 @@ export default function CountryDetailPage() {
         </div>
       </header>
 
-      {/* Main content */}
+      {/* Main content — 3 rows */}
       <main className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 min-h-0">
-        {/* Top Row: 2 Quadrants */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[280px]">
-          {/* Left: System Overview */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, ease: EASE }}
-            className="rounded-2xl border border-white/10 bg-[var(--bg-secondary)]/50 backdrop-blur-sm overflow-hidden flex flex-col cursor-pointer hover:border-white/20 transition-colors"
-            onClick={() => setSelectedCategory("system")}
-          >
+
+        {/* ── ROW 1: System Overview + Performance Metrics ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[260px]">
+
+          {/* System Overview */}
+          <Tile onClick={() => setSelectedCategory("system")} delay={0.1}>
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
               <div className="flex items-center gap-2">
                 <Building2 size={14} className="text-adl-blue" />
@@ -275,30 +347,30 @@ export default function CountryDetailPage() {
               </div>
               <span className="text-[10px] text-white/30">Click to explore</span>
             </div>
-            <div className="flex-1 p-5 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-              <div className="mb-4">
+            <div className="flex-1 p-5 overflow-y-auto space-y-3" style={{ scrollbarWidth: "thin" }}>
+              <div>
                 <p className="text-sm font-semibold text-cream">{profile.institution}</p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="text-xs text-white/50">Est. {profile.yearEstablished || "N/A"}</span>
                   <span className="text-xs text-white/30">&middot;</span>
                   <span className="text-xs text-white/50">{profile.systemType}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <div className="flex items-center gap-2 rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
-                  <Zap size={12} style={{ color: accentColor }} />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)" }}>
+                  <Zap size={11} style={{ color: accentColor }} />
                   <span className="text-xs text-cream">{profile.digitalLevel}</span>
                 </div>
                 {profile.retirementAge && (
-                  <div className="flex items-center gap-2 rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <Clock size={12} className="text-white/40" />
+                  <div className="flex items-center gap-2 rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)" }}>
+                    <Clock size={11} className="text-white/40" />
                     <span className="text-xs text-white/60">Ret: {profile.retirementAge.male}/{profile.retirementAge.female}</span>
                   </div>
                 )}
               </div>
               {profile.contributionRates && (
-                <div className="mb-4 rounded-lg p-3" style={{ background: "rgba(255,255,255,0.03)" }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">Contributions</p>
+                <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-1">Contributions</p>
                   <div className="grid grid-cols-3 gap-2 text-[11px]">
                     <div><span className="text-white/40">Employee</span><p className="text-cream font-medium mt-0.5">{profile.contributionRates.employee}</p></div>
                     <div><span className="text-white/40">Employer</span><p className="text-cream font-medium mt-0.5">{profile.contributionRates.employer}</p></div>
@@ -306,81 +378,41 @@ export default function CountryDetailPage() {
                   </div>
                 </div>
               )}
-              {(profile.iloConventionsRatified || profile.populationCovered) && (
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  {profile.iloConventionsRatified && (
-                    <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
-                      <p className="text-[10px] text-white/30 mb-0.5">ILO Conventions</p>
-                      <p className="text-xs text-cream line-clamp-2">{profile.iloConventionsRatified}</p>
-                    </div>
-                  )}
-                  {profile.populationCovered && (
-                    <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
-                      <p className="text-[10px] text-white/30 mb-0.5">Population Covered</p>
-                      <p className="text-xs text-cream line-clamp-2">{profile.populationCovered}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-2">Key Features</p>
-                <ul className="space-y-1.5">
-                  {profile.keyFeatures.slice(0, 5).map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-white/60">
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accentColor }} />
-                      {f}
-                    </li>
-                  ))}
-                  {profile.keyFeatures.length > 5 && (
-                    <li className="text-[10px] text-white/25">+{profile.keyFeatures.length - 5} more</li>
-                  )}
-                </ul>
-              </div>
+              <BulletList items={profile.keyFeatures} max={4} color={accentColor} />
             </div>
-          </motion.div>
+          </Tile>
 
-          {/* Right: Performance Metrics */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, ease: EASE }}
-            className="rounded-2xl border border-white/10 bg-[var(--bg-secondary)]/50 backdrop-blur-sm overflow-hidden flex flex-col cursor-pointer hover:border-white/20 transition-colors"
-            onClick={() => setSelectedCategory("metrics")}
-          >
+          {/* Performance Metrics */}
+          <Tile onClick={() => setSelectedCategory("metrics")} delay={0.15}>
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
               <div className="flex items-center gap-2">
                 <TrendingUp size={14} className="text-gpssa-green" />
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-white/50">Performance Metrics</h2>
               </div>
-              <span className="text-[10px] text-white/30">Click to explore</span>
+              <span className="text-[10px] text-white/30">Click for detail</span>
             </div>
-            <div className="flex-1 p-5 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+            <div className="flex-1 p-5 overflow-y-auto space-y-3" style={{ scrollbarWidth: "thin" }}>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Digital Maturity", value: profile.maturityScore.toFixed(1), max: 4, sub: "/ 4.0", icon: Shield },
-                  { label: "Coverage Rate", value: `${profile.coverageRate}%`, max: 100, sub: "of workforce", icon: Users },
-                  { label: "Replacement Rate", value: `${profile.replacementRate}%`, max: 100, sub: "of salary", icon: TrendingUp },
-                  { label: "Sustainability", value: profile.sustainability.toFixed(1), max: 4, sub: "/ 4.0", icon: Shield },
-                ].map(({ label, value, max, sub, icon: MetricIcon }) => {
-                  const numVal = parseFloat(value);
-                  return (
-                    <div key={label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)" }}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <MetricIcon size={10} className="text-white/30" />
-                        <p className="text-[10px] text-white/40">{label}</p>
-                      </div>
-                      <p className="font-playfair text-xl font-bold" style={{ color: accentColor }}>{value}</p>
-                      <p className="text-[10px] text-white/30 mb-2">{sub}</p>
-                      <div className="h-1 rounded-full bg-white/5">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${(numVal / max) * 100}%`, backgroundColor: accentColor }} />
-                      </div>
+                  { label: "Digital Maturity", value: profile.maturityScore, max: 4, fmt: (v: number) => v.toFixed(1), sub: maturityContext(profile.maturityScore), icon: Shield },
+                  { label: "Coverage Rate", value: profile.coverageRate, max: 100, fmt: (v: number) => `${v}%`, sub: "ILO effective coverage", icon: Users },
+                  { label: "Replacement Rate", value: profile.replacementRate, max: 100, fmt: (v: number) => `${v}%`, sub: "OECD net, median earner", icon: TrendingUp },
+                  { label: "Sustainability", value: profile.sustainability, max: 4, fmt: (v: number) => v.toFixed(1), sub: "ILO actuarial balance", icon: Shield },
+                ].map(({ label, value, max, fmt, sub, icon: MetricIcon }) => (
+                  <div key={label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)" }}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <MetricIcon size={10} className="text-white/30" />
+                      <p className="text-[10px] text-white/40">{label}</p>
                     </div>
-                  );
-                })}
+                    <p className="font-playfair text-xl font-bold" style={{ color: scoreColor(value, max) }}>{fmt(value)}</p>
+                    <p className="text-[10px] text-white/25 mt-0.5 leading-tight">{sub}</p>
+                    <div className="mt-2 h-1 rounded-full bg-white/5">
+                      <div className="h-full rounded-full" style={{ width: `${(value / max) * 100}%`, backgroundColor: scoreColor(value, max) }} />
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              {/* Maturity badge */}
-              <div className="mt-4 rounded-xl p-3 flex items-center justify-between" style={{ background: `${accentColor}08`, border: `1px solid ${accentColor}20` }}>
+              <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: `${accentColor}08`, border: `1px solid ${accentColor}20` }}>
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: accentColor }} />
                   <span className="text-sm font-semibold" style={{ color: accentColor }}>{profile.maturityLabel}</span>
@@ -388,178 +420,153 @@ export default function CountryDetailPage() {
                 <span className="text-xs text-white/40">{profile.region}</span>
               </div>
             </div>
-          </motion.div>
+          </Tile>
         </div>
 
-        {/* Bottom Row: 4 tiles */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[200px]">
-          {/* Insights tile */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, ease: EASE }}
-            className="rounded-2xl border border-white/10 bg-[var(--bg-secondary)]/50 backdrop-blur-sm overflow-hidden flex flex-col cursor-pointer hover:border-white/20 transition-colors"
-            onClick={() => setSelectedCategory("insights")}
-          >
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-              <div className="flex items-center gap-2">
-                <Lightbulb size={13} className="text-gold" />
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Insights & Innovations</h3>
-              </div>
-              <ArrowRight size={12} className="text-white/20" />
-            </div>
-            <div className="flex-1 p-4 overflow-hidden">
-              <ul className="space-y-1.5">
-                {profile.insights.slice(0, 3).map((ins, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-white/55">
-                    <Lightbulb size={10} className="mt-0.5 shrink-0 text-gold/60" />
-                    <span className="line-clamp-2">{ins}</span>
-                  </li>
-                ))}
-              </ul>
-              {profile.insights.length > 3 && (
-                <p className="text-[10px] text-white/25 mt-2">+{profile.insights.length - 3} more</p>
-              )}
-            </div>
-          </motion.div>
+        {/* ── ROW 2: Key Features, Latest Reforms, Challenges, Fiscal ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[180px]">
 
-          {/* Challenges tile */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, ease: EASE }}
-            className="rounded-2xl border border-white/10 bg-[var(--bg-secondary)]/50 backdrop-blur-sm overflow-hidden flex flex-col cursor-pointer hover:border-white/20 transition-colors"
-            onClick={() => setSelectedCategory("challenges")}
-          >
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={13} className="text-amber-400/70" />
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Challenges & Risks</h3>
-              </div>
-              <ArrowRight size={12} className="text-white/20" />
-            </div>
+          {/* Key Features */}
+          <Tile onClick={() => setSelectedCategory("features")} delay={0.2}>
+            <TileHeader icon={Lightbulb} label="Key Features" color="text-gold" />
             <div className="flex-1 p-4 overflow-hidden">
-              <ul className="space-y-1.5">
-                {profile.challenges.slice(0, 3).map((ch, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-white/55">
-                    <AlertTriangle size={10} className="mt-0.5 shrink-0 text-amber-400/40" />
-                    <span className="line-clamp-2">{ch}</span>
-                  </li>
-                ))}
-              </ul>
-              {profile.challenges.length > 3 && (
-                <p className="text-[10px] text-white/25 mt-2">+{profile.challenges.length - 3} more</p>
-              )}
+              <BulletList items={profile.keyFeatures} max={3} color="#C5A572" />
             </div>
-          </motion.div>
+          </Tile>
 
-          {/* Recent Reforms tile */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, ease: EASE }}
-            className="rounded-2xl border border-white/10 bg-[var(--bg-secondary)]/50 backdrop-blur-sm overflow-hidden flex flex-col cursor-pointer hover:border-white/20 transition-colors"
-            onClick={() => setSelectedCategory("reforms")}
-          >
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-              <div className="flex items-center gap-2">
-                <RefreshCw size={13} className="text-adl-blue/70" />
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Recent Reforms</h3>
-              </div>
-              <ArrowRight size={12} className="text-white/20" />
-            </div>
+          {/* Latest Reforms */}
+          <Tile onClick={() => setSelectedCategory("reforms")} delay={0.25}>
+            <TileHeader icon={RefreshCw} label="Latest Reforms" color="text-adl-blue/70" />
             <div className="flex-1 p-4 overflow-hidden">
-              {(profile.recentReforms?.length ?? 0) > 0 ? (
-                <ul className="space-y-1.5">
-                  {profile.recentReforms!.slice(0, 3).map((r, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-white/55">
-                      <RefreshCw size={10} className="mt-0.5 shrink-0 text-adl-blue/40" />
-                      <span className="line-clamp-2">{r}</span>
-                    </li>
-                  ))}
-                </ul>
+              {profile.legislativeFramework && (
+                <p className="text-[10px] text-white/30 mb-2 line-clamp-1">{profile.legislativeFramework}</p>
+              )}
+              <BulletList items={profile.recentReforms ?? []} max={3} color="#4A9EFF" />
+            </div>
+          </Tile>
+
+          {/* Challenges & Risks */}
+          <Tile onClick={() => setSelectedCategory("challenges")} delay={0.3}>
+            <TileHeader icon={AlertTriangle} label="Challenges & Risks" color="text-amber-400/70" />
+            <div className="flex-1 p-4 overflow-hidden">
+              <BulletList items={profile.challenges} max={3} color="#F59E0B" />
+            </div>
+          </Tile>
+
+          {/* Fiscal & Demographics */}
+          <Tile onClick={() => setSelectedCategory("fiscal")} delay={0.35}>
+            <TileHeader icon={BarChart3} label="Fiscal & Demographics" color="text-teal-400/70" />
+            <div className="flex-1 p-4 overflow-hidden space-y-2">
+              <MetricSnippet label="Social Protection Expenditure" value={profile.socialProtectionExpenditure} />
+              <MetricSnippet label="Dependency Ratio" value={profile.dependencyRatio} />
+              <MetricSnippet label="Pension Fund Assets" value={profile.pensionFundAssets} />
+            </div>
+          </Tile>
+        </div>
+
+        {/* ── ROW 3: Benefit Design, Fund Management, Rankings, Compare ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[180px]">
+
+          {/* Benefit Design */}
+          <Tile onClick={() => setSelectedCategory("benefit")} delay={0.4}>
+            <TileHeader icon={Calculator} label="Benefit Design" color="text-purple-400/70" />
+            <div className="flex-1 p-4 overflow-hidden space-y-2">
+              <MetricSnippet label="Benefit Formula" value={profile.benefitCalculation} />
+              <MetricSnippet label="Vesting Period" value={profile.vestingPeriod} />
+              <MetricSnippet label="Indexation" value={profile.indexationMechanism} />
+            </div>
+          </Tile>
+
+          {/* Fund Management */}
+          <Tile onClick={() => setSelectedCategory("fund")} delay={0.45}>
+            <TileHeader icon={PiggyBank} label="Fund Management" color="text-emerald-400/70" />
+            <div className="flex-1 p-4 overflow-hidden">
+              {profile.fundManagement ? (
+                <p className="text-xs text-white/55 line-clamp-6 leading-relaxed">{profile.fundManagement}</p>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <RefreshCw size={20} className="text-white/15 mb-2" />
-                  <p className="text-xs text-white/30">Reform data pending research</p>
-                </div>
-              )}
-              {(profile.recentReforms?.length ?? 0) > 3 && (
-                <p className="text-[10px] text-white/25 mt-2">+{profile.recentReforms!.length - 3} more</p>
+                <p className="text-xs text-white/25 italic">Fund management data pending</p>
               )}
             </div>
-          </motion.div>
+          </Tile>
 
-          {/* Institutions / Compare tile */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45, ease: EASE }}
-            className="rounded-2xl border border-white/10 bg-[var(--bg-secondary)]/50 backdrop-blur-sm overflow-hidden flex flex-col cursor-pointer hover:border-white/20 transition-colors"
-            onClick={() => setSelectedCategory(isGPSSA ? "institutions" : "comparison")}
-          >
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-              <div className="flex items-center gap-2">
-                {isGPSSA ? (
-                  <>
-                    <Building2 size={13} className="text-purple-400/70" />
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Institutions</h3>
-                  </>
-                ) : (
-                  <>
-                    <GitCompareArrows size={13} className="text-gpssa-green/70" />
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/50">vs. GPSSA (UAE)</h3>
-                  </>
-                )}
-              </div>
-              <ArrowRight size={12} className="text-white/20" />
+          {/* International Rankings */}
+          <Tile onClick={() => setSelectedCategory("rankings")} delay={0.5}>
+            <TileHeader icon={Award} label="International Rankings" color="text-gold/70" />
+            <div className="flex-1 p-4 overflow-hidden space-y-2">
+              {profile.internationalRankings ? (
+                <>
+                  {profile.internationalRankings.mercerIndex && (
+                    <div className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)" }}>
+                      <p className="text-[10px] text-white/30">Mercer CFA</p>
+                      <p className="text-xs text-cream line-clamp-1">{profile.internationalRankings.mercerIndex}</p>
+                    </div>
+                  )}
+                  {profile.internationalRankings.oecdAdequacy && (
+                    <div className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)" }}>
+                      <p className="text-[10px] text-white/30">OECD</p>
+                      <p className="text-xs text-cream line-clamp-1">{profile.internationalRankings.oecdAdequacy}</p>
+                    </div>
+                  )}
+                  {profile.internationalRankings.worldBankCoverage && (
+                    <div className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)" }}>
+                      <p className="text-[10px] text-white/30">World Bank</p>
+                      <p className="text-xs text-cream line-clamp-1">{profile.internationalRankings.worldBankCoverage}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-white/25 italic">Rankings data pending</p>
+              )}
             </div>
+          </Tile>
+
+          {/* vs. GPSSA / Institutions */}
+          <Tile onClick={() => setSelectedCategory(isGPSSA ? "institutions" : "comparison")} delay={0.55}>
+            <TileHeader
+              icon={isGPSSA ? Building2 : GitCompareArrows}
+              label={isGPSSA ? "Institutions" : "vs. GPSSA (UAE)"}
+              color={isGPSSA ? "text-purple-400/70" : "text-gpssa-green/70"}
+            />
             <div className="flex-1 p-4 overflow-hidden">
               {isGPSSA ? (
                 <div className="space-y-2">
-                  {institutions.length > 0 ? (
-                    institutions.slice(0, 3).map((inst) => (
-                      <div key={inst.id} className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
-                        <p className="text-xs font-medium text-cream truncate">{inst.name}</p>
-                        {inst.shortName && <p className="text-[10px] text-white/30">{inst.shortName}</p>}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <Building2 size={20} className="text-white/15 mb-2" />
-                      <p className="text-xs text-white/30">Institution data loading...</p>
+                  {institutions.length > 0 ? institutions.slice(0, 3).map((inst) => (
+                    <div key={inst.id} className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)" }}>
+                      <p className="text-xs font-medium text-cream truncate">{inst.name}</p>
+                      {inst.shortName && <p className="text-[10px] text-white/30">{inst.shortName}</p>}
                     </div>
+                  )) : (
+                    <p className="text-xs text-white/25 italic">Institution data loading...</p>
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {[
-                    { label: "Maturity", gpssa: GPSSA_REF.maturityScore, this_: profile.maturityScore, max: 4 },
-                    { label: "Coverage", gpssa: GPSSA_REF.coverageRate, this_: profile.coverageRate, max: 100 },
-                    { label: "Replacement", gpssa: GPSSA_REF.replacementRate, this_: profile.replacementRate, max: 100 },
-                  ].map(({ label, gpssa, this_, max }) => (
+                    { label: "Maturity", gpssa: GPSSA_REF.maturityScore, val: profile.maturityScore, max: 4 },
+                    { label: "Coverage", gpssa: GPSSA_REF.coverageRate, val: profile.coverageRate, max: 100 },
+                    { label: "Replacement", gpssa: GPSSA_REF.replacementRate, val: profile.replacementRate, max: 100 },
+                  ].map(({ label, gpssa, val, max }) => (
                     <div key={label}>
                       <div className="flex items-center justify-between text-[10px] mb-1">
                         <span className="text-white/40">{label}</span>
                         <div className="flex gap-2">
                           <span className="text-gpssa-green font-mono">{max > 10 ? `${gpssa}%` : gpssa.toFixed(1)}</span>
-                          <span className="text-cream font-mono">{max > 10 ? `${this_}%` : this_.toFixed(1)}</span>
+                          <span className="text-cream font-mono">{max > 10 ? `${val}%` : val.toFixed(1)}</span>
                         </div>
                       </div>
                       <div className="relative h-1 rounded-full bg-white/5">
                         <div className="absolute inset-y-0 left-0 rounded-full bg-gpssa-green/50" style={{ width: `${(gpssa / max) * 100}%` }} />
-                        <div className="absolute inset-y-0 left-0 rounded-full border border-white/20" style={{ width: `${(this_ / max) * 100}%`, background: "rgba(255,255,255,0.1)" }} />
+                        <div className="absolute inset-y-0 left-0 rounded-full border border-white/20" style={{ width: `${(val / max) * 100}%`, background: "rgba(255,255,255,0.1)" }} />
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </motion.div>
+          </Tile>
         </div>
       </main>
 
-      {/* Drill-down modal */}
       <CountryInsightModal
         isOpen={selectedCategory !== null}
         onClose={() => setSelectedCategory(null)}

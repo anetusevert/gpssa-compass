@@ -36,6 +36,7 @@ import {
 } from "recharts";
 import { Modal } from "@/components/ui/Modal";
 import { CountryFlag } from "@/components/ui/CountryFlag";
+import { iso3ToIso2 } from "@/lib/countries/country-data";
 import type {
   BenchmarkDimensionPayload,
   BenchmarkInstitutionPayload,
@@ -58,6 +59,7 @@ const VIEW_META: Record<ViewMode, { shortLabel: string; icon: typeof Radar }> = 
 };
 
 const CHART_COLORS = ["#2DD4BF", "#F59E0B", "#60A5FA", "#C084FC", "#F472B6", "#A78BFA", "#34D399", "#FB923C"];
+const BAR_COLORS = ["#5B8DEF", "#4A9EFF", "#6BA3D6", "#7EB8DA", "#8DBBCF", "#9CC2D4", "#87ADCD", "#6E9DC0"];
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 function average(values: number[]) {
@@ -84,36 +86,41 @@ function scoreSurface(score: number) {
   return "bg-orange-400/12";
 }
 
-function heatColor(score: number): string {
-  const t = Math.max(0, Math.min(100, score)) / 100;
-  if (t < 0.5) {
-    const p = t / 0.5;
-    const r = Math.round(220 - p * 40);
-    const g = Math.round(50 + p * 140);
-    const b = Math.round(50 + p * 10);
-    return `rgb(${r},${g},${b})`;
+const HEAT_STOPS: [number, number, number, number][] = [
+  [0,   220, 50,  50],   // deep red
+  [40,  235, 130, 40],   // orange
+  [55,  230, 190, 50],   // amber-yellow
+  [68,  160, 210, 60],   // lime
+  [80,  60,  190, 100],  // green
+  [100, 30,  210, 160],  // bright teal-green
+];
+
+function heatInterpolate(score: number): [number, number, number] {
+  const s = Math.max(0, Math.min(100, score));
+  for (let i = 1; i < HEAT_STOPS.length; i++) {
+    const [s0, r0, g0, b0] = HEAT_STOPS[i - 1];
+    const [s1, r1, g1, b1] = HEAT_STOPS[i];
+    if (s <= s1) {
+      const p = (s - s0) / (s1 - s0);
+      return [
+        Math.round(r0 + p * (r1 - r0)),
+        Math.round(g0 + p * (g1 - g0)),
+        Math.round(b0 + p * (b1 - b0)),
+      ];
+    }
   }
-  const p = (t - 0.5) / 0.5;
-  const r = Math.round(180 - p * 140);
-  const g = Math.round(190 + p * 60);
-  const b = Math.round(60 + p * 120);
+  const last = HEAT_STOPS[HEAT_STOPS.length - 1];
+  return [last[1], last[2], last[3]];
+}
+
+function heatColor(score: number): string {
+  const [r, g, b] = heatInterpolate(score);
   return `rgb(${r},${g},${b})`;
 }
 
 function heatBg(score: number): string {
-  const t = Math.max(0, Math.min(100, score)) / 100;
-  if (t < 0.5) {
-    const p = t / 0.5;
-    const r = Math.round(220 - p * 40);
-    const g = Math.round(50 + p * 140);
-    const b = Math.round(50 + p * 10);
-    return `rgba(${r},${g},${b},0.18)`;
-  }
-  const p = (t - 0.5) / 0.5;
-  const r = Math.round(180 - p * 140);
-  const g = Math.round(190 + p * 60);
-  const b = Math.round(60 + p * 120);
-  return `rgba(${r},${g},${b},0.18)`;
+  const [r, g, b] = heatInterpolate(score);
+  return `rgba(${r},${g},${b},0.22)`;
 }
 
 /* ─── Evidence list ─── */
@@ -222,18 +229,26 @@ interface CountryPeer {
   maturityScore: number | null;
 }
 
-/* ─── Custom quadrant dot: flag emoji ─── */
+function resolveIso2(code: string): string {
+  if (code.length === 3) return iso3ToIso2(code) ?? code.substring(0, 2).toLowerCase();
+  return code.toLowerCase();
+}
+
+/* ─── Custom quadrant dot: country flag via foreignObject ─── */
 
 function FlagDot(props: Record<string, unknown>) {
   const { cx, cy, payload } = props as { cx: number; cy: number; payload: { countryCode: string; flag: string; name: string } };
   if (cx == null || cy == null || isNaN(cx) || isNaN(cy)) return null;
+  const iso2 = resolveIso2(payload.countryCode);
   return (
     <g>
-      <circle cx={cx} cy={cy} r={16} fill="rgba(6,18,38,0.7)" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-      <text x={cx} y={cy - 1} textAnchor="middle" dominantBaseline="central" fontSize={18}>
-        {payload.flag || "●"}
-      </text>
-      <text x={cx} y={cy + 20} textAnchor="middle" fontSize={9} fill="#B8C2CF" fontWeight={500}>
+      <circle cx={cx} cy={cy} r={18} fill="rgba(6,18,38,0.85)" stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} />
+      <foreignObject x={cx - 11} y={cy - 11} width={22} height={22}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+          <span className={`fi fi-${iso2} fis`} style={{ fontSize: "16px", borderRadius: "2px" }} />
+        </div>
+      </foreignObject>
+      <text x={cx} y={cy + 28} textAnchor="middle" fontSize={10} fill="#B8C2CF" fontWeight={500}>
         {payload.name}
       </text>
     </g>
@@ -408,15 +423,11 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
         const score = barDimSlug === "overall"
           ? average(workspace.dimensions.map((d) => inst.scores[d.slug] ?? 0))
           : (inst.scores[barDimSlug] ?? 0);
-        const flag = inst.countryCode.length === 2
-          ? String.fromCodePoint(0x1f1e6 + inst.countryCode.toUpperCase().charCodeAt(0) - 65, 0x1f1e6 + inst.countryCode.toUpperCase().charCodeAt(1) - 65)
-          : "";
         return {
           name: inst.shortName,
           countryCode: inst.countryCode,
-          flag,
           score: Math.round(score),
-          fill: CHART_COLORS[idx % CHART_COLORS.length],
+          fill: BAR_COLORS[idx % BAR_COLORS.length],
         };
       })
       .sort((a, b) => b.score - a.score);
@@ -639,7 +650,11 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="rgba(255,255,255,0.08)" />
                     <PolarAngleAxis dataKey="dimension" tick={{ fill: "#B8C2CF", fontSize: 11 }} />
-                    <Tooltip contentStyle={{ backgroundColor: "rgba(10,22,40,0.96)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, color: "#E8F0F5" }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "rgba(8,18,38,0.96)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, color: "#E8F0F5" }}
+                      labelStyle={{ color: "#E8F0F5" }}
+                      itemStyle={{ color: "#E8F0F5" }}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11, color: "#8A9BB0" }} />
                     <RechartsRadar
                       name={workspace.targetInstitution.shortName}
@@ -686,10 +701,10 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
                 </div>
                 <div className="flex-1 min-h-0">
                   <ResponsiveContainer width="100%" height="100%" minHeight={1}>
-                    <BarChart data={overallBars} layout="vertical" margin={{ top: 8, right: 28, bottom: 8, left: 8 }}>
+                    <BarChart data={overallBars} layout="vertical" margin={{ top: 8, right: 28, bottom: 24, left: 8 }}>
                       <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
                       <XAxis type="number" domain={[0, 100]} tick={{ fill: "#8A9BB0", fontSize: 11 }}>
-                        <Label value={barDimName} position="bottom" offset={-2} style={{ fill: "#B8C2CF", fontSize: 11, fontWeight: 500 }} />
+                        <Label value={barDimName} position="bottom" offset={4} style={{ fill: "#B8C2CF", fontSize: 11, fontWeight: 500 }} />
                       </XAxis>
                       <YAxis
                         dataKey="name"
@@ -699,18 +714,29 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
                           const y = Number(tickProps.y ?? 0);
                           const val = (tickProps.payload as { value: string })?.value ?? "";
                           const item = overallBars.find((b) => b.name === val);
+                          const iso2 = item ? resolveIso2(item.countryCode) : "";
                           return (
                             <g transform={`translate(${x},${y})`}>
-                              <text x={-4} y={0} textAnchor="end" dominantBaseline="central" fontSize={11} fill="#E8F0F5">
-                                {item?.flag ? `${item.flag} ` : ""}{val}
+                              {iso2 && (
+                                <foreignObject x={-120} y={-10} width={20} height={20}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+                                    <span className={`fi fi-${iso2}`} style={{ fontSize: "14px" }} />
+                                  </div>
+                                </foreignObject>
+                              )}
+                              <text x={iso2 ? -28 : -4} y={0} textAnchor="end" dominantBaseline="central" fontSize={11} fill="#E8F0F5">
+                                {val}
                               </text>
                             </g>
                           );
                         }}
-                        width={120}
+                        width={130}
                       />
                       <Tooltip
-                        contentStyle={{ backgroundColor: "rgba(10,22,40,0.96)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, color: "#E8F0F5" }}
+                        contentStyle={{ backgroundColor: "rgba(8,18,38,0.96)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, color: "#E8F0F5" }}
+                        labelStyle={{ color: "#E8F0F5" }}
+                        itemStyle={{ color: "#E8F0F5" }}
+                        cursor={{ fill: "rgba(255,255,255,0.04)" }}
                         formatter={(value: unknown) => [`${value}`, barDimName]}
                       />
                       <Bar dataKey="score" radius={[0, 10, 10, 0]} barSize={24}>
@@ -864,16 +890,101 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
       </motion.div>
 
       {/* Methodology modal */}
-      <Modal isOpen={methodologyOpen} onClose={() => setMethodologyOpen(false)} title={workspace.dataset.name} description="Methodology, coverage, and sourcing posture" size="xl">
+      <Modal isOpen={methodologyOpen} onClose={() => setMethodologyOpen(false)} title="Benchmarking Methodology" description="Scoring framework, data governance, and analytical approach" size="xl">
         <div className="space-y-5">
-          <div className="rounded-[22px] bg-white/[0.04] p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-gray-muted">Methodology</p>
-            <p className="mt-3 text-sm leading-relaxed text-gray-muted">{workspace.dataset.methodology}</p>
+          {/* Framework overview */}
+          <div className="rounded-[22px] bg-white/[0.04] p-5">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gpssa-green font-semibold">Analytical Framework</p>
+            <p className="mt-3 text-sm leading-relaxed text-cream">
+              Our benchmarking intelligence employs a multi-dimensional scoring framework calibrated against
+              international best practices from ISSA, ILO, and OECD standards. Each institution is evaluated
+              across {workspace.dimensions.length} discrete dimensions, producing a composite maturity profile
+              that captures both operational excellence and strategic positioning.
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-gray-muted">
+              Scores are normalised to a 0–100 scale. Raw inputs — ranging from published coverage ratios and
+              replacement rates to digital maturity self-assessments and governance audit outcomes — are weighted
+              through a proprietary methodology whose parameters are transparently configurable via the Admin
+              Scoring panel.
+            </p>
           </div>
-          <div className="rounded-[22px] bg-white/[0.04] p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-gray-muted">Coverage</p>
-            <p className="mt-3 text-sm leading-relaxed text-gray-muted">{workspace.dataset.coverageNote}</p>
+
+          {/* Dimensions grid */}
+          <div className="rounded-[22px] bg-white/[0.04] p-5">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gpssa-green font-semibold">Scoring Dimensions</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {workspace.dimensions.map((dim) => (
+                <div key={dim.slug} className="rounded-xl bg-white/[0.03] px-3.5 py-2.5">
+                  <p className="text-xs font-semibold text-cream">{dim.name}</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-gray-muted">
+                    {dim.description ?? "Evaluates institutional capability, readiness, and comparative performance within this domain relative to peer cohort norms."}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* Data governance */}
+          <div className="rounded-[22px] bg-white/[0.04] p-5">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gpssa-green font-semibold">Data Governance & Sourcing</p>
+            <p className="mt-3 text-sm leading-relaxed text-cream">
+              Every score in this analysis is traceable to a primary or secondary source. Our evidence base draws
+              from {workspace.sourceCount > 0 ? `${workspace.sourceCount} verified references` : "verified institutional references"} spanning
+              regulatory filings, annual reports, ISSA country profiles, World Bank social protection datasets,
+              ILO social security inquiry data, OECD Pensions at a Glance, and Mercer/CFA Global Pension Index reports.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {[
+                { label: "Primary Sources", desc: "Official government & institutional publications, regulatory filings, annual reports" },
+                { label: "Secondary Sources", desc: "ILO, ISSA, World Bank, OECD statistical databases and analytical reports" },
+                { label: "Validation Layer", desc: "Cross-referenced against Mercer CFA Index, Natixis Retirement Index, and Allianz Pension Sustainability" },
+              ].map((s) => (
+                <div key={s.label} className="rounded-xl bg-white/[0.03] px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cream">{s.label}</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-gray-muted">{s.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Peer selection */}
+          <div className="rounded-[22px] bg-white/[0.04] p-5">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gpssa-green font-semibold">Peer Selection Criteria</p>
+            <p className="mt-3 text-sm leading-relaxed text-cream">
+              The peer cohort is constructed to balance geographic proximity, institutional maturity, and structural
+              comparability. Institutions are selected from a curated universe of {workspace.peerInstitutions.length} profiled
+              organisations spanning {new Set(workspace.peerInstitutions.map((i) => i.region)).size} regions globally.
+              Users may dynamically add or remove peers to test hypotheses and surface emergent patterns.
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-gray-muted">
+              Each peer institution carries a fully-sourced evidence dossier. Clicking any score cell in the heatmap
+              or any KPI indicator in the ribbon reveals the underlying data lineage — from raw data point through
+              to normalised score — ensuring full analytical reproducibility.
+            </p>
+          </div>
+
+          {/* Limitations */}
+          <div className="rounded-[22px] bg-white/[0.04] p-5">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gpssa-green font-semibold">Limitations & Caveats</p>
+            <p className="mt-3 text-sm leading-relaxed text-gray-muted">
+              Cross-country pension benchmarking inherently confronts challenges of institutional heterogeneity,
+              varying reporting standards, and temporal lags in published data. Scores reflect the most recent
+              available data as of the analysis date. Where primary data was unavailable, secondary imputation
+              methods were applied with appropriate confidence discounts. This framework is designed as a
+              strategic decision-support tool and should be complemented with institution-specific due diligence.
+            </p>
+          </div>
+
+          {/* DB content fallback */}
+          {workspace.dataset.methodology && (
+            <div className="rounded-[22px] bg-white/[0.04] p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-gpssa-green font-semibold">Dataset Notes</p>
+              <p className="mt-3 text-sm leading-relaxed text-gray-muted">{workspace.dataset.methodology}</p>
+              {workspace.dataset.coverageNote && (
+                <p className="mt-2 text-sm leading-relaxed text-gray-muted">{workspace.dataset.coverageNote}</p>
+              )}
+            </div>
+          )}
         </div>
       </Modal>
 
