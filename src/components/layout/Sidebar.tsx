@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { UserMenu } from "./UserMenu";
 import {
   Globe,
@@ -21,8 +21,21 @@ import {
   Database,
   ScrollText,
   Cpu,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { create } from "zustand";
+
+interface SidebarState {
+  collapsed: boolean;
+  toggle: () => void;
+}
+
+export const useSidebarStore = create<SidebarState>((set) => ({
+  collapsed: false,
+  toggle: () => set((s) => ({ collapsed: !s.collapsed })),
+}));
 
 interface NavItem {
   label: string;
@@ -106,45 +119,74 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-const SIDEBAR_WIDTH = 280;
+const SIDEBAR_EXPANDED = 280;
+const SIDEBAR_COLLAPSED = 72;
 
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const userRole = (session?.user as { role?: string } | undefined)?.role;
+  const { collapsed, toggle } = useSidebarStore();
+
+  const width = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
 
   return (
     <motion.aside
-      className="glass-panel fixed left-0 top-0 z-40 flex h-screen w-[280px] flex-col overflow-hidden border-r border-white/[0.03]"
+      className="glass-panel fixed left-0 top-0 z-40 flex h-screen flex-col overflow-hidden border-r border-white/[0.03]"
       initial={{ x: -24, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.45, ease: EASE }}
-      style={{ width: SIDEBAR_WIDTH }}
+      animate={{ x: 0, opacity: 1, width }}
+      transition={{ duration: 0.3, ease: EASE }}
     >
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none" />
 
-      <Link href="/dashboard" className="relative flex flex-col items-center px-6 pb-4 pt-6">
-        <div className="flex items-center gap-3">
-          <Image
-            src="/images/adl-logo.png"
-            alt="Arthur D. Little"
-            width={52}
-            height={30}
-            className="adl-logo-white object-contain"
-          />
-          <div className="h-6 w-px bg-white/10" />
-          <span className="font-playfair text-2xl font-bold text-cream">
-            GPSSA
-          </span>
-        </div>
-        <span className="mt-2 text-micro uppercase tracking-[0.34em] text-white/56">
-          Intelligence
-        </span>
+      {/* Header */}
+      <Link href="/dashboard" className="relative flex flex-col items-center px-3 pb-4 pt-6">
+        <AnimatePresence mode="wait">
+          {collapsed ? (
+            <motion.span
+              key="collapsed-logo"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.2 }}
+              className="font-playfair text-lg font-bold text-cream"
+            >
+              G
+            </motion.span>
+          ) : (
+            <motion.div
+              key="expanded-logo"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col items-center"
+            >
+              <div className="flex items-center gap-3">
+                <Image
+                  src="/images/adl-logo.png"
+                  alt="Arthur D. Little"
+                  width={52}
+                  height={30}
+                  className="object-contain brightness-0 invert"
+                />
+                <div className="h-6 w-px bg-white/10" />
+                <span className="font-playfair text-2xl font-bold text-cream">
+                  GPSSA
+                </span>
+              </div>
+              <span className="mt-2 text-micro uppercase tracking-[0.34em] text-white/56">
+                Intelligence
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Link>
 
       <div className="mx-5 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-      <nav className="flex-1 overflow-y-auto px-4 py-4">
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto px-2 py-4">
         {NAV_SECTIONS.map((section, sectionIndex) => {
           if (section.adminOnly && userRole !== "admin") return null;
 
@@ -156,15 +198,17 @@ export function Sidebar() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: EASE, delay: sectionIndex * 0.06 }}
             >
-              <div className="mb-2 flex items-center gap-2 px-2">
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: section.color }}
-                />
-                <span className="text-micro font-semibold uppercase tracking-[0.22em] text-white/48">
-                  {section.title}
-                </span>
-              </div>
+              {!collapsed && (
+                <div className="mb-2 flex items-center gap-2 px-2">
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: section.color }}
+                  />
+                  <span className="text-micro font-semibold uppercase tracking-[0.22em] text-white/48">
+                    {section.title}
+                  </span>
+                </div>
+              )}
 
               <ul className="space-y-1">
                 {section.items.map((item) => {
@@ -175,7 +219,10 @@ export function Sidebar() {
                     <li key={item.href}>
                       <Link
                         href={item.href}
-                        className="group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 text-sm text-white/82 transition-all duration-300 hover:bg-white/[0.045] hover:text-white"
+                        title={collapsed ? item.label : undefined}
+                        className={`group relative flex items-center overflow-hidden rounded-2xl text-sm text-white/82 transition-all duration-300 hover:bg-white/[0.045] hover:text-white ${
+                          collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-3"
+                        }`}
                         style={
                           isActive
                             ? {
@@ -197,7 +244,9 @@ export function Sidebar() {
                           <Icon size={17} className="icon-white" strokeWidth={1.8} />
                         </div>
 
-                        <span className="truncate whitespace-nowrap">{item.label}</span>
+                        {!collapsed && (
+                          <span className="truncate whitespace-nowrap">{item.label}</span>
+                        )}
                       </Link>
                     </li>
                   );
@@ -208,8 +257,20 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-white/[0.04] px-4 py-3">
-        <UserMenu collapsed={false} />
+      {/* Collapse toggle */}
+      <div className="px-2 pb-1">
+        <button
+          onClick={toggle}
+          className="flex w-full items-center justify-center rounded-xl py-2 text-white/40 transition-colors hover:bg-white/[0.04] hover:text-white/70"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+        </button>
+      </div>
+
+      {/* User */}
+      <div className="border-t border-white/[0.04] px-2 py-3">
+        <UserMenu collapsed={collapsed} />
       </div>
     </motion.aside>
   );
