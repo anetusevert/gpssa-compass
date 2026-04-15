@@ -40,9 +40,14 @@ DEPTH AND QUALITY REQUIREMENTS:
 - Include the full historical context for each system: founding, major evolution phases, current trajectory, and planned future changes.
 - You MUST respond with valid JSON only. No markdown, no commentary outside the JSON structure.`;
 
-export function buildUserPrompt(countryNames: string[]): string {
-  const list = countryNames.map((n, i) => `${i + 1}. ${n}`).join("\n");
-  const singular = countryNames.length === 1;
+export function buildUserPrompt(countries: string[] | { name: string; iso3: string }[]): string {
+  const items: { name: string; iso3: string }[] =
+    typeof countries[0] === "string"
+      ? (countries as string[]).map((n) => ({ name: n, iso3: "" }))
+      : (countries as { name: string; iso3: string }[]);
+
+  const list = items.map((c, i) => `${i + 1}. ${c.name}${c.iso3 ? ` (${c.iso3})` : ""}`).join("\n");
+  const singular = items.length === 1;
 
   return `Conduct a comprehensive, publication-grade research analysis on the social security and pension system${singular ? "" : "s"} for the following ${singular ? "country" : "countries"}. This data powers BOTH a global comparison atlas AND a dedicated in-depth country intelligence page. Every field must be thoroughly researched and deeply detailed — allocate your FULL analytical capacity.
 
@@ -51,6 +56,7 @@ ${list}
 Return EXACTLY this JSON structure ${singular ? "(as a single-element array)" : "for each country (as an array)"}:
 [
   {
+    "iso3": "string — three-letter ISO 3166-1 alpha-3 country code (e.g. CAN, USA, DEU)",
     "countryName": "string — exact country name as provided above",
     "institution": "string — full name of ALL primary social security / pension institutions, comma-separated if multiple (e.g. 'Social Security Administration (SSA), Pension Benefit Guaranty Corporation (PBGC)')",
     "systemType": "string — detailed multi-pillar description using World Bank terminology (e.g. 'Multi-pillar: Zero Pillar (social assistance pension) + Pillar 1 (PAYG DB public pension) + Pillar 2 (Mandatory funded DC occupational) + Pillar 3 (Voluntary tax-advantaged personal pension)')",
@@ -156,6 +162,7 @@ export interface DataSourceRef {
 }
 
 export interface CountryResearchResult {
+  iso3: string;
   countryName: string;
   institution: string | null;
   systemType: string | null;
@@ -200,6 +207,7 @@ export function parseResearchResponse(raw: string): CountryResearchResult[] {
   const arr = Array.isArray(parsed) ? parsed : [parsed];
 
   return arr.map((item: Record<string, unknown>) => ({
+    iso3: String(item.iso3 ?? ""),
     countryName: String(item.countryName ?? ""),
     institution: item.institution ? String(item.institution) : null,
     systemType: item.systemType ? String(item.systemType) : null,

@@ -31,7 +31,10 @@ export async function writeAtlasWorldmap(
       });
     }
 
-    if (!country) continue;
+    if (!country) {
+      console.warn(`[atlas-writer] No Country row found for iso3=${iso3Key} name="${countryName}" — skipping`);
+      continue;
+    }
 
     await prisma.country.update({
       where: { id: country.id },

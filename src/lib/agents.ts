@@ -10,6 +10,7 @@ export interface DefaultAgent {
   targetScreen?: string;
   researchType?: string;
   sortOrder: number;
+  isActive: boolean;
 }
 
 export const DEFAULT_AGENTS: DefaultAgent[] = [
@@ -28,6 +29,7 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
     maxTokens: 16384,
     temperature: 0.2,
     sortOrder: 1,
+    isActive: true,
   },
   {
     id: "atlas-benchmarking",
@@ -46,6 +48,7 @@ You MUST respond with valid JSON only. Include source citations grounded in the 
     maxTokens: 4096,
     temperature: 0.3,
     sortOrder: 2,
+    isActive: true,
   },
 
   // ── Services Pillar ──
@@ -67,6 +70,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     maxTokens: 4096,
     temperature: 0.3,
     sortOrder: 3,
+    isActive: true,
   },
   {
     id: "services-channels",
@@ -85,6 +89,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     maxTokens: 4096,
     temperature: 0.3,
     sortOrder: 4,
+    isActive: true,
   },
   // ── Products Pillar ──
 
