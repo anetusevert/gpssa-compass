@@ -207,32 +207,26 @@ export default function ServicesPage() {
         if (res.ok) {
           const data: any[] = await res.json();
           if (data.length > 0) {
-            const hydrated = data.map((s: any) => {
-              const staticMatch = STATIC_SERVICES.find(
-                (st) => st.id === s.id || st.name.toLowerCase() === s.name.toLowerCase()
+            const enriched = STATIC_SERVICES.map((staticSvc) => {
+              const apiMatch = data.find(
+                (d: any) => d.id === staticSvc.id || d.name?.toLowerCase() === staticSvc.name.toLowerCase()
               );
+              if (!apiMatch) return staticSvc;
               const parsed = {
-                ...s,
-                userTypes: parseJsonField<string[]>(s.userTypes),
-                painPoints: parseJsonField<string[]>(s.painPoints),
-                opportunities: parseJsonField<string[]>(s.opportunities),
+                userTypes: parseJsonField<string[]>(apiMatch.userTypes),
+                painPoints: parseJsonField<string[]>(apiMatch.painPoints),
+                opportunities: parseJsonField<string[]>(apiMatch.opportunities),
               };
-              if (staticMatch) {
-                return {
-                  ...staticMatch,
-                  ...parsed,
-                  painPoints: parsed.painPoints?.length ? parsed.painPoints : staticMatch.painPoints,
-                  opportunities: parsed.opportunities?.length ? parsed.opportunities : staticMatch.opportunities,
-                  userTypes: parsed.userTypes?.length ? parsed.userTypes : staticMatch.userTypes,
-                  description: parsed.description || staticMatch.description,
-                  currentState: parsed.currentState || staticMatch.currentState,
-                };
-              }
-              return parsed;
+              return {
+                ...staticSvc,
+                painPoints: parsed.painPoints?.length ? parsed.painPoints : staticSvc.painPoints,
+                opportunities: parsed.opportunities?.length ? parsed.opportunities : staticSvc.opportunities,
+                userTypes: parsed.userTypes?.length ? parsed.userTypes : staticSvc.userTypes,
+                description: apiMatch.description || staticSvc.description,
+                currentState: apiMatch.currentState || staticSvc.currentState,
+              };
             });
-            const apiIds = new Set(hydrated.map((s: any) => s.id));
-            const missing = STATIC_SERVICES.filter((s) => !apiIds.has(s.id));
-            setServices([...hydrated, ...missing]);
+            setServices(enriched);
           } else {
             setServices(STATIC_SERVICES);
           }
