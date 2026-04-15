@@ -123,6 +123,7 @@ model ResearchJob {
   currentItem    String?
   model          String   @default("gpt-4o")
   batchSize      Int      @default(3)
+  concurrency    Int      @default(5)
   totalTokens    Int      @default(0)
   totalCost      Float    @default(0)
   agentConfigId  String?

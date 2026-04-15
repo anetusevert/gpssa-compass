@@ -4,6 +4,132 @@ import { PROMPT_MODULES } from "./prompts";
 import { writeScreenResults } from "./writers";
 import type { ScreenType } from "./types";
 import { GPT4O_INPUT_COST, GPT4O_OUTPUT_COST } from "./types";
+import type OpenAI from "openai";
+
+interface PromptModuleRef {
+  systemPrompt: string;
+  buildUserPrompt: (items: { key: string; label: string; context?: string }[]) => string;
+  parseResponse: (raw: string) => Record<string, unknown>[];
+}
+
+interface BatchContext {
+  jobId: string;
+  model: string;
+  screenType: ScreenType;
+  systemPrompt: string;
+  promptModule: PromptModuleRef;
+  client: OpenAI;
+  maxTokens: number;
+  temperature: number;
+  agentConfigId?: string | null;
+}
+
+interface BatchResult {
+  tokensUsed: number;
+  cost: number;
+  rawOutput: string;
+  matchedResults: Record<string, unknown>[];
+  errorCount: number;
+}
+
+async function processBatch(
+  items: typeof prisma.researchJobItem.$inferSelect extends infer T ? T[] : never,
+  ctx: BatchContext
+): Promise<BatchResult> {
+  const startTime = Date.now();
+
+  try {
+    const promptItems = items.map((item) => ({
+      key: item.itemKey ?? item.id,
+      label: item.itemLabel ?? item.itemKey ?? "Unknown",
+      context: item.itemContext ?? undefined,
+    }));
+
+    const userPrompt = ctx.promptModule.buildUserPrompt(promptItems);
+    const isReasoningModel = /^(o1|o3|o4)/.test(ctx.model);
+
+    const completion = await ctx.client.chat.completions.create({
+      model: ctx.model,
+      messages: [
+        { role: "system", content: ctx.systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_completion_tokens: ctx.maxTokens,
+      ...(!isReasoningModel && { temperature: ctx.temperature }),
+      ...(!isReasoningModel && { response_format: { type: "json_object" } }),
+    });
+
+    const durationMs = Date.now() - startTime;
+    const rawOutput = completion.choices[0]?.message?.content ?? "{}";
+    const tokensUsed = completion.usage?.total_tokens ?? 0;
+    const promptTokens = completion.usage?.prompt_tokens ?? 0;
+    const completionTokens = completion.usage?.completion_tokens ?? 0;
+    const cost = promptTokens * GPT4O_INPUT_COST + completionTokens * GPT4O_OUTPUT_COST;
+
+    let results: Record<string, unknown>[];
+    try {
+      const raw = ctx.promptModule.parseResponse(rawOutput);
+      results = raw.filter(
+        (r): r is Record<string, unknown> =>
+          r != null && typeof r === "object" && !Array.isArray(r)
+      );
+    } catch {
+      results = [];
+    }
+
+    const matchedResults: Record<string, unknown>[] = [];
+
+    for (const item of items) {
+      const itemName = (item.itemLabel ?? item.itemKey ?? "").toLowerCase().trim();
+      const itemContext = (item.itemContext ?? "").toLowerCase().trim();
+      const itemResult = results.find((r) => {
+        const rName = String(
+          r.countryName ?? r.institutionName ?? r.serviceName ?? r.name ?? r.title ?? r.segment ?? r.theme ?? ""
+        ).toLowerCase().trim();
+        if (!rName || !itemName) return false;
+        const nameMatch = rName === itemName || rName.includes(itemName) || itemName.includes(rName);
+        if (!nameMatch) return false;
+        if (itemContext && r.coverageType) {
+          return String(r.coverageType).toLowerCase().includes(itemContext);
+        }
+        return true;
+      });
+
+      if (itemResult) {
+        itemResult._itemKey = item.itemKey;
+        itemResult._itemLabel = item.itemLabel;
+        const idx = results.indexOf(itemResult);
+        if (idx !== -1) results.splice(idx, 1);
+        matchedResults.push(itemResult);
+      }
+
+      await prisma.researchJobItem.update({
+        where: { id: item.id },
+        data: {
+          status: itemResult ? "completed" : "failed",
+          tokensUsed: Math.round(tokensUsed / items.length),
+          durationMs: Math.round(durationMs / items.length),
+          output: itemResult ? JSON.stringify(itemResult) : undefined,
+          error: itemResult ? undefined : "No matching result in LLM response",
+        },
+      });
+    }
+
+    return { tokensUsed, cost, rawOutput, matchedResults, errorCount: 0 };
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+    for (const item of items) {
+      await prisma.researchJobItem.update({
+        where: { id: item.id },
+        data: { status: "failed", error: errorMessage, durationMs },
+      });
+    }
+
+    return { tokensUsed: 0, cost: 0, rawOutput: "", matchedResults: [], errorCount: 1 };
+  }
+}
 
 export async function runScreenResearchJob(jobId: string): Promise<void> {
   const client = await getOpenAIClient();
@@ -40,18 +166,33 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
       : agentSysPrompt;
   const agentLabel = `agent-${job.model}-${screenType}`;
 
+  const concurrency = job.concurrency ?? 5;
+
+  const batchCtx: BatchContext = {
+    jobId,
+    model: job.model,
+    screenType,
+    systemPrompt,
+    promptModule,
+    client,
+    maxTokens: job.agentConfig?.maxTokens ?? 16384,
+    temperature: job.agentConfig?.temperature ?? 0.3,
+    agentConfigId: job.agentConfigId,
+  };
+
   while (true) {
     const currentJob = await prisma.researchJob.findUnique({ where: { id: jobId } });
     if (!currentJob || currentJob.status === "paused" || currentJob.status === "cancelled") break;
 
-    const pendingItems = await prisma.researchJobItem.findMany({
+    const totalTake = currentJob.batchSize * concurrency;
+    const allPending = await prisma.researchJobItem.findMany({
       where: { jobId, status: "pending" },
-      take: currentJob.batchSize,
+      take: totalTake,
       orderBy: { createdAt: "asc" },
     });
 
-    if (pendingItems.length === 0) {
-      await finalRewritePass(jobId, screenType, `agent-${job.model}-${screenType}`);
+    if (allPending.length === 0) {
+      await finalRewritePass(jobId, screenType, agentLabel);
       await prisma.researchJob.update({
         where: { id: jobId },
         data: { status: "completed", completedAt: new Date() },
@@ -59,155 +200,98 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
       break;
     }
 
+    // Split into batches of batchSize
+    const batches: (typeof allPending)[] = [];
+    for (let i = 0; i < allPending.length; i += currentJob.batchSize) {
+      batches.push(allPending.slice(i, i + currentJob.batchSize));
+    }
+
+    // Mark all items in this wave as processing
     await prisma.researchJobItem.updateMany({
-      where: { id: { in: pendingItems.map((i) => i.id) } },
+      where: { id: { in: allPending.map((i) => i.id) } },
       data: { status: "processing" },
     });
 
-    const itemLabels = pendingItems.map((i) => i.itemLabel ?? i.itemKey ?? "Unknown");
+    const itemLabels = allPending
+      .slice(0, 6)
+      .map((i) => i.itemLabel ?? i.itemKey ?? "Unknown");
+    const suffix = allPending.length > 6 ? ` (+${allPending.length - 6} more)` : "";
     await prisma.researchJob.update({
       where: { id: jobId },
-      data: { currentItem: itemLabels.join(", ") },
+      data: { currentItem: itemLabels.join(", ") + suffix },
     });
 
-    const startTime = Date.now();
+    // Run batches concurrently
+    const settled = await Promise.allSettled(
+      batches.map((batch) => processBatch(batch, batchCtx))
+    );
 
-    try {
-      const promptItems = pendingItems.map((item) => ({
-        key: item.itemKey ?? item.id,
-        label: item.itemLabel ?? item.itemKey ?? "Unknown",
-        context: item.itemContext ?? undefined,
-      }));
+    // Aggregate results
+    let totalTokensWave = 0;
+    let totalCostWave = 0;
+    let totalErrors = 0;
+    let lastRawOutput = "";
+    const allMatchedResults: Record<string, unknown>[] = [];
 
-      const userPrompt = promptModule.buildUserPrompt(promptItems);
-
-      const isReasoningModel = /^(o1|o3|o4)/.test(currentJob.model);
-
-      const completion = await client.chat.completions.create({
-        model: currentJob.model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_completion_tokens: job.agentConfig?.maxTokens ?? 16384,
-        ...(!isReasoningModel && { temperature: job.agentConfig?.temperature ?? 0.3 }),
-        ...(!isReasoningModel && { response_format: { type: "json_object" } }),
-      });
-
-      const durationMs = Date.now() - startTime;
-      const rawOutput = completion.choices[0]?.message?.content ?? "{}";
-      const tokensUsed = completion.usage?.total_tokens ?? 0;
-      const promptTokens = completion.usage?.prompt_tokens ?? 0;
-      const completionTokens = completion.usage?.completion_tokens ?? 0;
-      const cost = promptTokens * GPT4O_INPUT_COST + completionTokens * GPT4O_OUTPUT_COST;
-
-      let results: Record<string, unknown>[];
-      try {
-        const raw = promptModule.parseResponse(rawOutput);
-        results = raw.filter(
-          (r): r is Record<string, unknown> =>
-            r != null && typeof r === "object" && !Array.isArray(r)
-        );
-      } catch {
-        results = [];
+    for (const result of settled) {
+      if (result.status === "fulfilled") {
+        totalTokensWave += result.value.tokensUsed;
+        totalCostWave += result.value.cost;
+        totalErrors += result.value.errorCount;
+        if (result.value.rawOutput) lastRawOutput = result.value.rawOutput;
+        allMatchedResults.push(...result.value.matchedResults);
+      } else {
+        totalErrors += 1;
       }
+    }
 
-      for (const item of pendingItems) {
-        const itemName = (item.itemLabel ?? item.itemKey ?? "").toLowerCase().trim();
-        const itemContext = (item.itemContext ?? "").toLowerCase().trim();
-        const itemResult = results.find((r) => {
-          const rName = String(
-            r.countryName ?? r.institutionName ?? r.serviceName ?? r.name ?? r.title ?? r.segment ?? r.theme ?? ""
-          ).toLowerCase().trim();
-          if (!rName || !itemName) return false;
-          const nameMatch = rName === itemName || rName.includes(itemName) || itemName.includes(rName);
-          if (!nameMatch) return false;
-          if (itemContext && r.coverageType) {
-            return String(r.coverageType).toLowerCase().includes(itemContext);
-          }
-          return true;
-        });
+    // Write all matched results to domain tables
+    if (allMatchedResults.length > 0) {
+      await writeScreenResults(screenType, allMatchedResults, agentLabel);
+    }
 
-        if (itemResult) {
-          itemResult._itemKey = item.itemKey;
-          itemResult._itemLabel = item.itemLabel;
-          const idx = results.indexOf(itemResult);
-          if (idx !== -1) results.splice(idx, 1);
-        }
+    // Update job progress
+    const completedCount = await prisma.researchJobItem.count({
+      where: { jobId, status: "completed" },
+    });
+    const failedCount = await prisma.researchJobItem.count({
+      where: { jobId, status: "failed" },
+    });
 
-        await prisma.researchJobItem.update({
-          where: { id: item.id },
-          data: {
-            status: itemResult ? "completed" : "failed",
-            tokensUsed: Math.round(tokensUsed / pendingItems.length),
-            durationMs: Math.round(durationMs / pendingItems.length),
-            output: itemResult ? JSON.stringify(itemResult) : undefined,
-            error: itemResult ? undefined : "No matching result in LLM response",
-          },
-        });
-      }
+    await prisma.researchJob.update({
+      where: { id: jobId },
+      data: {
+        completedItems: completedCount,
+        failedItems: failedCount,
+        totalTokens: { increment: totalTokensWave },
+        totalCost: { increment: totalCostWave },
+        ...(lastRawOutput && {
+          rawOutput: lastRawOutput.length > 50000
+            ? lastRawOutput.substring(0, 50000)
+            : lastRawOutput,
+        }),
+        ...(totalErrors > 0 && { errorCount: { increment: totalErrors } }),
+      },
+    });
 
-      await writeScreenResults(screenType, results, agentLabel);
-
-      const completedCount = await prisma.researchJobItem.count({
-        where: { jobId, status: "completed" },
-      });
-      const failedCount = await prisma.researchJobItem.count({
-        where: { jobId, status: "failed" },
-      });
-
-      await prisma.researchJob.update({
-        where: { id: jobId },
+    if (job.agentConfig) {
+      await prisma.agentConfig.update({
+        where: { id: job.agentConfig.id },
         data: {
-          completedItems: completedCount,
-          failedItems: failedCount,
-          totalTokens: { increment: tokensUsed },
-          totalCost: { increment: cost },
-          rawOutput: rawOutput.length > 50000 ? rawOutput.substring(0, 50000) : rawOutput,
+          executionCount: { increment: batches.length },
+          lastRunAt: new Date(),
         },
       });
+    }
 
-      if (job.agentConfig) {
-        await prisma.agentConfig.update({
-          where: { id: job.agentConfig.id },
-          data: {
-            executionCount: { increment: 1 },
-            lastRunAt: new Date(),
-          },
-        });
-      }
-    } catch (error) {
-      const durationMs = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-      for (const item of pendingItems) {
-        await prisma.researchJobItem.update({
-          where: { id: item.id },
-          data: { status: "failed", error: errorMessage, durationMs },
-        });
-      }
-
-      const failedCount = await prisma.researchJobItem.count({
-        where: { jobId, status: "failed" },
-      });
-
+    // Check error threshold
+    const updatedJob = await prisma.researchJob.findUnique({ where: { id: jobId } });
+    if (updatedJob && updatedJob.errorCount >= 15) {
       await prisma.researchJob.update({
         where: { id: jobId },
-        data: {
-          failedItems: failedCount,
-          lastError: errorMessage,
-          errorCount: { increment: 1 },
-        },
+        data: { status: "failed", lastError: "Too many errors — job halted" },
       });
-
-      const updatedJob = await prisma.researchJob.findUnique({ where: { id: jobId } });
-      if (updatedJob && updatedJob.errorCount >= 5) {
-        await prisma.researchJob.update({
-          where: { id: jobId },
-          data: { status: "failed", lastError: `Too many errors: ${errorMessage}` },
-        });
-        break;
-      }
+      break;
     }
   }
 }

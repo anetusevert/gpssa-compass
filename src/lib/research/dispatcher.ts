@@ -181,7 +181,8 @@ export async function createScreenResearchJob(
       status: "running",
       totalItems: items.length,
       model: model ?? agent.model,
-      batchSize: screenType === "atlas-worldmap" ? 1 : Math.min(5, items.length),
+      batchSize: screenType === "atlas-worldmap" ? 3 : Math.min(5, items.length),
+      concurrency: 5,
       agentConfigId,
       startedAt: new Date(),
       items: {
