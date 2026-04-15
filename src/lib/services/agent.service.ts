@@ -16,6 +16,7 @@ export class AgentService {
             maxTokens: agent.maxTokens,
             temperature: agent.temperature,
             sortOrder: agent.sortOrder,
+            isActive: agent.isActive,
           },
           create: {
             id: agent.id,
@@ -29,6 +30,7 @@ export class AgentService {
             targetScreen: agent.targetScreen ?? null,
             researchType: agent.researchType ?? null,
             sortOrder: agent.sortOrder,
+            isActive: agent.isActive,
           },
         })
       )
