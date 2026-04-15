@@ -5,6 +5,7 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/data/**/*.{js,ts}",
   ],
   theme: {
     extend: {
@@ -21,6 +22,7 @@ const config: Config = {
         adl: {
           blue: "var(--adl-blue)",
         },
+        teal: "var(--teal)",
         gold: "var(--gold)",
         cream: "var(--cream)",
         "gray-muted": "var(--gray-muted)",
