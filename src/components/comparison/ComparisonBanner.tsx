@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Globe2, ArrowLeftRight } from "lucide-react";
 import { COUNTRIES } from "@/lib/countries/catalog";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 interface ComparisonBannerProps {
   selectedCountries: string[];
@@ -27,13 +28,13 @@ export function ComparisonBanner({ selectedCountries }: ComparisonBannerProps) {
       <Globe2 size={14} className="text-gpssa-green shrink-0" />
       <div className="flex items-center gap-2 flex-wrap text-xs">
         <span className="inline-flex items-center gap-1.5 font-medium text-cream">
-          {gpssa?.flag} GPSSA
+          <CountryFlag code="ARE" size="sm" /> GPSSA
         </span>
         <ArrowLeftRight size={10} className="text-gray-muted" />
         {countries.map((c, i) => (
           <span key={c!.iso3} className="inline-flex items-center gap-1 text-cream/80">
             {i > 0 && <span className="text-gray-muted mx-0.5">·</span>}
-            <span className="text-sm">{c!.flag}</span>
+            <CountryFlag code={c!.iso3} size="sm" />
             <span>{c!.name}</span>
           </span>
         ))}

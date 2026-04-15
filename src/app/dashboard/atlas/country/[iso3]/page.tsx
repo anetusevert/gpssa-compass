@@ -31,6 +31,7 @@ import {
   parseJsonArr,
   parseJsonObj,
 } from "@/lib/countries/country-data";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 import { CountryInsightModal, type InsightCategory } from "@/components/country/CountryInsightModal";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -224,7 +225,7 @@ export default function CountryDetailPage() {
           </button>
 
           <div className="flex items-center gap-3">
-            <span className="text-3xl leading-none">{profile.flag}</span>
+            <CountryFlag code={profile.iso3} size="xl" />
             <div>
               <h1 className="font-playfair text-lg font-bold text-cream leading-tight">{profile.name}</h1>
               <div className="flex items-center gap-2 mt-0.5">

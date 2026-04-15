@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Globe2, X, ChevronDown, Search, Database } from "lucide-react";
 import { COUNTRIES, type CountrySeed } from "@/lib/countries/catalog";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 interface CountryWithData extends CountrySeed {
   dataCounts?: { services: number; products: number; segments: number };
@@ -106,7 +107,7 @@ export function CountrySelector({
               onClick={() => toggle(c.iso3)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gpssa-green/10 border border-gpssa-green/20 text-xs text-cream hover:bg-gpssa-green/20 transition-colors"
             >
-              <span className="text-sm">{c.flag}</span>
+              <CountryFlag code={c.iso3} size="sm" />
               <span>{c.name}</span>
               <X size={10} className="text-gray-muted ml-0.5" />
             </motion.button>
@@ -165,7 +166,7 @@ export function CountrySelector({
                         : "hover:bg-white/5 text-gray-muted hover:text-cream border border-transparent"
                     } ${!isSelected && selected.length >= maxSelections ? "opacity-40 cursor-not-allowed" : ""}`}
                   >
-                    <span className="text-base">{country.flag}</span>
+                    <CountryFlag code={country.iso3} size="sm" />
                     <span className="flex-1 truncate">{country.name}</span>
                     {countryHasData && (
                       <Database size={10} className="text-gpssa-green shrink-0" />

@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import "flag-icons/css/flag-icons.min.css";
+
 :root {
   --navy: #0A1628;
   --navy-light: #132240;

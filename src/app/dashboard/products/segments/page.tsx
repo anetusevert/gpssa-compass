@@ -8,6 +8,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { CountrySelector } from "@/components/comparison/CountrySelector";
 import { ComparisonBanner } from "@/components/comparison/ComparisonBanner";
 import { COUNTRIES } from "@/lib/countries/catalog";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 type CoverageLevel = "Covered" | "Voluntary" | "Limited" | "Not Covered";
 
@@ -65,11 +66,11 @@ function countGaps(matrix: SegmentRow[]): number {
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.38, ease: [0.16, 1, 0.3, 1] as const } } };
 
-function CoverageMatrix({ title, flag, rows }: { title: string; flag: string; rows: SegmentRow[] }) {
+function CoverageMatrix({ title, iso3, rows }: { title: string; iso3: string; rows: SegmentRow[] }) {
   return (
     <div className="glass-card overflow-hidden border border-white/[0.06]">
       <div className="p-5 border-b border-white/5 flex items-center gap-2">
-        <span className="text-base">{flag}</span>
+        <CountryFlag code={iso3} size="sm" />
         <Table2 size={16} className="text-gold" />
         <h2 className="font-playfair text-lg font-semibold text-cream">{title}</h2>
       </div>
@@ -171,14 +172,14 @@ export default function SegmentCoveragePage() {
       }
     }
 
-    const insights: { coverageType: string; countriesWithCoverage: { iso3: string; name: string; flag: string }[] }[] = [];
+    const insights: { coverageType: string; countriesWithCoverage: { iso3: string; name: string }[] }[] = [];
     for (const gap of Array.from(gpssaGaps)) {
       const countriesCovering = intlSegments
         .filter((s) => s.coverageType === gap && (s.level === "Covered" || s.level === "Voluntary"))
         .map((s) => s.countryIso3);
       const uniqueCountries = Array.from(new Set(countriesCovering)).map((iso3) => {
         const c = COUNTRIES.find((c) => c.iso3 === iso3);
-        return { iso3, name: c?.name ?? iso3, flag: c?.flag ?? "🌍" };
+        return { iso3, name: c?.name ?? iso3 };
       });
       if (uniqueCountries.length > 0) {
         insights.push({ coverageType: gap, countriesWithCoverage: uniqueCountries });
@@ -225,7 +226,7 @@ export default function SegmentCoveragePage() {
               <div className="flex flex-wrap gap-1">
                 {insight.countriesWithCoverage.map((c) => (
                   <span key={c.iso3} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-gpssa-green/10 text-gpssa-green">
-                    {c.flag} {c.name}
+                    <CountryFlag code={c.iso3} size="xs" /> {c.name}
                   </span>
                 ))}
               </div>
@@ -235,7 +236,7 @@ export default function SegmentCoveragePage() {
       )}
 
       <motion.div variants={fadeUp}>
-        <CoverageMatrix title="GPSSA Segment × Coverage Matrix" flag="🇦🇪" rows={segmentMatrix} />
+        <CoverageMatrix title="GPSSA Segment × Coverage Matrix" iso3="ARE" rows={segmentMatrix} />
       </motion.div>
 
       {/* International matrices */}
@@ -243,7 +244,7 @@ export default function SegmentCoveragePage() {
         const country = COUNTRIES.find((c) => c.iso3 === iso3);
         return (
           <motion.div key={iso3} variants={fadeUp}>
-            <CoverageMatrix title={`${country?.name ?? iso3} Segment × Coverage`} flag={country?.flag ?? "🌍"} rows={rows} />
+            <CoverageMatrix title={`${country?.name ?? iso3} Segment × Coverage`} iso3={iso3} rows={rows} />
           </motion.div>
         );
       })}

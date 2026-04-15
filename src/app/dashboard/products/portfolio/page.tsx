@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/Badge";
 import { CountrySelector } from "@/components/comparison/CountrySelector";
 import { ComparisonBanner } from "@/components/comparison/ComparisonBanner";
 import { COUNTRIES } from "@/lib/countries/catalog";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 type ProductTier = "Core" | "Complementary" | "Non-Core";
 type ProductStatus = "Active" | "Pilot" | "Planned" | "Concept";
@@ -93,7 +94,7 @@ function IntlProductCard({ product }: { product: IntlProduct }) {
     <Card variant="glass" padding="md" className="h-full border border-white/[0.06]">
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm">{country?.flag}</span>
+          <CountryFlag code={product.countryIso3} size="sm" />
           <span className="text-[10px] text-gray-muted">{country?.name}</span>
         </div>
         <Badge variant={sb.variant} size="sm">{product.status}</Badge>
@@ -248,7 +249,7 @@ export default function ProductPortfolioPage() {
                     <div key={iso3}>
                       <div className="flex items-center gap-2 mb-3">
                         <div className="h-px flex-1 bg-gradient-to-r from-gpssa-green/20 to-transparent" />
-                        <span className="text-[10px] text-gray-muted uppercase tracking-wide">{country?.flag} {country?.name} · {tier}</span>
+                        <span className="text-[10px] text-gray-muted uppercase tracking-wide flex items-center gap-1"><CountryFlag code={iso3} size="xs" /> {country?.name} · {tier}</span>
                         <div className="h-px flex-1 bg-gradient-to-l from-gpssa-green/20 to-transparent" />
                       </div>
                       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">

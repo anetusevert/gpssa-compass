@@ -82,6 +82,15 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "DATA",
+    prefix: "/dashboard/data",
+    color: "var(--adl-blue)",
+    glow: "rgba(45,74,140,0.14)",
+    items: [
+      { label: "Data & Sources", href: "/dashboard/data", icon: Database },
+    ],
+  },
+  {
     title: "ADMIN",
     prefix: "/dashboard/admin",
     color: "rgba(255,255,255,0.72)",
@@ -91,7 +100,6 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "AI Configuration", href: "/dashboard/admin/ai-config", icon: Cpu },
       { label: "Agents", href: "/dashboard/admin/agents", icon: Bot },
       { label: "Users", href: "/dashboard/admin/users", icon: Users },
-      { label: "Data Management", href: "/dashboard/admin/data", icon: Database },
       { label: "Activity Logs", href: "/dashboard/admin/activity", icon: ScrollText },
     ],
   },
@@ -160,7 +168,7 @@ export function Sidebar() {
 
               <ul className="space-y-1">
                 {section.items.map((item) => {
-                  const isActive = pathname === item.href;
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                   const Icon = item.icon;
 
                   return (

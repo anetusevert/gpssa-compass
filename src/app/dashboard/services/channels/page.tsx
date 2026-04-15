@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/Badge";
 import { CountrySelector } from "@/components/comparison/CountrySelector";
 import { ComparisonBanner } from "@/components/comparison/ComparisonBanner";
 import { COUNTRIES } from "@/lib/countries/catalog";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 const CHANNELS = [
   { id: "portal", label: "Digital Portal", short: "Portal", icon: LayoutGrid },
@@ -143,7 +144,7 @@ export default function ChannelCapabilitiesPage() {
               }
             } catch { /* keep defaults */ }
             const country = COUNTRIES.find((c) => c.iso3 === s.countryIso3);
-            return { countryIso3: s.countryIso3, countryName: country?.name ?? s.countryIso3, flag: country?.flag ?? "🌍", id: s.id, name: s.name, category: s.category, channels };
+            return { countryIso3: s.countryIso3, countryName: country?.name ?? s.countryIso3, flag: s.countryIso3, id: s.id, name: s.name, category: s.category, channels };
           });
         setIntlServices(rows);
       })
@@ -260,7 +261,7 @@ export default function ChannelCapabilitiesPage() {
           <Card key={iso3} variant="glass" padding="md" className="overflow-hidden">
             <div className="mb-4">
               <h2 className="font-playfair text-lg font-semibold text-cream flex items-center gap-2">
-                {country?.flag} {country?.name} Channel Matrix
+                <CountryFlag code={iso3} size="md" /> {country?.name} Channel Matrix
               </h2>
               <p className="text-xs text-gray-muted mt-0.5">{rows.length} services with channel data</p>
             </div>
@@ -312,7 +313,7 @@ export default function ChannelCapabilitiesPage() {
               if (rows.length === 0) return null;
               const mat = computeMaturity(rows).find((m) => m.id === ch.id);
               const country = COUNTRIES.find((c) => c.iso3 === iso3);
-              return mat ? { iso3, flag: country?.flag ?? "🌍", name: country?.name ?? iso3, score: mat.score, tier: mat.maturityTier } : null;
+              return mat ? { iso3, flag: iso3, name: country?.name ?? iso3, score: mat.score, tier: mat.maturityTier } : null;
             }).filter(Boolean) as { iso3: string; flag: string; name: string; score: number; tier: string }[];
 
             return (
@@ -325,7 +326,7 @@ export default function ChannelCapabilitiesPage() {
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-muted w-16 shrink-0">🇦🇪 GPSSA</span>
+                    <span className="text-[10px] text-gray-muted w-16 shrink-0 flex items-center gap-1"><CountryFlag code="ARE" size="xs" /> GPSSA</span>
                     <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
                       <motion.div className="h-full rounded-full bg-gradient-to-r from-adl-blue to-gpssa-green" initial={{ width: 0 }} animate={{ width: `${ch.score}%` }} transition={{ duration: 0.6 }} />
                     </div>
@@ -333,7 +334,7 @@ export default function ChannelCapabilitiesPage() {
                   </div>
                   {intlMaturityForChannel.map((intl) => (
                     <div key={intl.iso3} className="flex items-center gap-2">
-                      <span className="text-[10px] text-gray-muted w-16 shrink-0 truncate">{intl.flag} {intl.name.split(" ")[0]}</span>
+                      <span className="text-[10px] text-gray-muted w-16 shrink-0 truncate flex items-center gap-1"><CountryFlag code={intl.iso3} size="xs" /> {intl.name.split(" ")[0]}</span>
                       <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
                         <motion.div className="h-full rounded-full bg-gpssa-green/60" initial={{ width: 0 }} animate={{ width: `${intl.score}%` }} transition={{ duration: 0.6, delay: 0.1 }} />
                       </div>

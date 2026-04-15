@@ -29,6 +29,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CountrySelector } from "@/components/comparison/CountrySelector";
 import { ComparisonBanner } from "@/components/comparison/ComparisonBanner";
 import { COUNTRIES } from "@/lib/countries/catalog";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 interface GPSSAService {
   id: string;
@@ -152,7 +153,7 @@ function IntlServiceCard({ service }: { service: IntlService }) {
     <Card variant="glass" padding="md" className="border border-white/[0.06]">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-base">{country?.flag ?? "🌍"}</span>
+          <CountryFlag code={service.countryIso3} size="sm" />
           <span className="text-[10px] text-gray-muted uppercase tracking-wide">{country?.name}</span>
         </div>
         <Badge variant={config.color} size="sm">{service.category}</Badge>
@@ -384,7 +385,7 @@ export default function ServicesPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-px flex-1 bg-gradient-to-r from-gpssa-green/30 to-transparent" />
                   <span className="text-xs font-medium text-cream uppercase tracking-wide flex items-center gap-2">
-                    {country?.flag} {country?.name ?? iso3} ({svcList.length} services)
+                    <CountryFlag code={iso3} size="sm" /> {country?.name ?? iso3} ({svcList.length} services)
                   </span>
                   <div className="h-px flex-1 bg-gradient-to-l from-gpssa-green/30 to-transparent" />
                 </div>

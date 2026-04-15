@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, AlertTriangle, Building2, GitCompareArrows, Lightbulb, BarChart3, RefreshCw, Scale, Award, ExternalLink, Users } from "lucide-react";
 import type { CountryProfile } from "@/lib/countries/country-data";
 import { maturityBadgeColor, GPSSA_REF } from "@/lib/countries/country-data";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 export type InsightCategory = "system" | "metrics" | "insights" | "challenges" | "institutions" | "comparison" | "reforms";
 
@@ -101,7 +102,7 @@ export function CountryInsightModal({ isOpen, onClose, category, profile, instit
                   </div>
                   <div>
                     <h2 className="font-playfair text-lg font-bold text-cream">{config.title}</h2>
-                    <p className="text-xs text-white/50 mt-0.5">{profile.flag} {profile.name}</p>
+                    <p className="text-xs text-white/50 mt-0.5 flex items-center gap-1.5"><CountryFlag code={profile.iso3} size="xs" /> {profile.name}</p>
                   </div>
                 </div>
                 <button

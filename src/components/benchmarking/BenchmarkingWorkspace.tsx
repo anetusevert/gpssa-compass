@@ -1,22 +1,26 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
   BarChart3,
+  ChevronDown,
   Database,
-  Filter,
+  Globe,
   Layers,
+  Loader2,
   Maximize2,
   Radar,
   Search,
+  X,
 } from "lucide-react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  Label,
   Legend,
   PolarAngleAxis,
   PolarGrid,
@@ -29,12 +33,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  ZAxis,
 } from "recharts";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { countryCodeToFlag } from "@/lib/benchmarking/catalog";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 import type {
   BenchmarkDimensionPayload,
   BenchmarkInstitutionPayload,
@@ -44,53 +45,24 @@ import type {
 } from "@/lib/benchmarking/workspace";
 
 type ViewMode = "radar" | "bars" | "heatmap" | "quadrant";
-type PeerLens = "all" | "regional" | "international" | "leaders";
 
 type EvidenceTarget =
   | { type: "kpi"; payload: BenchmarkKpiPayload }
   | { type: "dimension"; payload: BenchmarkDimensionPayload };
 
-const VIEW_META: Record<
-  ViewMode,
-  {
-    label: string;
-    shortLabel: string;
-    icon: typeof Radar;
-    summary: string;
-  }
-> = {
-  radar: {
-    label: "Comparative Shape",
-    shortLabel: "Spider",
-    icon: Radar,
-    summary: "The shape of relative maturity across the selected peer set.",
-  },
-  bars: {
-    label: "Peer Ranking",
-    shortLabel: "Bars",
-    icon: BarChart3,
-    summary: "Average comparative standing across all benchmark dimensions.",
-  },
-  heatmap: {
-    label: "Intensity Matrix",
-    shortLabel: "Heatmap",
-    icon: Layers,
-    summary: "A dense read of strength and weakness by institution and dimension.",
-  },
-  quadrant: {
-    label: "Gap Pressure Map",
-    shortLabel: "Quadrant",
-    icon: Activity,
-    summary: "Where GPSSA faces the greatest maturity pressure versus its active peers.",
-  },
+const VIEW_META: Record<ViewMode, { shortLabel: string; icon: typeof Radar }> = {
+  radar:    { shortLabel: "Spider",   icon: Radar },
+  bars:     { shortLabel: "Bars",     icon: BarChart3 },
+  heatmap:  { shortLabel: "Heatmap",  icon: Layers },
+  quadrant: { shortLabel: "Quadrant", icon: Activity },
 };
 
-const CHART_COLORS = ["#2DD4BF", "#F59E0B", "#60A5FA", "#C084FC"];
+const CHART_COLORS = ["#2DD4BF", "#F59E0B", "#60A5FA", "#C084FC", "#F472B6", "#A78BFA", "#34D399", "#FB923C"];
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 function average(values: number[]) {
   if (!values.length) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
 function formatValue(value: number, unit?: string | null) {
@@ -112,6 +84,8 @@ function scoreSurface(score: number) {
   return "bg-orange-400/12";
 }
 
+/* ─── Evidence list ─── */
+
 function EvidenceList({ sources }: { sources: BenchmarkSourceReference[] }) {
   return (
     <div className="space-y-3">
@@ -127,9 +101,7 @@ function EvidenceList({ sources }: { sources: BenchmarkSourceReference[] }) {
             <div>
               <p className="text-sm font-medium text-cream">{source.title}</p>
               <p className="mt-1 text-xs text-gray-muted">
-                {[source.publisher, source.region, source.sourceType]
-                  .filter(Boolean)
-                  .join(" · ")}
+                {[source.publisher, source.region, source.sourceType].filter(Boolean).join(" · ")}
               </p>
             </div>
             <Maximize2 size={14} className="mt-1 shrink-0 text-gray-muted" />
@@ -145,12 +117,10 @@ function EvidenceList({ sources }: { sources: BenchmarkSourceReference[] }) {
   );
 }
 
+/* ─── Evidence modal ─── */
+
 function BenchmarkEvidenceModal({
-  isOpen,
-  onClose,
-  target,
-  workspace,
-  selectedInstitutions,
+  isOpen, onClose, target, workspace, selectedInstitutions,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -162,37 +132,20 @@ function BenchmarkEvidenceModal({
 
   if (target.type === "kpi") {
     return (
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title={target.payload.name}
-        description={target.payload.description ?? "Source-backed benchmark indicator"}
-        size="xl"
-      >
+      <Modal isOpen={isOpen} onClose={onClose} title={target.payload.name} description={target.payload.description ?? "Source-backed benchmark indicator"} size="xl">
         <div className="space-y-5">
           <div className="grid gap-3 sm:grid-cols-3">
             {target.payload.values.map((value) => (
-              <div
-                key={`${target.payload.slug}-${value.comparator}`}
-                className="rounded-[22px] bg-white/[0.04] p-4"
-              >
-                <p className="text-[11px] uppercase tracking-[0.18em] text-gray-muted">
-                  {value.label}
-                </p>
-                <p className="mt-2 font-playfair text-3xl text-cream">
-                  {formatValue(value.value, target.payload.unit)}
-                </p>
-                {value.note && (
-                  <p className="mt-2 text-xs leading-relaxed text-gray-muted">{value.note}</p>
-                )}
+              <div key={`${target.payload.slug}-${value.comparator}`} className="rounded-[22px] bg-white/[0.04] p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-gray-muted">{value.label}</p>
+                <p className="mt-2 font-playfair text-3xl text-cream">{formatValue(value.value, target.payload.unit)}</p>
+                {value.note && <p className="mt-2 text-xs leading-relaxed text-gray-muted">{value.note}</p>}
               </div>
             ))}
           </div>
           <div className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-cream">
-              Sources
-            </h4>
-            <EvidenceList sources={target.payload.values.flatMap((value) => value.sources)} />
+            <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-cream">Sources</h4>
+            <EvidenceList sources={target.payload.values.flatMap((v) => v.sources)} />
           </div>
         </div>
       </Modal>
@@ -200,31 +153,24 @@ function BenchmarkEvidenceModal({
   }
 
   const institutions = [workspace.targetInstitution, ...selectedInstitutions];
-
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`${target.payload.name} Evidence`}
-      description={target.payload.description ?? "Dimension-level score evidence"}
-      size="xl"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title={`${target.payload.name} Evidence`} description={target.payload.description ?? "Dimension-level score evidence"} size="xl">
       <div className="grid gap-3 sm:grid-cols-2">
-        {institutions.map((institution) => (
-          <div key={`${institution.id}-${target.payload.slug}`} className="rounded-[22px] bg-white/[0.04] p-4">
+        {institutions.map((inst) => (
+          <div key={`${inst.id}-${target.payload.slug}`} className="rounded-[22px] bg-white/[0.04] p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-cream">
-                  {countryCodeToFlag(institution.countryCode)} {institution.shortName}
+                  <CountryFlag code={inst.countryCode} size="sm" /> {inst.shortName}
                 </p>
-                <p className="text-xs text-gray-muted">{institution.country}</p>
+                <p className="text-xs text-gray-muted">{inst.country}</p>
               </div>
-              <p className={`font-playfair text-3xl ${scoreTone(institution.scores[target.payload.slug] ?? 0)}`}>
-                {Math.round(institution.scores[target.payload.slug] ?? 0)}
+              <p className={`font-playfair text-3xl ${scoreTone(inst.scores[target.payload.slug] ?? 0)}`}>
+                {Math.round(inst.scores[target.payload.slug] ?? 0)}
               </p>
             </div>
             <div className="mt-4">
-              <EvidenceList sources={institution.scoreEvidence[target.payload.slug] ?? []} />
+              <EvidenceList sources={inst.scoreEvidence[target.payload.slug] ?? []} />
             </div>
           </div>
         ))}
@@ -233,72 +179,105 @@ function BenchmarkEvidenceModal({
   );
 }
 
-function CompactToggle({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
+/* ─── Country peer type ─── */
+
+interface CountryPeer {
+  iso3: string;
+  name: string;
+  flag: string;
+  region: string;
+  maturityLabel: string | null;
+  maturityScore: number | null;
+}
+
+/* ─── Custom quadrant dot: flag emoji ─── */
+
+function FlagDot(props: Record<string, unknown>) {
+  const { cx, cy, payload } = props as { cx: number; cy: number; payload: { countryCode: string; flag: string } };
+  if (!cx || !cy) return null;
   return (
-    <button
-      onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-[11px] font-medium transition-all ${
-        active
-          ? "bg-white/14 text-cream shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
-          : "bg-white/[0.05] text-gray-muted hover:bg-white/[0.08] hover:text-cream"
-      }`}
-    >
-      {children}
-    </button>
+    <g>
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={16}>
+        {payload.flag || "●"}
+      </text>
+    </g>
   );
 }
 
-export function BenchmarkingWorkspace({
-  workspace,
-}: {
-  workspace: BenchmarkWorkspacePayload;
-}) {
+/* ─── Quadrant tooltip ─── */
+
+function QuadrantTooltipContent(props: Record<string, unknown>) {
+  const { active, payload: entries } = props as {
+    active?: boolean;
+    payload?: Array<{ payload: { name: string; flag: string; x: number; y: number; xLabel: string; yLabel: string } }>;
+  };
+  if (!active || !entries?.length) return null;
+  const d = entries[0].payload;
+  return (
+    <div className="rounded-2xl bg-navy/96 border border-white/10 px-4 py-3 text-cream shadow-xl backdrop-blur-xl">
+      <p className="text-sm font-semibold">{d.flag} {d.name}</p>
+      <p className="mt-1 text-xs text-gray-muted">{d.xLabel}: <span className="text-cream">{d.x}</span></p>
+      <p className="text-xs text-gray-muted">{d.yLabel}: <span className="text-cream">{d.y}</span></p>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════════════ */
+
+export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorkspacePayload }) {
   const [viewMode, setViewMode] = useState<ViewMode>("radar");
-  const [peerLens, setPeerLens] = useState<PeerLens>("all");
-  const [regionFilter, setRegionFilter] = useState("All Regions");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [controlsOpen, setControlsOpen] = useState(false);
-  const [selectorOpen, setSelectorOpen] = useState(false);
   const [methodologyOpen, setMethodologyOpen] = useState(false);
   const [evidenceTarget, setEvidenceTarget] = useState<EvidenceTarget | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>(
-    workspace.peerInstitutions.slice(0, 3).map((institution) => institution.id)
+    workspace.peerInstitutions.slice(0, 3).map((i) => i.id)
   );
-  const [selectorTab, setSelectorTab] = useState<"institutions" | "countries">("institutions");
-  const [countryPeers, setCountryPeers] = useState<Array<{ iso3: string; name: string; flag: string; region: string; maturityLabel: string | null; maturityScore: number | null }>>([]);
-  const [countrySearch, setCountrySearch] = useState("");
-  const [addingCountry, setAddingCountry] = useState<string | null>(null);
 
+  // Country selector state
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [selectorSearch, setSelectorSearch] = useState("");
+  const [countryPeers, setCountryPeers] = useState<CountryPeer[]>([]);
+  const [addingCountry, setAddingCountry] = useState<string | null>(null);
+  const selectorRef = useRef<HTMLDivElement>(null);
+
+  // Quadrant axis state
+  const [xDimSlug, setXDimSlug] = useState(workspace.dimensions[0]?.slug ?? "");
+  const [yDimSlug, setYDimSlug] = useState(workspace.dimensions[1]?.slug ?? "");
+
+  // Fetch all countries on mount
   const fetchCountryPeers = useCallback(async () => {
     try {
       const res = await fetch("/api/countries?status=completed");
       if (res.ok) {
         const data = await res.json();
-        setCountryPeers(data.map((c: Record<string, unknown>) => ({
-          iso3: c.iso3 as string,
-          name: c.name as string,
-          flag: (c.flag as string) ?? "",
-          region: (c.region as string) ?? "",
-          maturityLabel: c.maturityLabel as string | null,
-          maturityScore: c.maturityScore as number | null,
-        })));
+        setCountryPeers(
+          data.map((c: Record<string, unknown>) => ({
+            iso3: c.iso3 as string,
+            name: c.name as string,
+            flag: (c.flag as string) ?? "",
+            region: (c.region as string) ?? "",
+            maturityLabel: c.maturityLabel as string | null,
+            maturityScore: c.maturityScore as number | null,
+          }))
+        );
       }
     } catch { /* ignore */ }
   }, []);
 
+  useEffect(() => { fetchCountryPeers(); }, [fetchCountryPeers]);
+
+  // Close selector dropdown when clicking outside
   useEffect(() => {
-    if (selectorOpen && selectorTab === "countries" && countryPeers.length === 0) {
-      fetchCountryPeers();
+    if (!selectorOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (selectorRef.current && !selectorRef.current.contains(e.target as Node)) {
+        setSelectorOpen(false);
+      }
     }
-  }, [selectorOpen, selectorTab, countryPeers.length, fetchCountryPeers]);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [selectorOpen]);
 
   async function addCountryAsPeer(iso3: string) {
     setAddingCountry(iso3);
@@ -318,53 +297,52 @@ export function BenchmarkingWorkspace({
     }
   }
 
-  const filteredCountryPeers = useMemo(() => {
-    if (!countrySearch) return countryPeers;
-    const q = countrySearch.toLowerCase();
-    return countryPeers.filter((c) => c.name.toLowerCase().includes(q) || c.iso3.toLowerCase().includes(q));
-  }, [countryPeers, countrySearch]);
+  // Combined list: workspace institutions + country peers
+  const selectorItems = useMemo(() => {
+    const q = selectorSearch.toLowerCase();
+    const existingCodes = new Set(workspace.peerInstitutions.map((i) => i.countryCode.toLowerCase()));
 
-  const regions = useMemo(
-    () => [
-      "All Regions",
-      ...Array.from(new Set(workspace.peerInstitutions.map((item) => item.region))),
-    ],
-    [workspace.peerInstitutions]
-  );
+    const institutionItems = workspace.peerInstitutions
+      .filter((i) => !q || i.name.toLowerCase().includes(q) || i.shortName.toLowerCase().includes(q) || i.country.toLowerCase().includes(q))
+      .map((i) => ({
+        type: "institution" as const,
+        id: i.id,
+        name: i.country,
+        shortName: i.shortName,
+        countryCode: i.countryCode,
+        region: i.region,
+        label: i.digitalMaturity ?? "",
+        selected: selectedIds.includes(i.id),
+      }));
 
-  const filteredPeers = useMemo(() => {
-    return workspace.peerInstitutions.filter((institution) => {
-      const search = searchQuery.trim().toLowerCase();
-      const matchesSearch =
-        !search ||
-        institution.name.toLowerCase().includes(search) ||
-        institution.country.toLowerCase().includes(search) ||
-        institution.shortName.toLowerCase().includes(search);
+    const countryItems = countryPeers
+      .filter((c) => !existingCodes.has(c.iso3.substring(0, 2).toLowerCase()))
+      .filter((c) => !q || c.name.toLowerCase().includes(q) || c.iso3.toLowerCase().includes(q))
+      .map((c) => ({
+        type: "country" as const,
+        id: c.iso3,
+        name: c.name,
+        shortName: c.iso3,
+        countryCode: c.iso3,
+        region: c.region,
+        label: c.maturityLabel ?? "",
+        selected: false,
+      }));
 
-      const matchesRegion =
-        regionFilter === "All Regions" || institution.region === regionFilter;
-
-      const matchesLens =
-        peerLens === "all"
-          ? true
-          : peerLens === "regional"
-            ? institution.region === "GCC"
-            : peerLens === "international"
-              ? institution.region !== "GCC"
-              : institution.digitalMaturity === "World-class";
-
-      return matchesSearch && matchesRegion && matchesLens;
-    });
-  }, [peerLens, regionFilter, searchQuery, workspace.peerInstitutions]);
+    // Group by region
+    const all = [...institutionItems, ...countryItems];
+    const grouped = new Map<string, typeof all>();
+    for (const item of all) {
+      const list = grouped.get(item.region) ?? [];
+      list.push(item);
+      grouped.set(item.region, list);
+    }
+    return grouped;
+  }, [selectorSearch, workspace.peerInstitutions, countryPeers, selectedIds]);
 
   const selectedInstitutions = useMemo(() => {
-    const byId = new Map(workspace.peerInstitutions.map((institution) => [institution.id, institution]));
-    const kept = selectedIds
-      .map((id) => byId.get(id))
-      .filter((value): value is BenchmarkInstitutionPayload => Boolean(value));
-
-    if (kept.length > 0) return kept.slice(0, 3);
-    return workspace.peerInstitutions.slice(0, 3);
+    const byId = new Map(workspace.peerInstitutions.map((i) => [i.id, i]));
+    return selectedIds.map((id) => byId.get(id)).filter((v): v is BenchmarkInstitutionPayload => Boolean(v));
   }, [selectedIds, workspace.peerInstitutions]);
 
   const comparisonInstitutions = useMemo(
@@ -373,158 +351,70 @@ export function BenchmarkingWorkspace({
   );
 
   const dimensionAnalysis = useMemo(() => {
-    return workspace.dimensions.map((dimension) => {
-      const targetScore = workspace.targetInstitution.scores[dimension.slug] ?? 0;
-      const peerScores = selectedInstitutions.map(
-        (institution) => institution.scores[dimension.slug] ?? 0
-      );
+    return workspace.dimensions.map((dim) => {
+      const targetScore = workspace.targetInstitution.scores[dim.slug] ?? 0;
+      const peerScores = selectedInstitutions.map((i) => i.scores[dim.slug] ?? 0);
       const peerAverage = average(peerScores);
-      const gap = peerAverage - targetScore;
-
-      return {
-        ...dimension,
-        targetScore,
-        peerAverage,
-        gap,
-      };
+      return { ...dim, targetScore, peerAverage, gap: peerAverage - targetScore };
     });
   }, [selectedInstitutions, workspace.dimensions, workspace.targetInstitution.scores]);
 
-  const topGap = useMemo(
-    () => dimensionAnalysis.slice().sort((left, right) => right.gap - left.gap)[0],
-    [dimensionAnalysis]
-  );
-
-  const strongestArea = useMemo(
-    () =>
-      dimensionAnalysis
-        .slice()
-        .sort((left, right) => right.targetScore - left.targetScore)[0],
-    [dimensionAnalysis]
-  );
-
-  const activeNarrative = useMemo(() => {
-    const lead = strongestArea?.name ?? "service breadth";
-    const gap = topGap?.name ?? "data & analytics";
-    const gapValue = Math.max(0, Math.round(topGap?.gap ?? 0));
-
-    if (viewMode === "bars") {
-      return {
-        title: `GPSSA holds credible ground on ${lead}, but the ranking still opens on ${gap}.`,
-        subtitle: `The selected peer set shows a ${gapValue}-point maturity spread in the pressure zone that matters most for a world-class response narrative.`,
-      };
-    }
-
-    if (viewMode === "heatmap") {
-      return {
-        title: `The matrix makes the story plain: strength is visible, but leadership is still unevenly distributed.`,
-        subtitle: `GPSSA performs best on ${lead}, while ${gap} remains the most material separation from the comparison leaders.`,
-      };
-    }
-
-    if (viewMode === "quadrant") {
-      return {
-        title: `The transformation pressure clusters around ${gap}.`,
-        subtitle: `Peer averages are pulling away fastest where platform intelligence and orchestration need to feel more decisive.`,
-      };
-    }
-
-    return {
-      title: `GPSSA's benchmark shape is strongest on ${lead}, but leaders still create distance on ${gap}.`,
-      subtitle: `This is the consultant view of the profile: credible foundations, visible service depth, and a sharper need to elevate the digital intelligence story.`,
-    };
-  }, [strongestArea, topGap, viewMode]);
-
   const overallBars = useMemo(() => {
     return comparisonInstitutions
-      .map((institution, index) => ({
-        name: institution.shortName,
-        score: average(
-          workspace.dimensions.map((dimension) => institution.scores[dimension.slug] ?? 0)
-        ),
-        fill: index === 0 ? "#2DD4BF" : CHART_COLORS[index],
+      .map((inst, idx) => ({
+        name: inst.shortName,
+        countryCode: inst.countryCode,
+        score: average(workspace.dimensions.map((d) => inst.scores[d.slug] ?? 0)),
+        fill: CHART_COLORS[idx % CHART_COLORS.length],
       }))
-      .sort((left, right) => right.score - left.score);
+      .sort((a, b) => b.score - a.score);
   }, [comparisonInstitutions, workspace.dimensions]);
 
   const radarData = useMemo(() => {
-    return workspace.dimensions.map((dimension) => {
+    return workspace.dimensions.map((dim) => {
       const point: Record<string, string | number> = {
-        dimension: dimension.name,
+        dimension: dim.name,
         fullMark: 100,
-        [workspace.targetInstitution.shortName]:
-          workspace.targetInstitution.scores[dimension.slug] ?? 0,
+        [workspace.targetInstitution.shortName]: workspace.targetInstitution.scores[dim.slug] ?? 0,
       };
-
-      selectedInstitutions.forEach((institution) => {
-        point[institution.shortName] = institution.scores[dimension.slug] ?? 0;
+      selectedInstitutions.forEach((inst) => {
+        point[inst.shortName] = inst.scores[dim.slug] ?? 0;
       });
-
       return point;
     });
   }, [selectedInstitutions, workspace.dimensions, workspace.targetInstitution]);
 
+  // Quadrant: each dot = one institution, axes = two selectable dimensions
+  const xDimName = workspace.dimensions.find((d) => d.slug === xDimSlug)?.name ?? xDimSlug;
+  const yDimName = workspace.dimensions.find((d) => d.slug === yDimSlug)?.name ?? yDimSlug;
+
   const quadrantData = useMemo(() => {
-    return dimensionAnalysis.map((dimension) => ({
-      name: dimension.name,
-      x: Math.round(dimension.peerAverage),
-      y: Math.round(dimension.gap),
-      z: Math.max(Math.abs(Math.round(dimension.gap)) * 2, 8),
-    }));
-  }, [dimensionAnalysis]);
+    return comparisonInstitutions.map((inst) => {
+      const flag = inst.countryCode.length === 2
+        ? String.fromCodePoint(0x1f1e6 + inst.countryCode.toUpperCase().charCodeAt(0) - 65, 0x1f1e6 + inst.countryCode.toUpperCase().charCodeAt(1) - 65)
+        : "";
+      return {
+        name: inst.shortName,
+        countryCode: inst.countryCode,
+        flag,
+        x: Math.round(inst.scores[xDimSlug] ?? 0),
+        y: Math.round(inst.scores[yDimSlug] ?? 0),
+        xLabel: xDimName,
+        yLabel: yDimName,
+      };
+    });
+  }, [comparisonInstitutions, xDimSlug, yDimSlug, xDimName, yDimName]);
 
   function toggleInstitution(id: string) {
     setSelectedIds((current) => {
-      if (current.includes(id)) {
-        return current.filter((value) => value !== id);
-      }
-      if (current.length >= 3) {
-        return [...current.slice(1), id];
-      }
+      if (current.includes(id)) return current.filter((v) => v !== id);
       return [...current, id];
     });
   }
 
-  const controlsContent = (
-    <div className="flex flex-wrap items-center gap-2">
-      <select
-        value={regionFilter}
-        onChange={(event) => setRegionFilter(event.target.value)}
-        className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] text-cream outline-none"
-      >
-        {regions.map((region) => (
-          <option key={region} value={region}>
-            {region}
-          </option>
-        ))}
-      </select>
-
-      <div className="flex gap-1">
-        {[
-          { id: "all", label: "All" },
-          { id: "regional", label: "GCC" },
-          { id: "international", label: "Intl" },
-          { id: "leaders", label: "Leaders" },
-        ].map((lens) => (
-          <CompactToggle
-            key={lens.id}
-            active={peerLens === lens.id}
-            onClick={() => setPeerLens(lens.id as PeerLens)}
-          >
-            {lens.label}
-          </CompactToggle>
-        ))}
-      </div>
-
-      <button
-        onClick={() => setSelectorOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-full bg-gpssa-green/14 px-2.5 py-1 text-[11px] font-medium text-gpssa-green transition-all hover:bg-gpssa-green/18"
-      >
-        <Filter size={11} />
-        Peers ({selectedInstitutions.length})
-      </button>
-    </div>
-  );
+  function removeInstitution(id: string) {
+    setSelectedIds((current) => current.filter((v) => v !== id));
+  }
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
@@ -542,17 +432,86 @@ export function BenchmarkingWorkspace({
         transition={{ duration: 0.4, ease: EASE }}
         className="relative z-10 flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] bg-[radial-gradient(circle_at_top,rgba(45,74,140,0.26),transparent_38%),radial-gradient(circle_at_bottom,rgba(0,168,107,0.16),transparent_34%),linear-gradient(180deg,rgba(6,18,38,0.96),rgba(7,20,38,0.84))] shadow-[0_30px_120px_rgba(0,0,0,0.32)] backdrop-blur-2xl"
       >
-        {/* ── Compact header bar ── */}
-        <div className="relative z-20 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
-          {/* Narrative headline — single line */}
-          <motion.p
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.05, duration: 0.3 }}
-            className="mr-auto max-w-[44%] truncate font-playfair text-sm text-cream xl:max-w-[36%]"
-          >
-            {activeNarrative.title}
-          </motion.p>
+        {/* ── Header bar ── */}
+        <div className="relative z-20 flex shrink-0 items-center gap-x-3 px-4 py-2.5">
+          {/* Country selector dropdown */}
+          <div ref={selectorRef} className="relative">
+            <button
+              onClick={() => setSelectorOpen(!selectorOpen)}
+              className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1.5 text-[11px] font-medium text-cream transition-all hover:bg-white/[0.1]"
+            >
+              <Globe size={13} className="text-gpssa-green" />
+              <span>Add Country</span>
+              <ChevronDown size={12} className={`text-gray-muted transition-transform ${selectorOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            <AnimatePresence>
+              {selectorOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                  transition={{ duration: 0.18 }}
+                  className="absolute left-0 top-full z-50 mt-1.5 w-80 rounded-2xl border shadow-2xl overflow-hidden"
+                  style={{ background: "rgba(8,18,38,0.98)", borderColor: "rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}
+                >
+                  <div className="p-2.5">
+                    <div className="relative">
+                      <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-muted" />
+                      <input
+                        value={selectorSearch}
+                        onChange={(e) => setSelectorSearch(e.target.value)}
+                        placeholder="Search countries or institutions..."
+                        className="w-full rounded-xl bg-white/[0.06] py-2 pl-8 pr-3 text-xs text-cream outline-none placeholder:text-gray-muted/60"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-[340px] overflow-y-auto px-1.5 pb-2" style={{ scrollbarWidth: "thin" }}>
+                    {Array.from(selectorItems.entries()).map(([region, items]) => (
+                      <div key={region}>
+                        <p className="px-2 pb-1 pt-2.5 text-[9px] uppercase tracking-[0.2em] text-gray-muted/60">{region}</p>
+                        {items.map((item) => (
+                          <button
+                            key={item.id}
+                            disabled={addingCountry === item.id}
+                            onClick={() => {
+                              if (item.type === "institution") {
+                                toggleInstitution(item.id);
+                              } else {
+                                addCountryAsPeer(item.id);
+                              }
+                            }}
+                            className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all ${
+                              item.selected
+                                ? "bg-gpssa-green/12 text-cream"
+                                : "text-cream hover:bg-white/[0.06]"
+                            } disabled:opacity-50`}
+                          >
+                            <CountryFlag code={item.countryCode} size="sm" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{item.name}</p>
+                              <p className="text-[10px] text-gray-muted truncate">
+                                {item.shortName !== item.name ? `${item.shortName} · ` : ""}{item.label}
+                              </p>
+                            </div>
+                            {item.selected && <span className="h-2 w-2 shrink-0 rounded-full bg-gpssa-green" />}
+                            {addingCountry === item.id && <Loader2 size={12} className="shrink-0 animate-spin text-gpssa-green" />}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                    {selectorItems.size === 0 && (
+                      <p className="px-3 py-6 text-center text-xs text-gray-muted">No results</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Spacer */}
+          <div className="flex-1" />
 
           {/* View mode pills */}
           <div className="flex gap-1">
@@ -576,16 +535,6 @@ export function BenchmarkingWorkspace({
             })}
           </div>
 
-          {/* Inline controls on desktop, modal on mobile */}
-          <div className="hidden xl:flex xl:items-center xl:gap-2">{controlsContent}</div>
-          <button
-            onClick={() => setControlsOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] text-gray-muted transition-all hover:bg-white/[0.08] hover:text-cream xl:hidden"
-          >
-            <Filter size={11} />
-            Filters
-          </button>
-
           <button
             onClick={() => setMethodologyOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] px-2.5 py-1 text-[11px] text-gray-muted transition-all hover:bg-white/[0.08] hover:text-cream"
@@ -595,50 +544,50 @@ export function BenchmarkingWorkspace({
           </button>
         </div>
 
+        {/* ── Selected peers strip ── */}
+        <div className="relative z-20 flex shrink-0 flex-wrap items-center gap-1.5 px-4 pb-2">
+          {/* GPSSA — always first, white text, no remove */}
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-medium text-cream backdrop-blur-sm">
+            <CountryFlag code={workspace.targetInstitution.countryCode} size="xs" />
+            {workspace.targetInstitution.shortName}
+          </span>
+
+          {selectedInstitutions.map((inst) => (
+            <span
+              key={inst.id}
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] text-cream backdrop-blur-sm"
+            >
+              <CountryFlag code={inst.countryCode} size="xs" />
+              {inst.country}
+              <button
+                onClick={() => removeInstitution(inst.id)}
+                className="ml-0.5 rounded-full p-0.5 text-gray-muted transition-colors hover:bg-white/10 hover:text-cream"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+
+          {selectedInstitutions.length === 0 && (
+            <span className="text-[11px] text-gray-muted">Click &ldquo;Add Country&rdquo; to select peers</span>
+          )}
+        </div>
+
         {/* ── Thin separator ── */}
         <div className="mx-4 h-px shrink-0 bg-white/[0.06]" />
 
-        {/* ── Chart stage — takes all remaining space ── */}
+        {/* ── Chart stage ── */}
         <div className="relative min-h-0 flex-1 overflow-hidden">
-          {/* Floating institution chips */}
-          <div className="absolute left-3 top-2 z-20 flex flex-wrap gap-1.5">
-            <Badge variant="blue" size="md">
-              {workspace.targetInstitution.shortName}
-            </Badge>
-            {selectedInstitutions.map((institution) => (
-              <span
-                key={institution.id}
-                className="inline-flex items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 text-[10px] text-cream backdrop-blur-sm"
-              >
-                <span>{countryCodeToFlag(institution.countryCode)}</span>
-                <span>{institution.shortName}</span>
-              </span>
-            ))}
-          </div>
-
-          {/* Gap focus chip */}
-          <button
-            onClick={() => setEvidenceTarget({ type: "dimension", payload: topGap ?? workspace.dimensions[0] })}
-            className="absolute right-3 top-2 z-20 rounded-full bg-black/30 px-2.5 py-1 text-[10px] text-gray-muted backdrop-blur-sm transition-colors hover:text-cream"
-          >
-            Gap: {topGap?.name ?? workspace.dimensions[0]?.name}
-          </button>
-
           <div className="flex h-full w-full items-center justify-center p-2">
+
+            {/* Radar */}
             {viewMode === "radar" && (
               <div className="h-full w-full min-h-[200px]">
                 <ResponsiveContainer width="100%" height="100%" minHeight={1}>
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="rgba(255,255,255,0.08)" />
                     <PolarAngleAxis dataKey="dimension" tick={{ fill: "#B8C2CF", fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(10,22,40,0.96)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: 18,
-                        color: "#E8F0F5",
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: "rgba(10,22,40,0.96)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, color: "#E8F0F5" }} />
                     <Legend wrapperStyle={{ fontSize: 11, color: "#8A9BB0" }} />
                     <RechartsRadar
                       name={workspace.targetInstitution.shortName}
@@ -648,13 +597,13 @@ export function BenchmarkingWorkspace({
                       fillOpacity={0.18}
                       strokeWidth={2.6}
                     />
-                    {selectedInstitutions.map((institution, index) => (
+                    {selectedInstitutions.map((inst, idx) => (
                       <RechartsRadar
-                        key={institution.id}
-                        name={institution.shortName}
-                        dataKey={institution.shortName}
-                        stroke={CHART_COLORS[index + 1]}
-                        fill={CHART_COLORS[index + 1]}
+                        key={inst.id}
+                        name={inst.shortName}
+                        dataKey={inst.shortName}
+                        stroke={CHART_COLORS[(idx + 1) % CHART_COLORS.length]}
+                        fill={CHART_COLORS[(idx + 1) % CHART_COLORS.length]}
                         fillOpacity={0.08}
                         strokeWidth={2}
                       />
@@ -664,6 +613,7 @@ export function BenchmarkingWorkspace({
               </div>
             )}
 
+            {/* Bar chart */}
             {viewMode === "bars" && (
               <div className="h-full w-full min-h-[200px]">
                 <ResponsiveContainer width="100%" height="100%" minHeight={1}>
@@ -671,14 +621,7 @@ export function BenchmarkingWorkspace({
                     <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
                     <XAxis type="number" domain={[0, 100]} tick={{ fill: "#8A9BB0", fontSize: 11 }} />
                     <YAxis dataKey="name" type="category" tick={{ fill: "#E8F0F5", fontSize: 12 }} width={90} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(10,22,40,0.96)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: 18,
-                        color: "#E8F0F5",
-                      }}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: "rgba(10,22,40,0.96)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, color: "#E8F0F5" }} />
                     <Bar dataKey="score" radius={[0, 10, 10, 0]} barSize={24}>
                       {overallBars.map((item) => (
                         <Cell key={item.name} fill={item.fill} />
@@ -689,56 +632,94 @@ export function BenchmarkingWorkspace({
               </div>
             )}
 
+            {/* Quadrant — flexible axis with flag dots */}
             {viewMode === "quadrant" && (
-              <div className="h-full w-full min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%" minHeight={1}>
-                  <ScatterChart margin={{ top: 12, right: 20, bottom: 12, left: 18 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.05)" />
-                    <XAxis type="number" dataKey="x" domain={[40, 100]} tick={{ fill: "#8A9BB0", fontSize: 11 }} />
-                    <YAxis type="number" dataKey="y" domain={[-10, 35]} tick={{ fill: "#8A9BB0", fontSize: 11 }} />
-                    <ZAxis type="number" dataKey="z" range={[120, 620]} />
-                    <Tooltip
-                      cursor={{ strokeDasharray: "4 4" }}
-                      contentStyle={{
-                        backgroundColor: "rgba(10,22,40,0.96)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: 18,
-                        color: "#E8F0F5",
-                      }}
-                    />
-                    <ReferenceLine x={70} stroke="rgba(255,255,255,0.12)" />
-                    <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" />
-                    <Scatter data={quadrantData} fill="#2DD4BF" />
-                  </ScatterChart>
-                </ResponsiveContainer>
+              <div className="flex h-full w-full flex-col min-h-[200px]">
+                {/* Axis selectors */}
+                <div className="flex items-center gap-4 px-4 py-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.14em] text-gray-muted">X Axis</span>
+                    <select
+                      value={xDimSlug}
+                      onChange={(e) => setXDimSlug(e.target.value)}
+                      className="rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] text-cream outline-none"
+                    >
+                      {workspace.dimensions.map((d) => (
+                        <option key={d.slug} value={d.slug}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.14em] text-gray-muted">Y Axis</span>
+                    <select
+                      value={yDimSlug}
+                      onChange={(e) => setYDimSlug(e.target.value)}
+                      className="rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] text-cream outline-none"
+                    >
+                      {workspace.dimensions.map((d) => (
+                        <option key={d.slug} value={d.slug}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={1}>
+                    <ScatterChart margin={{ top: 16, right: 24, bottom: 40, left: 24 }}>
+                      <CartesianGrid stroke="rgba(255,255,255,0.05)" />
+                      <XAxis
+                        type="number"
+                        dataKey="x"
+                        domain={[0, 100]}
+                        tick={{ fill: "#8A9BB0", fontSize: 11 }}
+                        tickCount={6}
+                      >
+                        <Label value={xDimName} position="bottom" offset={16} style={{ fill: "#B8C2CF", fontSize: 12, fontWeight: 500 }} />
+                      </XAxis>
+                      <YAxis
+                        type="number"
+                        dataKey="y"
+                        domain={[0, 100]}
+                        tick={{ fill: "#8A9BB0", fontSize: 11 }}
+                        tickCount={6}
+                      >
+                        <Label value={yDimName} angle={-90} position="insideLeft" offset={-8} style={{ fill: "#B8C2CF", fontSize: 12, fontWeight: 500 }} />
+                      </YAxis>
+                      <ReferenceLine x={50} stroke="rgba(255,255,255,0.12)" strokeDasharray="4 4" />
+                      <ReferenceLine y={50} stroke="rgba(255,255,255,0.12)" strokeDasharray="4 4" />
+                      <Tooltip content={<QuadrantTooltipContent />} cursor={{ strokeDasharray: "4 4", stroke: "rgba(255,255,255,0.15)" }} />
+                      <Scatter data={quadrantData} shape={<FlagDot />} />
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             )}
 
+            {/* Heatmap */}
             {viewMode === "heatmap" && (
-              <div className="grid h-full w-full min-h-0 auto-rows-min grid-cols-[minmax(110px,1fr)_repeat(4,minmax(0,1fr))] overflow-auto rounded-[22px] bg-black/10">
+              <div className={`grid h-full w-full min-h-0 auto-rows-min overflow-auto rounded-[22px] bg-black/10`} style={{ gridTemplateColumns: `minmax(110px,1fr) repeat(${comparisonInstitutions.length},minmax(0,1fr))` }}>
                 <div className="sticky top-0 z-10 bg-navy/80 p-2 text-[10px] uppercase tracking-[0.16em] text-gray-muted backdrop-blur-md">Dimension</div>
-                {comparisonInstitutions.map((institution, index) => (
-                  <div key={institution.id} className="sticky top-0 z-10 bg-navy/80 p-2 text-center backdrop-blur-md">
+                {comparisonInstitutions.map((inst, idx) => (
+                  <div key={inst.id} className="sticky top-0 z-10 bg-navy/80 p-2 text-center backdrop-blur-md">
                     <p className="text-xs font-semibold text-cream">
-                      {countryCodeToFlag(institution.countryCode)} {institution.shortName}
+                      <CountryFlag code={inst.countryCode} size="xs" /> {inst.shortName}
                     </p>
-                    <p className="text-[10px] text-gray-muted">{index === 0 ? "Target" : institution.region}</p>
+                    <p className="text-[10px] text-gray-muted">{idx === 0 ? "Target" : inst.region}</p>
                   </div>
                 ))}
-                {workspace.dimensions.map((dimension) => (
-                  <div key={dimension.slug} className="contents">
+                {workspace.dimensions.map((dim) => (
+                  <div key={dim.slug} className="contents">
                     <button
-                      onClick={() => setEvidenceTarget({ type: "dimension", payload: dimension })}
+                      onClick={() => setEvidenceTarget({ type: "dimension", payload: dim })}
                       className="p-2 text-left transition-colors hover:bg-white/[0.03]"
                     >
-                      <p className="text-xs font-medium text-cream">{dimension.name}</p>
+                      <p className="text-xs font-medium text-cream">{dim.name}</p>
                     </button>
-                    {comparisonInstitutions.map((institution) => {
-                      const value = institution.scores[dimension.slug] ?? 0;
+                    {comparisonInstitutions.map((inst) => {
+                      const value = inst.scores[dim.slug] ?? 0;
                       return (
                         <button
-                          key={`${dimension.slug}-${institution.id}`}
-                          onClick={() => setEvidenceTarget({ type: "dimension", payload: dimension })}
+                          key={`${dim.slug}-${inst.id}`}
+                          onClick={() => setEvidenceTarget({ type: "dimension", payload: dim })}
                           className={`m-0.5 rounded-xl p-2 text-center transition-transform hover:scale-[1.03] ${scoreSurface(value)}`}
                         >
                           <p className={`font-playfair text-lg ${scoreTone(value)}`}>{value}</p>
@@ -756,7 +737,7 @@ export function BenchmarkingWorkspace({
         <div className="relative z-20 shrink-0 px-3 pb-2.5 pt-1">
           <div className="flex gap-1.5 overflow-x-auto rounded-full bg-black/20 px-1.5 py-1.5 backdrop-blur-xl">
             {workspace.kpis.map((kpi) => {
-              const primary = kpi.values.find((item) => item.comparator === "gpssa") ?? kpi.values[0];
+              const primary = kpi.values.find((v) => v.comparator === "gpssa") ?? kpi.values[0];
               return (
                 <button
                   key={kpi.slug}
@@ -775,146 +756,8 @@ export function BenchmarkingWorkspace({
         </div>
       </motion.div>
 
-      <Modal
-        isOpen={controlsOpen}
-        onClose={() => setControlsOpen(false)}
-        title="Benchmark Controls"
-        description="Filters and peer selection"
-        size="lg"
-      >
-        <div className="space-y-4">
-          {controlsContent}
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={selectorOpen}
-        onClose={() => setSelectorOpen(false)}
-        title="Peer Selection"
-        description="Choose up to three comparison institutions or countries"
-        size="xl"
-      >
-        <div className="space-y-4">
-          {/* Tab switcher */}
-          <div className="flex gap-1 rounded-xl bg-white/[0.04] p-1">
-            <button
-              onClick={() => setSelectorTab("institutions")}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${selectorTab === "institutions" ? "bg-white/10 text-cream" : "text-gray-muted hover:text-cream"}`}
-            >
-              Institutions ({workspace.peerInstitutions.length})
-            </button>
-            <button
-              onClick={() => setSelectorTab("countries")}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${selectorTab === "countries" ? "bg-white/10 text-cream" : "text-gray-muted hover:text-cream"}`}
-            >
-              Countries ({countryPeers.length})
-            </button>
-          </div>
-
-          {selectorTab === "institutions" && (
-            <>
-              <div className="relative">
-                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-muted" />
-                <input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search institutions"
-                  className="w-full rounded-2xl bg-white/[0.05] py-3 pl-9 pr-3 text-sm text-cream outline-none"
-                />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredPeers.map((institution) => {
-                  const selected = selectedInstitutions.some((item) => item.id === institution.id);
-                  return (
-                    <button
-                      key={institution.id}
-                      onClick={() => toggleInstitution(institution.id)}
-                      className={`rounded-[22px] p-4 text-left transition-all ${
-                        selected ? "bg-gpssa-green/14 text-cream" : "bg-white/[0.04] text-cream hover:bg-white/[0.06]"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold">
-                            {countryCodeToFlag(institution.countryCode)} {institution.shortName}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-muted">{institution.country}</p>
-                        </div>
-                        {selected && <span className="h-2.5 w-2.5 rounded-full bg-gpssa-green" />}
-                      </div>
-                      <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-gray-muted">
-                        <span>{institution.region}</span>
-                        <span>•</span>
-                        <span>{institution.digitalMaturity}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {selectorTab === "countries" && (
-            <>
-              <div className="relative">
-                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-muted" />
-                <input
-                  value={countrySearch}
-                  onChange={(e) => setCountrySearch(e.target.value)}
-                  placeholder="Search researched countries"
-                  className="w-full rounded-2xl bg-white/[0.05] py-3 pl-9 pr-3 text-sm text-cream outline-none"
-                />
-              </div>
-              {countryPeers.length === 0 ? (
-                <p className="py-8 text-center text-sm text-gray-muted">
-                  No researched countries available. Run the Research Agent from Admin to populate country data.
-                </p>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredCountryPeers.map((country) => (
-                    <button
-                      key={country.iso3}
-                      onClick={() => addCountryAsPeer(country.iso3)}
-                      disabled={addingCountry === country.iso3}
-                      className="rounded-[22px] bg-white/[0.04] p-4 text-left transition-all hover:bg-white/[0.06] disabled:opacity-50"
-                    >
-                      <p className="text-sm font-semibold text-cream">
-                        {country.flag} {country.name}
-                      </p>
-                      <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-gray-muted">
-                        <span>{country.region}</span>
-                        {country.maturityLabel && (
-                          <>
-                            <span>•</span>
-                            <span>{country.maturityLabel}</span>
-                          </>
-                        )}
-                        {country.maturityScore && (
-                          <>
-                            <span>•</span>
-                            <span>{country.maturityScore.toFixed(1)}</span>
-                          </>
-                        )}
-                      </div>
-                      {addingCountry === country.iso3 && (
-                        <p className="mt-2 text-[10px] text-gpssa-green animate-pulse">Adding to benchmark...</p>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={methodologyOpen}
-        onClose={() => setMethodologyOpen(false)}
-        title={workspace.dataset.name}
-        description="Methodology, coverage, and sourcing posture"
-        size="xl"
-      >
+      {/* Methodology modal */}
+      <Modal isOpen={methodologyOpen} onClose={() => setMethodologyOpen(false)} title={workspace.dataset.name} description="Methodology, coverage, and sourcing posture" size="xl">
         <div className="space-y-5">
           <div className="rounded-[22px] bg-white/[0.04] p-4">
             <p className="text-[11px] uppercase tracking-[0.18em] text-gray-muted">Methodology</p>
@@ -927,6 +770,7 @@ export function BenchmarkingWorkspace({
         </div>
       </Modal>
 
+      {/* Evidence modal */}
       <BenchmarkEvidenceModal
         isOpen={!!evidenceTarget}
         onClose={() => setEvidenceTarget(null)}
@@ -937,4 +781,3 @@ export function BenchmarkingWorkspace({
     </div>
   );
 }
-

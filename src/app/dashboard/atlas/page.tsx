@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, memo, useCallback, useEffect } from "react";
+import { useState, useMemo, memo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +15,7 @@ import {
   ChevronDown,
   X,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import {
   type CountryProfile,
@@ -27,6 +28,7 @@ import {
   formatMetricValue,
   dbRowToProfile,
 } from "@/lib/countries/country-data";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 
 export type { CountryProfile };
 
@@ -193,8 +195,8 @@ const GPSSAWorldMap = memo(function GPSSAWorldMap({
             style={{ background: "rgba(10,22,40,0.96)", borderColor: "rgba(255,255,255,0.1)", minWidth: 190 }}
           >
             <div className="flex items-center gap-2 mb-1.5">
-              {tooltip.profile && (
-                <span className="text-lg leading-none">{tooltip.profile.flag}</span>
+              {tooltip.profile && tooltip.iso && (
+                <CountryFlag code={tooltip.iso} size="md" />
               )}
               <div>
                 <p className="text-sm font-semibold text-white leading-tight">{tooltip.name}</p>
@@ -247,47 +249,57 @@ export default function GlobalAtlasPage() {
   const [listOpen,     setListOpen]     = useState(false);
   const [statsOpen,    setStatsOpen]    = useState(false);
   const [dbProfiles,   setDbProfiles]   = useState<Record<string, CountryProfile>>({});
+  const [lastUpdated,  setLastUpdated]  = useState<Date | null>(null);
+  const [refreshing,   setRefreshing]   = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval>>();
+
+  const loadCountries = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setRefreshing(true);
+    try {
+      const res = await fetch("/api/countries");
+      if (!res.ok) return;
+      let rows: Array<Record<string, unknown>> = await res.json();
+
+      const completedCount = rows.filter(
+        (c) => c.researchStatus === "completed" && c.maturityScore != null
+      ).length;
+      const totalCount = rows.length;
+
+      if (totalCount > 0 && completedCount < totalCount * 0.5) {
+        const jobsRes = await fetch("/api/research/screen-jobs?latest=true");
+        if (jobsRes.ok) {
+          const jobs: Array<{ id: string; type: string; status: string; completedItems: number }> =
+            await jobsRes.json();
+          const atlasJob = jobs.find(
+            (j) => j.type === "atlas-worldmap" && j.status === "completed" && j.completedItems > 0
+          );
+          if (atlasJob) {
+            await fetch(`/api/research/screen-jobs/${atlasJob.id}/rewrite`, { method: "POST" });
+            const refreshed = await fetch("/api/countries");
+            if (refreshed.ok) rows = await refreshed.json();
+          }
+        }
+      }
+
+      const map: Record<string, CountryProfile> = {};
+      for (const c of rows) {
+        const hasData = c.maturityScore != null || c.researchStatus === "completed";
+        if (hasData) {
+          map[c.iso3 as string] = dbRowToProfile(c);
+        }
+      }
+      setDbProfiles(map);
+      setLastUpdated(new Date());
+    } catch { /* ignore */ } finally {
+      if (showSpinner) setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function loadCountries() {
-      try {
-        const res = await fetch("/api/countries");
-        if (!res.ok) return;
-        let rows: Array<Record<string, unknown>> = await res.json();
-
-        const completedCount = rows.filter(
-          (c) => c.researchStatus === "completed" && c.maturityScore != null
-        ).length;
-        const totalCount = rows.length;
-
-        if (totalCount > 0 && completedCount < totalCount * 0.5) {
-          const jobsRes = await fetch("/api/research/screen-jobs?latest=true");
-          if (jobsRes.ok) {
-            const jobs: Array<{ id: string; type: string; status: string; completedItems: number }> =
-              await jobsRes.json();
-            const atlasJob = jobs.find(
-              (j) => j.type === "atlas-worldmap" && j.status === "completed" && j.completedItems > 0
-            );
-            if (atlasJob) {
-              await fetch(`/api/research/screen-jobs/${atlasJob.id}/rewrite`, { method: "POST" });
-              const refreshed = await fetch("/api/countries");
-              if (refreshed.ok) rows = await refreshed.json();
-            }
-          }
-        }
-
-        const map: Record<string, CountryProfile> = {};
-        for (const c of rows) {
-          const hasData = c.maturityScore != null || c.researchStatus === "completed";
-          if (hasData) {
-            map[c.iso3 as string] = dbRowToProfile(c);
-          }
-        }
-        setDbProfiles(map);
-      } catch { /* ignore */ }
-    }
     loadCountries();
-  }, []);
+    pollRef.current = setInterval(() => loadCountries(), 30_000);
+    return () => clearInterval(pollRef.current);
+  }, [loadCountries]);
 
   const mergedCountries = useMemo<Record<string, CountryProfile>>(() => {
     return { ...COUNTRIES, ...dbProfiles };
@@ -398,8 +410,20 @@ export default function GlobalAtlasPage() {
           </div>
         </div>
 
-        {/* ── OVERLAY: Countries toggle — top right ── */}
+        {/* ── OVERLAY: Countries toggle + refresh — top right ── */}
         <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+          <button
+            onClick={() => loadCountries(true)}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs text-gray-muted hover:text-cream transition-all"
+            style={{ background: "rgba(8,18,38,0.92)", borderColor: "rgba(255,255,255,0.14)", backdropFilter: "blur(16px)" }}
+            title={lastUpdated ? `Last updated ${lastUpdated.toLocaleTimeString()}` : "Refresh data"}
+          >
+            <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+            {lastUpdated && (
+              <span className="text-[10px] text-gray-muted/60">{lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+            )}
+          </button>
           <button
             onClick={() => setListOpen(!listOpen)}
             className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${listOpen ? "border-gpssa-green/40 text-gpssa-green" : "text-cream hover:border-gpssa-green/20"}`}
@@ -511,7 +535,7 @@ export default function GlobalAtlasPage() {
                       onMouseLeave={() => setHoveredIso(null)}
                       className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150 hover:bg-white/[0.05]"
                     >
-                      <span className="text-xl leading-none shrink-0">{p.flag}</span>
+                      <CountryFlag code={p.iso3} size="lg" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium text-cream">{p.name}</p>
                         <p className="truncate text-[10px] text-gray-muted/70">{p.institution}</p>
