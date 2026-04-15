@@ -33,6 +33,9 @@ export interface CountryProfile {
   coverageRate: number;
   replacementRate: number;
   sustainability: number;
+  serviceBreadth: number;
+  productCoverage: number;
+  channelStrategy: number;
   systemType: string;
   yearEstablished: number;
   digitalLevel: string;
@@ -83,7 +86,35 @@ export function iso3ToIso2(iso3: string): string | undefined {
   return ISO3_TO_ISO2[iso3.toUpperCase()];
 }
 
-export type MetricKey = "maturityScore" | "coverageRate" | "replacementRate" | "sustainability";
+export const DIGITAL_LEVEL_SCORES: Record<string, number> = {
+  "AI-Integrated": 95,
+  "Digital-First": 85,
+  "Digital-Enabled": 65,
+  "Partially Digital": 55,
+  "Basic Digital": 45,
+  "Transitioning": 35,
+  "Traditional": 25,
+  "Manual": 20,
+};
+
+export function digitalLevelScore(level: string | null | undefined): number {
+  return DIGITAL_LEVEL_SCORES[level ?? "Traditional"] ?? 25;
+}
+
+export function computeDerivedMetrics(input: {
+  coverageRate: number;
+  replacementRate: number;
+  digitalLevel: string;
+}): { serviceBreadth: number; productCoverage: number; channelStrategy: number } {
+  const dlScore = digitalLevelScore(input.digitalLevel);
+  return {
+    serviceBreadth: Math.round(input.coverageRate * 10) / 10,
+    productCoverage: Math.round(((input.coverageRate + input.replacementRate) / 2) * 10) / 10,
+    channelStrategy: Math.round(Math.min((input.coverageRate + dlScore) / 2, 100) * 10) / 10,
+  };
+}
+
+export type MetricKey = "serviceBreadth" | "productCoverage" | "channelStrategy" | "maturityScore" | "coverageRate" | "replacementRate" | "sustainability";
 
 export interface MetricConfig {
   key: MetricKey;
@@ -93,6 +124,33 @@ export interface MetricConfig {
 }
 
 export const METRICS: Record<MetricKey, MetricConfig> = {
+  serviceBreadth: {
+    key: "serviceBreadth", label: "Service Breadth", unit: "%",
+    ranges: [
+      { value: 75, color: "#00C896", label: ">=75% - Comprehensive" },
+      { value: 50, color: "#4A9EFF", label: "50-74% - Broad" },
+      { value: 25, color: "#C5A572", label: "25-49% - Developing" },
+      { value: 0,  color: "#EF4444", label: "<25% - Limited" },
+    ],
+  },
+  productCoverage: {
+    key: "productCoverage", label: "Product Coverage", unit: "%",
+    ranges: [
+      { value: 75, color: "#00C896", label: ">=75% - Full Portfolio" },
+      { value: 50, color: "#4A9EFF", label: "50-74% - Broad Portfolio" },
+      { value: 25, color: "#C5A572", label: "25-49% - Basic Portfolio" },
+      { value: 0,  color: "#EF4444", label: "<25% - Minimal" },
+    ],
+  },
+  channelStrategy: {
+    key: "channelStrategy", label: "Channel Strategy", unit: "%",
+    ranges: [
+      { value: 75, color: "#00C896", label: ">=75% - Omni-Channel" },
+      { value: 50, color: "#4A9EFF", label: "50-74% - Multi-Channel" },
+      { value: 25, color: "#C5A572", label: "25-49% - Basic Channels" },
+      { value: 0,  color: "#EF4444", label: "<25% - Single Channel" },
+    ],
+  },
   maturityScore: {
     key: "maturityScore", label: "Digital Maturity", unit: "1-4",
     ranges: [
@@ -150,7 +208,7 @@ export function getMetricColor(profile: CountryProfile, metricKey: MetricKey): s
 export function formatMetricValue(profile: CountryProfile, key: MetricKey): string {
   const v = profile[key] as number;
   if (key === "maturityScore" || key === "sustainability") return v.toFixed(1);
-  return `${v}%`;
+  return `${Math.round(v)}%`;
 }
 
 export function parseJsonArr(raw: string | null | undefined): string[] {
@@ -164,6 +222,11 @@ export function parseJsonObj<T>(raw: string | null | undefined): T | undefined {
 }
 
 export function dbRowToProfile(c: Record<string, unknown>): CountryProfile {
+  const coverageRate = (c.coverageRate as number) ?? 0;
+  const replacementRate = (c.replacementRate as number) ?? 0;
+  const digitalLevel = (c.digitalLevel as string) ?? "Unknown";
+  const derived = computeDerivedMetrics({ coverageRate, replacementRate, digitalLevel });
+
   return {
     iso3: c.iso3 as string,
     name: c.name as string,
@@ -172,12 +235,13 @@ export function dbRowToProfile(c: Record<string, unknown>): CountryProfile {
     institution: (c.institution as string) ?? "Unknown",
     maturityScore: (c.maturityScore as number) ?? 0,
     maturityLabel: ((c.maturityLabel as string) ?? "Emerging") as CountryProfile["maturityLabel"],
-    coverageRate: (c.coverageRate as number) ?? 0,
-    replacementRate: (c.replacementRate as number) ?? 0,
+    coverageRate,
+    replacementRate,
     sustainability: (c.sustainability as number) ?? 0,
+    ...derived,
     systemType: (c.systemType as string) ?? "Unknown",
     yearEstablished: (c.yearEstablished as number) ?? 0,
-    digitalLevel: (c.digitalLevel as string) ?? "Unknown",
+    digitalLevel,
     keyFeatures: parseJsonArr(c.keyFeatures as string),
     challenges: parseJsonArr(c.challenges as string),
     insights: parseJsonArr(c.insights as string),
@@ -194,7 +258,13 @@ export function dbRowToProfile(c: Record<string, unknown>): CountryProfile {
   };
 }
 
-export const GPSSA_REF: CountryProfile = {
+type StaticProfile = Omit<CountryProfile, "serviceBreadth" | "productCoverage" | "channelStrategy">;
+
+function enrichProfile(p: StaticProfile): CountryProfile {
+  return { ...p, ...computeDerivedMetrics(p) };
+}
+
+export const GPSSA_REF: CountryProfile = enrichProfile({
   iso3: "ARE", name: "United Arab Emirates", flag: "\u{1F1E6}\u{1F1EA}", region: "Middle East",
   institution: "GPSSA + DEWS", maturityScore: 3.1, maturityLabel: "Advanced",
   coverageRate: 78, replacementRate: 65, sustainability: 3.2,
@@ -202,10 +272,9 @@ export const GPSSA_REF: CountryProfile = {
   keyFeatures: ["Federal pension for UAE nationals", "DEWS for expat end-of-service", "Digital member portal", "Multi-employer coverage"],
   challenges: ["Limited expat pension portability", "Aging liability growth", "Manual document processing"],
   insights: ["First GCC authority to launch mobile member portal", "Expanding employer self-service", "AI pilot for claims processing underway"],
-};
+});
 
-export const COUNTRIES: Record<string, CountryProfile> = {
-  ARE: GPSSA_REF,
+const _STATIC_COUNTRIES: Record<string, StaticProfile> = {
   SAU: { iso3:"SAU", name:"Saudi Arabia", flag:"\u{1F1F8}\u{1F1E6}", region:"Middle East", institution:"GOSI", maturityScore:2.7, maturityLabel:"Developing", coverageRate:72, replacementRate:58, sustainability:2.8, systemType:"Defined Benefit", yearEstablished:1969, digitalLevel:"Partially Digital", keyFeatures:["Vision 2030 pension reform","Mandatory employee + employer contributions","Work injury coverage","Digital Wage Protection System"], challenges:["High dependence on oil revenue","Low private sector Saudi coverage","Lengthy claim processing"], insights:["Najm platform for digital injury reporting","Integration with national ID (Absher)","Expanding to gig economy workers"] },
   QAT: { iso3:"QAT", name:"Qatar", flag:"\u{1F1F6}\u{1F1E6}", region:"Middle East", institution:"PFIO", maturityScore:2.6, maturityLabel:"Developing", coverageRate:62, replacementRate:60, sustainability:2.7, systemType:"Defined Benefit", yearEstablished:1993, digitalLevel:"Transitioning", keyFeatures:["Nationals-only pension scheme","Sovereign wealth fund backing","Housing allowances integrated","World Cup legacy digital reforms"], challenges:["Expat workforce not covered","Small citizen beneficiary base","Manual claim workflows"], insights:["Metrash2 app integration for government services","Expanded eligibility ahead of 2022 reforms","PFIO digital portal launched 2023"] },
   KWT: { iso3:"KWT", name:"Kuwait", flag:"\u{1F1F0}\u{1F1FC}", region:"Middle East", institution:"PIFSS", maturityScore:2.3, maturityLabel:"Developing", coverageRate:55, replacementRate:62, sustainability:2.4, systemType:"Defined Benefit", yearEstablished:1976, digitalLevel:"Transitioning", keyFeatures:["Generous replacement rates","Government-backed guarantees","Civil + private sector funds","Survivors and disability coverage"], challenges:["Fiscal sustainability concerns","No expat pension portability","Limited digital channels"], insights:["Digital services expansion via Civil ID integration","e-Pension portal launched","Actuarial reforms underway"] },
@@ -262,3 +331,8 @@ export const COUNTRIES: Record<string, CountryProfile> = {
   TUN: { iso3:"TUN", name:"Tunisia", flag:"\u{1F1F9}\u{1F1F3}", region:"Africa", institution:"CNSS / CNRPS", maturityScore:1.9, maturityLabel:"Emerging", coverageRate:45, replacementRate:48, sustainability:1.8, systemType:"DB (PAYG)", yearEstablished:1960, digitalLevel:"Manual", keyFeatures:["CNSS private sector","CNRPS civil servants","Digital portal CNSS.tn","Agricultural workers scheme"], challenges:["Fiscal deficit impact on pensions","Informal economy majority","Political instability reform risk"], insights:["CNSS digital portal","Mobile claim tracking","Employer e-Declaration system"] },
   ETH: { iso3:"ETH", name:"Ethiopia", flag:"\u{1F1EA}\u{1F1F9}", region:"Africa", institution:"PSNP / OSSA", maturityScore:1.2, maturityLabel:"Emerging", coverageRate:8, replacementRate:30, sustainability:1.2, systemType:"DB (Civil Servants only)", yearEstablished:2011, digitalLevel:"Manual", keyFeatures:["PSNP social protection for rural poor","Civil servant pension scheme","OSSA: private sector embryonic","Foreign aid social safety nets"], challenges:["Only 8% formal coverage","No mandatory private sector pension","Digital infrastructure absent outside cities"], insights:["PSNP: world's largest social protection in Africa","Mobile money integration pilot","ILO/World Bank pension expansion support"] },
 };
+
+export const COUNTRIES: Record<string, CountryProfile> = Object.fromEntries(
+  Object.entries(_STATIC_COUNTRIES).map(([k, v]) => [k, enrichProfile(v)])
+);
+COUNTRIES.ARE = GPSSA_REF;

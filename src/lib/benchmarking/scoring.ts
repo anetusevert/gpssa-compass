@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { DIGITAL_LEVEL_SCORES, digitalLevelScore } from "@/lib/countries/country-data";
 
 interface CountryScoreInput {
   maturityScore: number | null;
@@ -8,23 +9,15 @@ interface CountryScoreInput {
   digitalLevel: string | null;
 }
 
-const DIGITAL_LEVEL_SCORES: Record<string, number> = {
-  "AI-Integrated": 95,
-  "Digital-First": 85,
-  "Digital-Enabled": 65,
-  "Basic Digital": 45,
-  "Traditional": 25,
-};
-
 const DIMENSION_MAPPERS: Record<string, (c: CountryScoreInput) => number> = {
   "digital-maturity": (c) => ((c.maturityScore ?? 0) / 4) * 100,
   "service-breadth": (c) => (c.coverageRate ?? 0),
-  "customer-experience": (c) => DIGITAL_LEVEL_SCORES[c.digitalLevel ?? "Traditional"] ?? 30,
+  "customer-experience": (c) => digitalLevelScore(c.digitalLevel) > 25 ? digitalLevelScore(c.digitalLevel) : 30,
   "operational-efficiency": (c) => ((c.sustainability ?? 0) / 4) * 100,
   "innovation": (c) => ((c.maturityScore ?? 0) / 4) * 85,
   "governance-compliance": (c) => ((c.sustainability ?? 0) / 4) * 90,
-  "data-analytics": (c) => DIGITAL_LEVEL_SCORES[c.digitalLevel ?? "Traditional"] ?? 25,
-  "channel-strategy": (c) => Math.min(((c.coverageRate ?? 0) + (DIGITAL_LEVEL_SCORES[c.digitalLevel ?? "Traditional"] ?? 25)) / 2, 100),
+  "data-analytics": (c) => digitalLevelScore(c.digitalLevel),
+  "channel-strategy": (c) => Math.min(((c.coverageRate ?? 0) + digitalLevelScore(c.digitalLevel)) / 2, 100),
 };
 
 export function computeCountryDimensionScores(

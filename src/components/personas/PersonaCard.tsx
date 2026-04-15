@@ -22,9 +22,9 @@ const cardVariants = {
   initial: { opacity: 0, y: 40, filter: "blur(10px)", scale: 0.95 },
   animate: {
     opacity: 1, y: 0, filter: "blur(0px)", scale: 1,
-    transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+    transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] as const },
   },
-  hover: { y: -8, transition: { duration: 0.3, ease: "easeOut" } },
+  hover: { y: -8, transition: { duration: 0.3, ease: "easeOut" as const } },
   tap: { scale: 0.98, transition: { duration: 0.1 } },
 };
 
@@ -35,7 +35,7 @@ const glowVariants = {
 
 const arrowVariants = {
   initial: { x: 0, opacity: 0.5 },
-  hover: { x: 4, opacity: 1, transition: { duration: 0.2, ease: "easeOut" } },
+  hover: { x: 4, opacity: 1, transition: { duration: 0.2, ease: "easeOut" as const } },
 };
 
 function CoverageBadge({ status }: { status: "full" | "partial" | "none" }) {

@@ -320,12 +320,17 @@ export default function GlobalAtlasPage() {
   const stats = useMemo(() => {
     const leaders   = ALL_PROFILES.filter((p) => p.maturityLabel === "Leader").length;
     const advanced  = ALL_PROFILES.filter((p) => p.maturityLabel === "Advanced").length;
-    const avgMat    = ALL_PROFILES.length > 0 ? (ALL_PROFILES.reduce((s, p) => s + p.maturityScore, 0) / ALL_PROFILES.length).toFixed(1) : "0";
-    const avgCov    = ALL_PROFILES.length > 0 ? Math.round(ALL_PROFILES.reduce((s, p) => s + p.coverageRate, 0) / ALL_PROFILES.length) : 0;
-    const avgRep    = ALL_PROFILES.length > 0 ? Math.round(ALL_PROFILES.reduce((s, p) => s + p.replacementRate, 0) / ALL_PROFILES.length) : 0;
     const regions   = new Set(ALL_PROFILES.map((p) => p.region)).size;
-    return { leaders, advanced, avgMat, avgCov, avgRep, regions };
-  }, [ALL_PROFILES]);
+
+    const n = ALL_PROFILES.length || 1;
+    const activeSum = ALL_PROFILES.reduce((s, p) => s + (p[metric] as number), 0);
+    const activeCfg = METRICS[metric];
+    const activeAvg = activeCfg.unit === "1-4"
+      ? (activeSum / n).toFixed(1)
+      : `${Math.round(activeSum / n)}%`;
+
+    return { leaders, advanced, regions, activeAvg, activeLabel: `Avg ${activeCfg.label}` };
+  }, [ALL_PROFILES, metric]);
 
   const currentMetricCfg = METRICS[metric];
 
@@ -572,8 +577,8 @@ export default function GlobalAtlasPage() {
             {[
               { label: "Countries Tracked", value: String(ALL_PROFILES.length), color: "var(--gpssa-green)" },
               { label: "Global Leaders",    value: String(stats.leaders),        color: "var(--gpssa-green)" },
-              { label: "Avg Coverage",      value: `${stats.avgCov}%`,           color: "var(--gold)" },
-              { label: "Avg Digital Score", value: stats.avgMat,                 color: "var(--adl-blue)" },
+              { label: stats.activeLabel,    value: stats.activeAvg,              color: "var(--gold)" },
+              { label: "Regions",            value: String(stats.regions),        color: "var(--adl-blue)" },
             ].map(({ label, value, color }) => (
               <div key={label} className="flex items-baseline gap-2">
                 <span className="font-playfair text-base font-bold" style={{ color }}>{value}</span>

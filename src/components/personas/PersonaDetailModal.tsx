@@ -22,7 +22,7 @@ const backdropVariants = {
 
 const modalVariants = {
   initial: { opacity: 0, scale: 0.95 },
-  animate: { opacity: 1, scale: 1, transition: { type: "spring", damping: 25, stiffness: 300 } },
+  animate: { opacity: 1, scale: 1, transition: { type: "spring" as const, damping: 25, stiffness: 300 } },
   exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } },
 };
 
@@ -33,7 +33,7 @@ const sidebarItemVariants = {
 
 const contentVariants = {
   initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: "easeOut" } },
+  animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: "easeOut" as const } },
   exit: { opacity: 0, x: -20, transition: { duration: 0.15 } },
 };
 

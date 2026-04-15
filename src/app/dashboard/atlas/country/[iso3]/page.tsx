@@ -36,6 +36,7 @@ import {
   maturityBadgeColor,
   parseJsonArr,
   parseJsonObj,
+  computeDerivedMetrics,
 } from "@/lib/countries/country-data";
 import { CountryFlag } from "@/components/ui/CountryFlag";
 import { CountryInsightModal, type InsightCategory } from "@/components/country/CountryInsightModal";
@@ -89,6 +90,11 @@ interface DbCountry {
 }
 
 function dbToProfile(c: DbCountry): CountryProfile {
+  const derived = computeDerivedMetrics({
+    coverageRate: c.coverageRate ?? 0,
+    replacementRate: c.replacementRate ?? 0,
+    digitalLevel: c.digitalLevel ?? "Unknown",
+  });
   return {
     iso3: c.iso3,
     name: c.name,
@@ -100,6 +106,9 @@ function dbToProfile(c: DbCountry): CountryProfile {
     coverageRate: c.coverageRate ?? 0,
     replacementRate: c.replacementRate ?? 0,
     sustainability: c.sustainability ?? 0,
+    serviceBreadth: derived.serviceBreadth,
+    productCoverage: derived.productCoverage,
+    channelStrategy: derived.channelStrategy,
     systemType: c.systemType ?? "Unknown",
     yearEstablished: c.yearEstablished ?? 0,
     digitalLevel: c.digitalLevel ?? "Unknown",
