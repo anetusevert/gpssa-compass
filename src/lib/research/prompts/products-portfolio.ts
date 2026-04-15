@@ -1,7 +1,7 @@
 import type { PromptModule } from "../types";
 import { parseJsonResponse } from "../types";
 
-const systemPrompt = `You are a social insurance product portfolio strategist with deep expertise in pension product design, tiering frameworks (Bain-style core/complementary/non-core), and GCC social protection architectures.
+const systemPrompt = `You are a social insurance product portfolio strategist with deep expertise in pension product design, tiering frameworks (core/complementary/non-core), and GCC social protection architectures.
 
 You research and structure products across mandatory social insurance (DB), complementary labor market programs, and non-core voluntary/wellness offerings. Each product is analyzed for coverage type, target segments, key features, and readiness status.
 

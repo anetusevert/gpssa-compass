@@ -188,7 +188,7 @@ export default function ProductPortfolioPage() {
         <StatCard icon={Package} label="GPSSA Products" value={products.length} trend="neutral" />
         <StatCard icon={Shield} label="Active offerings" value={activeCount} trend="up" change="Core stable" />
         <StatCard icon={Sparkles} label="In pilot" value={pilotCount} trend="neutral" />
-        <StatCard icon={Layers3} label="Bain tiers" value={3} trend="neutral" change="Core · Comp · NC" />
+        <StatCard icon={Layers3} label="Product tiers" value={3} trend="neutral" change="Core · Comp · NC" />
       </motion.div>
 
       <motion.div variants={fadeUp}>

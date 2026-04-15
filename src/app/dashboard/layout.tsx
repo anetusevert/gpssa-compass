@@ -15,7 +15,9 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const collapsed = useSidebarStore((s) => s.collapsed);
-  const isBenchmarkingStage = pathname === "/dashboard/atlas/benchmarking";
+  const isFullViewport = pathname === "/dashboard/atlas/benchmarking"
+    || pathname === "/dashboard/services/catalog"
+    || pathname === "/dashboard/services/channels";
   const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
 
   return (
@@ -24,7 +26,7 @@ export default function DashboardLayout({
 
       <motion.main
         className={`flex-1 ${
-          isBenchmarkingStage ? "h-screen overflow-hidden" : "overflow-y-auto"
+          isFullViewport ? "h-screen overflow-hidden" : "overflow-y-auto"
         }`}
         animate={{ marginLeft: sidebarWidth }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
@@ -34,7 +36,7 @@ export default function DashboardLayout({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className={isBenchmarkingStage ? "h-full overflow-hidden" : ""}
+          className={isFullViewport ? "h-full overflow-hidden" : ""}
         >
           {children}
         </motion.div>

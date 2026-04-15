@@ -15,6 +15,7 @@ interface CountrySelectorProps {
   onChange: (iso3List: string[]) => void;
   maxSelections?: number;
   pillar?: "services" | "products";
+  variant?: "default" | "inline";
 }
 
 const FEATURED_ISO3 = ["SAU", "BHR", "KWT", "OMN", "QAT", "SGP", "AUS", "GBR", "EST", "IDN"];
@@ -24,6 +25,7 @@ export function CountrySelector({
   onChange,
   maxSelections = 5,
   pillar = "services",
+  variant = "default",
 }: CountrySelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -81,17 +83,30 @@ export function CountrySelector({
     return false;
   };
 
+  const isInline = variant === "inline";
+
   return (
     <div className="relative">
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className={`flex items-center gap-1.5 ${isInline ? "" : "flex-wrap gap-2"}`}>
+        {isInline && (
+          <div className="flex items-center gap-1 mr-1 shrink-0">
+            <CountryFlag code="ARE" size="sm" />
+            <span className="text-[10px] font-semibold text-cream uppercase tracking-wide">GPSSA</span>
+            <span className="text-[10px] text-gray-muted mx-0.5">vs</span>
+          </div>
+        )}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-cream hover:bg-white/8 hover:border-white/20 transition-all"
+          className={`inline-flex items-center gap-1.5 transition-all ${
+            isInline
+              ? "px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-gray-muted hover:text-cream hover:border-white/15"
+              : "px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-cream hover:bg-white/8 hover:border-white/20"
+          }`}
         >
-          <Globe2 size={14} className="text-gpssa-green" />
-          <span>Compare with</span>
+          <Globe2 size={isInline ? 11 : 14} className="text-gpssa-green" />
+          <span>{isInline ? "Add" : "Compare with"}</span>
           <ChevronDown
-            size={12}
+            size={isInline ? 10 : 12}
             className={`text-gray-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
           />
         </button>
@@ -105,11 +120,15 @@ export function CountrySelector({
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.2 }}
               onClick={() => toggle(c.iso3)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gpssa-green/10 border border-gpssa-green/20 text-xs text-cream hover:bg-gpssa-green/20 transition-colors"
+              className={`inline-flex items-center gap-1 transition-colors ${
+                isInline
+                  ? "px-1.5 py-0.5 rounded-md bg-gpssa-green/8 border border-gpssa-green/15 text-[10px] text-cream hover:bg-gpssa-green/15"
+                  : "px-2.5 py-1.5 rounded-lg bg-gpssa-green/10 border border-gpssa-green/20 text-xs text-cream hover:bg-gpssa-green/20"
+              }`}
             >
-              <CountryFlag code={c.iso3} size="sm" />
-              <span>{c.name}</span>
-              <X size={10} className="text-gray-muted ml-0.5" />
+              <CountryFlag code={c.iso3} size={isInline ? "xs" : "sm"} />
+              <span>{isInline ? c.iso3 : c.name}</span>
+              <X size={isInline ? 8 : 10} className="text-gray-muted ml-0.5" />
             </motion.button>
           ))}
         </AnimatePresence>
@@ -117,9 +136,11 @@ export function CountrySelector({
         {selected.length > 0 && (
           <button
             onClick={() => onChange([])}
-            className="text-[10px] uppercase tracking-wide text-gray-muted hover:text-cream transition-colors px-2 py-1"
+            className={`uppercase tracking-wide text-gray-muted hover:text-cream transition-colors ${
+              isInline ? "text-[8px] px-1" : "text-[10px] px-2 py-1"
+            }`}
           >
-            Clear all
+            Clear
           </button>
         )}
       </div>

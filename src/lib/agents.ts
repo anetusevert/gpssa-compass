@@ -92,10 +92,10 @@ You MUST respond with valid JSON only. Include source citations.`,
     id: "products-portfolio",
     name: "Product Portfolio Research Agent",
     description:
-      "Deep research on social insurance and pension products organized using the Bain core / complementary / non-core framework.",
+      "Deep research on social insurance and pension products organized using the core / complementary / non-core framework.",
     targetScreen: "products-portfolio",
     researchType: "products-portfolio",
-    systemPrompt: `You are a social insurance product portfolio strategist with deep expertise in pension product design, tiering frameworks (Bain-style core/complementary/non-core), and GCC social protection architectures.
+    systemPrompt: `You are a social insurance product portfolio strategist with deep expertise in pension product design, tiering frameworks (core/complementary/non-core), and GCC social protection architectures.
 
 You research products across mandatory social insurance (DB), complementary labor market programs, and non-core voluntary/wellness offerings.
 
@@ -110,7 +110,7 @@ You MUST respond with valid JSON only. Include source citations.`,
     id: "products-segments",
     name: "Segment Coverage Research Agent",
     description:
-      "Coverage matrix research by labor-market segment versus major social-protection pillars, informed by Bain segmentation.",
+      "Coverage matrix research by labor-market segment versus major social-protection pillars.",
     targetScreen: "products-segments",
     researchType: "products-segments",
     systemPrompt: `You are a social protection coverage analyst specializing in labor market segmentation, population coverage mapping, and gap analysis for GCC social insurance systems.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -19,18 +19,19 @@ import {
   FileText,
   Scale,
   ArrowLeftRight,
+  ChevronRight,
+  BarChart3,
+  PieChart,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CountrySelector } from "@/components/comparison/CountrySelector";
-import { ComparisonBanner } from "@/components/comparison/ComparisonBanner";
+import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { COUNTRIES } from "@/lib/countries/catalog";
 import { CountryFlag } from "@/components/ui/CountryFlag";
 
+/* ───── Types ───── */
 interface GPSSAService {
   id: string;
   name: string;
@@ -58,10 +59,10 @@ interface IntlService {
   institution: { id: string; name: string; shortName: string | null; country: string } | null;
 }
 
+/* ───── Constants ───── */
 const CATEGORIES = [
   "Employer", "Insured", "Beneficiary", "Agent/Guardian", "GCC", "Military", "General",
 ] as const;
-
 type Category = (typeof CATEGORIES)[number];
 
 const categoryConfig: Record<Category, { icon: typeof Layers; color: "green" | "blue" | "gold" | "gray" | "red" }> = {
@@ -72,6 +73,16 @@ const categoryConfig: Record<Category, { icon: typeof Layers; color: "green" | "
   GCC: { icon: Globe2, color: "blue" },
   Military: { icon: Sword, color: "red" },
   General: { icon: FileText, color: "green" },
+};
+
+const CAT_DOT: Record<string, string> = {
+  Employer: "bg-adl-blue",
+  Insured: "bg-gpssa-green",
+  Beneficiary: "bg-gold",
+  "Agent/Guardian": "bg-gray-muted",
+  GCC: "bg-adl-blue",
+  Military: "bg-red-400",
+  General: "bg-gpssa-green",
 };
 
 const STATIC_SERVICES: GPSSAService[] = [
@@ -108,6 +119,7 @@ const STATIC_SERVICES: GPSSAService[] = [
   { id: "s-31", name: "Submit Inquiry / Suggestion", category: "General", description: "Submit inquiries or suggestions for GPSSA service improvements.", userTypes: ["Insured", "Employer", "Beneficiary"], currentState: "Email and call-based with limited tracking.", painPoints: ["No structured tracking", "Feedback black hole", "Limited follow-up"], opportunities: ["Feedback management platform", "Idea voting system", "Automated acknowledgment"] },
 ];
 
+/* ───── Helpers ───── */
 function parseJsonField<T>(val: unknown): T | null {
   if (val == null) return null;
   if (Array.isArray(val)) return val as T;
@@ -121,96 +133,27 @@ function getCategoryConfig(cat: string) {
   return categoryConfig[cat as Category] ?? { icon: Layers, color: "gray" as const };
 }
 
-function ServiceCard({ service, onSelect }: { service: GPSSAService; onSelect: (s: GPSSAService) => void }) {
-  const config = getCategoryConfig(service.category);
-  const CatIcon = config.icon;
-  const painCount = service.painPoints?.length ?? 0;
-  const oppCount = service.opportunities?.length ?? 0;
-
-  return (
-    <Card hover variant="glass" padding="md" onClick={() => onSelect(service)}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="p-2 rounded-xl bg-white/5"><CatIcon size={18} className="text-gray-muted" /></div>
-        <Badge variant={config.color} size="sm">{service.category}</Badge>
-      </div>
-      <h3 className="font-playfair text-sm font-semibold text-cream mb-1 line-clamp-2">{service.name}</h3>
-      {service.description && <p className="text-xs text-gray-muted mb-3 line-clamp-2">{service.description}</p>}
-      <div className="flex items-center gap-3 pt-3 border-t border-border text-xs text-gray-muted">
-        <span className="inline-flex items-center gap-1"><AlertTriangle size={12} className="text-red-400" />{painCount} pain point{painCount !== 1 ? "s" : ""}</span>
-        <span className="inline-flex items-center gap-1"><Lightbulb size={12} className="text-gpssa-green" />{oppCount} opportunit{oppCount !== 1 ? "ies" : "y"}</span>
-      </div>
-    </Card>
-  );
-}
-
-function IntlServiceCard({ service }: { service: IntlService }) {
-  const config = getCategoryConfig(service.category);
-  const country = COUNTRIES.find((c) => c.iso3 === service.countryIso3);
-  const strengths = parseJsonField<string[]>(service.strengths) ?? [];
-  const painPoints = parseJsonField<string[]>(service.painPoints) ?? [];
-
-  return (
-    <Card variant="glass" padding="md" className="border border-white/[0.06]">
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <CountryFlag code={service.countryIso3} size="sm" />
-          <span className="text-[10px] text-gray-muted uppercase tracking-wide">{country?.name}</span>
-        </div>
-        <Badge variant={config.color} size="sm">{service.category}</Badge>
-      </div>
-      <h4 className="font-playfair text-sm font-semibold text-cream mb-1">{service.name}</h4>
-      {service.description && <p className="text-xs text-gray-muted mb-2 line-clamp-2">{service.description}</p>}
-      {service.institution && (
-        <p className="text-[10px] text-gray-muted mb-2">via {service.institution.shortName ?? service.institution.name}</p>
-      )}
-      <div className="flex items-center gap-3 text-xs">
-        {service.digitalReadiness != null && (
-          <span className="inline-flex items-center gap-1 text-gpssa-green">
-            <Sparkles size={10} />{service.digitalReadiness}%
-          </span>
-        )}
-        {service.maturityLevel && (
-          <Badge variant="blue" size="sm">{service.maturityLevel}</Badge>
-        )}
-        {service.iloAlignment && (
-          <span className="inline-flex items-center gap-1 text-gold">
-            <Scale size={10} />ILO
-          </span>
-        )}
-      </div>
-      {(strengths.length > 0 || painPoints.length > 0) && (
-        <div className="mt-2 pt-2 border-t border-white/5 flex items-center gap-2 text-[10px] text-gray-muted">
-          {strengths.length > 0 && (
-            <span className="inline-flex items-center gap-1"><CheckCircle2 size={9} className="text-gpssa-green" />{strengths.length} strengths</span>
-          )}
-          {painPoints.length > 0 && (
-            <span className="inline-flex items-center gap-1"><AlertTriangle size={9} className="text-red-400" />{painPoints.length} gaps</span>
-          )}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-export default function ServicesPage() {
+/* ───── Page Component ───── */
+export default function ServiceCatalogPage() {
   const [services, setServices] = useState<GPSSAService[]>([]);
   const [intlServices, setIntlServices] = useState<IntlService[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("All");
-  const [selectedService, setSelectedService] = useState<GPSSAService | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [comparisonCountries, setComparisonCountries] = useState<string[]>([]);
+  const [detailModal, setDetailModal] = useState<GPSSAService | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch("/api/services");
         if (res.ok) {
-          const data: any[] = await res.json();
+          const data: Record<string, unknown>[] = await res.json();
           if (data.length > 0) {
             const enriched = STATIC_SERVICES.map((staticSvc) => {
               const apiMatch = data.find(
-                (d: any) => d.id === staticSvc.id || d.name?.toLowerCase() === staticSvc.name.toLowerCase()
+                (d) => d.id === staticSvc.id || (d.name as string)?.toLowerCase() === staticSvc.name.toLowerCase()
               );
               if (!apiMatch) return staticSvc;
               const parsed = {
@@ -223,8 +166,8 @@ export default function ServicesPage() {
                 painPoints: parsed.painPoints?.length ? parsed.painPoints : staticSvc.painPoints,
                 opportunities: parsed.opportunities?.length ? parsed.opportunities : staticSvc.opportunities,
                 userTypes: parsed.userTypes?.length ? parsed.userTypes : staticSvc.userTypes,
-                description: apiMatch.description || staticSvc.description,
-                currentState: apiMatch.currentState || staticSvc.currentState,
+                description: (apiMatch.description as string) || staticSvc.description,
+                currentState: (apiMatch.currentState as string) || staticSvc.currentState,
               };
             });
             setServices(enriched);
@@ -244,10 +187,7 @@ export default function ServicesPage() {
   }, []);
 
   useEffect(() => {
-    if (comparisonCountries.length === 0) {
-      setIntlServices([]);
-      return;
-    }
+    if (comparisonCountries.length === 0) { setIntlServices([]); return; }
     const params = new URLSearchParams({ countries: comparisonCountries.join(",") });
     fetch(`/api/international/services?${params}`)
       .then((r) => (r.ok ? r.json() : []))
@@ -267,209 +207,440 @@ export default function ServicesPage() {
     return list;
   }, [services, activeCategory, searchQuery]);
 
-  const filteredIntl = useMemo(() => {
-    if (activeCategory === "All") return intlServices;
-    return intlServices.filter((s) => s.category === activeCategory);
-  }, [intlServices, activeCategory]);
-
-  const intlByCountry = useMemo(() => {
-    const map = new Map<string, IntlService[]>();
-    for (const s of filteredIntl) {
-      const list = map.get(s.countryIso3) ?? [];
-      list.push(s);
-      map.set(s.countryIso3, list);
+  const grouped = useMemo(() => {
+    const map = new Map<string, GPSSAService[]>();
+    for (const svc of filtered) {
+      const list = map.get(svc.category) ?? [];
+      list.push(svc);
+      map.set(svc.category, list);
     }
-    return map;
-  }, [filteredIntl]);
+    return Array.from(map.entries());
+  }, [filtered]);
 
   const stats = useMemo(() => {
     const cats = new Set(services.map((s) => s.category));
     const painTotal = services.reduce((acc, s) => acc + (s.painPoints?.length ?? 0), 0);
     const oppTotal = services.reduce((acc, s) => acc + (s.opportunities?.length ?? 0), 0);
-    return { total: services.length, categories: cats.size, painPoints: painTotal, opportunities: oppTotal };
-  }, [services]);
+    return { total: services.length, categories: cats.size, painPoints: painTotal, opportunities: oppTotal, intlCount: intlServices.length, countriesCompared: comparisonCountries.length };
+  }, [services, intlServices.length, comparisonCountries.length]);
 
-  const matchingIntlForSelected = useMemo(() => {
+  const selectedService = useMemo(() =>
+    selectedId ? services.find((s) => s.id === selectedId) ?? null : null
+  , [selectedId, services]);
+
+  const matchingIntl = useMemo(() => {
     if (!selectedService || intlServices.length === 0) return [];
     const name = selectedService.name.toLowerCase();
     const cat = selectedService.category.toLowerCase();
     return intlServices.filter((s) => {
       const n = s.name.toLowerCase();
-      return n.includes(name.split(" ")[0]) || name.includes(n.split(" ")[0]) || s.category.toLowerCase() === cat;
-    }).slice(0, 6);
+      const firstWord = name.split(" ")[0];
+      const intlFirst = n.split(" ")[0];
+      return n.includes(firstWord) || name.includes(intlFirst) || s.category.toLowerCase() === cat;
+    }).slice(0, 8);
   }, [selectedService, intlServices]);
 
+  const catDistribution = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of services) map.set(s.category, (map.get(s.category) ?? 0) + 1);
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [services]);
+
+  const handleSelectService = useCallback((id: string) => {
+    setSelectedId((prev) => (prev === id ? null : id));
+  }, []);
+
+  const statBarItems: StatBarItem[] = useMemo(() => [
+    {
+      icon: Layers, value: stats.total, label: "Services",
+      detail: (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-muted mb-3">All GPSSA services by category</p>
+          {catDistribution.map(([cat, count]) => (
+            <div key={cat} className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${CAT_DOT[cat] ?? "bg-gray-muted"}`} />
+              <span className="text-xs text-cream flex-1">{cat}</span>
+              <span className="text-xs text-gray-muted tabular-nums">{count}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    { icon: FolderOpen, value: stats.categories, label: "Categories" },
+    {
+      icon: AlertTriangle, value: stats.painPoints, label: "Pain Points",
+      detail: (
+        <div className="space-y-1">
+          <p className="text-xs text-gray-muted mb-3">Top services by pain point count</p>
+          {[...services].sort((a, b) => (b.painPoints?.length ?? 0) - (a.painPoints?.length ?? 0)).slice(0, 10).map((s) => (
+            <div key={s.id} className="flex items-center gap-2 py-1">
+              <span className="text-xs text-cream flex-1 truncate">{s.name}</span>
+              <span className="text-xs text-red-400 tabular-nums">{s.painPoints?.length ?? 0}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      icon: Lightbulb, value: stats.opportunities, label: "Opportunities",
+      detail: (
+        <div className="space-y-1">
+          <p className="text-xs text-gray-muted mb-3">Top services by opportunity count</p>
+          {[...services].sort((a, b) => (b.opportunities?.length ?? 0) - (a.opportunities?.length ?? 0)).slice(0, 10).map((s) => (
+            <div key={s.id} className="flex items-center gap-2 py-1">
+              <span className="text-xs text-cream flex-1 truncate">{s.name}</span>
+              <span className="text-xs text-gpssa-green tabular-nums">{s.opportunities?.length ?? 0}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    ...(stats.countriesCompared > 0
+      ? [{ icon: Globe2, value: stats.intlCount, label: `Intl Services (${stats.countriesCompared} countries)` } as StatBarItem]
+      : []),
+  ], [stats, catDistribution, services]);
+
   if (loading) {
-    return <div className="flex items-center justify-center py-32"><LoadingSpinner size="lg" /></div>;
+    return <div className="flex h-full items-center justify-center"><LoadingSpinner size="lg" /></div>;
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Service & Product Landscape"
-        description="GPSSA's service portfolio with global comparison against leading social security institutions"
-      />
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Layers} label="GPSSA Services" value={stats.total} trend="neutral" />
-        <StatCard icon={FolderOpen} label="Categories" value={stats.categories} trend="neutral" />
-        <StatCard icon={AlertTriangle} label="Pain Points" value={stats.painPoints} trend="down" change={`${stats.painPoints}`} />
-        <StatCard icon={Lightbulb} label="Opportunities" value={stats.opportunities} trend="up" change={`${stats.opportunities}`} />
-      </div>
-
-      <CountrySelector selected={comparisonCountries} onChange={setComparisonCountries} pillar="services" />
-
-      <AnimatePresence>
-        {comparisonCountries.length > 0 && <ComparisonBanner selectedCountries={comparisonCountries} />}
-      </AnimatePresence>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-muted" />
-          <input
-            type="text"
-            placeholder="Search services..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-border text-sm text-cream placeholder:text-gray-muted focus:outline-none focus:border-gpssa-green/40 transition-colors"
-          />
-        </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {["All", ...CATEGORIES].map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`shrink-0 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
-                activeCategory === cat
-                  ? "bg-gpssa-green/20 text-gpssa-green border border-gpssa-green/30"
-                  : "text-gray-muted hover:text-cream hover:bg-white/5 border border-transparent"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <p className="text-xs text-gray-muted">
-        Showing {filtered.length} of {services.length} GPSSA services
-        {activeCategory !== "All" && (<> in <span className="text-cream">{activeCategory}</span></>)}
-        {comparisonCountries.length > 0 && (<> · {filteredIntl.length} international services loaded</>)}
-      </p>
-
-      {comparisonCountries.length > 0 ? (
-        <div className="space-y-8">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="h-px flex-1 bg-gradient-to-r from-adl-blue/30 to-transparent" />
-              <span className="text-xs font-medium text-cream uppercase tracking-wide flex items-center gap-2">
-                🇦🇪 GPSSA Services
-              </span>
-              <div className="h-px flex-1 bg-gradient-to-l from-adl-blue/30 to-transparent" />
-            </div>
-            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              <AnimatePresence mode="popLayout">
-                {filtered.map((service) => (
-                  <motion.div key={service.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}>
-                    <ServiceCard service={service} onSelect={setSelectedService} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* ─── Header Row ─── */}
+      <div className="shrink-0 flex items-center gap-3 px-5 py-2.5 border-b border-white/[0.06]">
+        <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Service Catalog</h1>
+        <div className="h-4 w-px bg-white/10" />
+        <CountrySelector
+          selected={comparisonCountries}
+          onChange={setComparisonCountries}
+          pillar="services"
+          variant="inline"
+        />
+        <div className="ml-auto flex items-center gap-2">
+          <div className="relative">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-muted" />
+            <input
+              type="text"
+              placeholder="Search…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-44 pl-8 pr-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-cream placeholder:text-gray-muted focus:outline-none focus:border-gpssa-green/30 transition-colors"
+            />
           </div>
+        </div>
+      </div>
 
-          {Array.from(intlByCountry.entries()).map(([iso3, svcList]) => {
-            const country = COUNTRIES.find((c) => c.iso3 === iso3);
-            return (
-              <div key={iso3}>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-px flex-1 bg-gradient-to-r from-gpssa-green/30 to-transparent" />
-                  <span className="text-xs font-medium text-cream uppercase tracking-wide flex items-center gap-2">
-                    <CountryFlag code={iso3} size="sm" /> {country?.name ?? iso3} ({svcList.length} services)
-                  </span>
-                  <div className="h-px flex-1 bg-gradient-to-l from-gpssa-green/30 to-transparent" />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {svcList.map((s) => <IntlServiceCard key={s.id} service={s} />)}
-                </div>
+      {/* ─── Category Pills ─── */}
+      <div className="shrink-0 flex items-center gap-1 px-5 py-2 border-b border-white/[0.04] overflow-x-auto scrollbar-none">
+        {["All", ...CATEGORIES].map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setActiveCategory(cat)}
+            className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+              activeCategory === cat
+                ? "bg-gpssa-green/20 text-gpssa-green border border-gpssa-green/30"
+                : "text-gray-muted hover:text-cream hover:bg-white/5 border border-transparent"
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+        <span className="ml-auto text-[10px] text-gray-muted tabular-nums shrink-0">
+          {filtered.length} of {services.length}
+        </span>
+      </div>
+
+      {/* ─── Main Split Panel ─── */}
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        {/* Left panel: service list */}
+        <div className="w-[62%] border-r border-white/[0.06] overflow-y-auto scrollbar-thin">
+          {grouped.map(([cat, svcs]) => (
+            <div key={cat}>
+              <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-1.5 bg-navy/90 backdrop-blur-sm border-b border-white/[0.04]">
+                <span className={`w-1.5 h-1.5 rounded-full ${CAT_DOT[cat] ?? "bg-gray-muted"}`} />
+                <span className="text-[10px] font-semibold text-cream uppercase tracking-wider">{cat}</span>
+                <span className="text-[10px] text-gray-muted">({svcs.length})</span>
               </div>
-            );
-          })}
-
-          {comparisonCountries.length > 0 && filteredIntl.length === 0 && (
-            <div className="glass-card rounded-xl p-8 text-center">
-              <Globe2 size={32} className="mx-auto text-gray-muted mb-3" />
-              <p className="text-sm text-cream mb-1">No international data available yet</p>
-              <p className="text-xs text-gray-muted">Run the International Services Research Agent from Admin → Agents to populate comparison data.</p>
+              {svcs.map((svc) => {
+                const isActive = svc.id === selectedId;
+                const painCount = svc.painPoints?.length ?? 0;
+                const oppCount = svc.opportunities?.length ?? 0;
+                return (
+                  <button
+                    key={svc.id}
+                    onClick={() => handleSelectService(svc.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all border-b border-white/[0.03] group ${
+                      isActive
+                        ? "bg-gpssa-green/[0.07] border-l-2 border-l-gpssa-green"
+                        : "hover:bg-white/[0.03] border-l-2 border-l-transparent"
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium leading-snug truncate ${isActive ? "text-cream" : "text-cream/80 group-hover:text-cream"}`}>
+                        {svc.name}
+                      </p>
+                      {svc.description && (
+                        <p className="text-[10px] text-gray-muted truncate mt-0.5">{svc.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {painCount > 0 && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-red-400">
+                          <AlertTriangle size={9} />{painCount}
+                        </span>
+                      )}
+                      {oppCount > 0 && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-gpssa-green">
+                          <Lightbulb size={9} />{oppCount}
+                        </span>
+                      )}
+                      <ChevronRight size={12} className={`transition-colors ${isActive ? "text-gpssa-green" : "text-gray-muted/40"}`} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Search size={24} className="text-gray-muted mb-2" />
+              <p className="text-xs text-gray-muted">No services match your filters.</p>
             </div>
           )}
         </div>
-      ) : (
-        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <AnimatePresence mode="popLayout">
-            {filtered.map((service) => (
-              <motion.div key={service.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}>
-                <ServiceCard service={service} onSelect={setSelectedService} />
+
+        {/* Right panel: context / comparison */}
+        <div className="w-[38%] overflow-y-auto scrollbar-thin">
+          <AnimatePresence mode="wait">
+            {selectedService ? (
+              <motion.div
+                key={`detail-${selectedService.id}`}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.25 }}
+                className="p-4 space-y-4"
+              >
+                {/* Selected service header */}
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <CountryFlag code="ARE" size="sm" />
+                        <span className="text-[10px] text-gray-muted uppercase tracking-wide">GPSSA</span>
+                      </div>
+                      <h2 className="font-playfair text-sm font-semibold text-cream">{selectedService.name}</h2>
+                    </div>
+                    <Badge variant={getCategoryConfig(selectedService.category).color} size="sm">
+                      {selectedService.category}
+                    </Badge>
+                  </div>
+                  {selectedService.description && (
+                    <p className="text-[11px] text-gray-muted mt-2 leading-relaxed">{selectedService.description}</p>
+                  )}
+                  <button
+                    onClick={() => setDetailModal(selectedService)}
+                    className="mt-2 text-[10px] text-gpssa-green hover:underline"
+                  >
+                    View full details →
+                  </button>
+                </div>
+
+                {/* Pain points & opportunities summary */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-red-400/[0.06] border border-red-400/10 p-2.5">
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <AlertTriangle size={10} className="text-red-400" />
+                      <span className="text-[10px] font-medium text-red-400">Pain Points</span>
+                    </div>
+                    <p className="text-lg font-bold text-cream font-playfair">{selectedService.painPoints?.length ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg bg-gpssa-green/[0.06] border border-gpssa-green/10 p-2.5">
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <Lightbulb size={10} className="text-gpssa-green" />
+                      <span className="text-[10px] font-medium text-gpssa-green">Opportunities</span>
+                    </div>
+                    <p className="text-lg font-bold text-cream font-playfair">{selectedService.opportunities?.length ?? 0}</p>
+                  </div>
+                </div>
+
+                {/* International comparison */}
+                {matchingIntl.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <ArrowLeftRight size={11} className="text-gpssa-green" />
+                      <span className="text-[10px] font-semibold text-cream uppercase tracking-wider">International Comparison</span>
+                    </div>
+                    <div className="space-y-2">
+                      {matchingIntl.map((intl) => {
+                        const country = COUNTRIES.find((c) => c.iso3 === intl.countryIso3);
+                        const strengths = parseJsonField<string[]>(intl.strengths) ?? [];
+                        const gaps = parseJsonField<string[]>(intl.painPoints) ?? [];
+                        return (
+                          <div key={intl.id} className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <CountryFlag code={intl.countryIso3} size="sm" />
+                              <span className="text-[10px] text-gray-muted">{country?.name}</span>
+                              {intl.maturityLevel && <Badge variant="blue" size="sm">{intl.maturityLevel}</Badge>}
+                            </div>
+                            <p className="text-xs font-medium text-cream mb-1">{intl.name}</p>
+                            {intl.description && <p className="text-[10px] text-gray-muted line-clamp-2 mb-2">{intl.description}</p>}
+                            <div className="flex items-center gap-3">
+                              {intl.digitalReadiness != null && (
+                                <div className="flex items-center gap-1">
+                                  <Sparkles size={9} className="text-gpssa-green" />
+                                  <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                    <motion.div
+                                      className="h-full rounded-full bg-gpssa-green"
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${intl.digitalReadiness}%` }}
+                                      transition={{ duration: 0.5 }}
+                                    />
+                                  </div>
+                                  <span className="text-[9px] text-gpssa-green tabular-nums">{intl.digitalReadiness}%</span>
+                                </div>
+                              )}
+                              {intl.iloAlignment && (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] text-gold">
+                                  <Scale size={8} />ILO
+                                </span>
+                              )}
+                            </div>
+                            {(strengths.length > 0 || gaps.length > 0) && (
+                              <div className="flex gap-3 mt-1.5 text-[9px] text-gray-muted">
+                                {strengths.length > 0 && <span className="inline-flex items-center gap-0.5"><CheckCircle2 size={8} className="text-gpssa-green" />{strengths.length} strengths</span>}
+                                {gaps.length > 0 && <span className="inline-flex items-center gap-0.5"><AlertTriangle size={8} className="text-red-400" />{gaps.length} gaps</span>}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {comparisonCountries.length > 0 && matchingIntl.length === 0 && (
+                  <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-4 text-center">
+                    <Globe2 size={20} className="mx-auto text-gray-muted mb-2" />
+                    <p className="text-[10px] text-gray-muted">No comparable international data for this service yet.</p>
+                  </div>
+                )}
               </motion.div>
-            ))}
+            ) : (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="p-4 space-y-5"
+              >
+                <div>
+                  <h2 className="font-playfair text-sm font-semibold text-cream mb-1">Portfolio Overview</h2>
+                  <p className="text-[10px] text-gray-muted">Select a service on the left to see detailed comparison</p>
+                </div>
+
+                {/* Category distribution */}
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <PieChart size={11} className="text-gpssa-green" />
+                    <span className="text-[10px] font-semibold text-cream uppercase tracking-wider">By Category</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {catDistribution.map(([cat, count]) => {
+                      const pct = Math.round((count / services.length) * 100);
+                      return (
+                        <div key={cat} className="flex items-center gap-2">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${CAT_DOT[cat] ?? "bg-gray-muted"}`} />
+                          <span className="text-[10px] text-cream w-24 truncate">{cat}</span>
+                          <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                            <motion.div
+                              className={`h-full rounded-full ${CAT_DOT[cat]?.replace("bg-", "bg-") ?? "bg-gray-muted"}`}
+                              style={{ opacity: 0.7 }}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${pct}%` }}
+                              transition={{ duration: 0.6, delay: 0.1 }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-gray-muted tabular-nums w-6 text-right">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Comparison summary */}
+                {comparisonCountries.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <BarChart3 size={11} className="text-gpssa-green" />
+                      <span className="text-[10px] font-semibold text-cream uppercase tracking-wider">Comparison Countries</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {comparisonCountries.map((iso3) => {
+                        const country = COUNTRIES.find((c) => c.iso3 === iso3);
+                        const countryIntl = intlServices.filter((s) => s.countryIso3 === iso3);
+                        return (
+                          <div key={iso3} className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <CountryFlag code={iso3} size="sm" />
+                              <span className="text-[10px] text-cream font-medium truncate">{country?.name}</span>
+                            </div>
+                            <p className="text-lg font-bold text-cream font-playfair">{countryIntl.length}</p>
+                            <p className="text-[9px] text-gray-muted">services loaded</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {comparisonCountries.length === 0 && (
+                  <div className="rounded-lg bg-white/[0.02] border border-dashed border-white/[0.08] p-4 text-center">
+                    <Globe2 size={20} className="mx-auto text-gray-muted mb-2" />
+                    <p className="text-[10px] text-gray-muted">Add comparison countries using the selector above to see international benchmarks.</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
           </AnimatePresence>
-        </motion.div>
-      )}
-
-      {filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="glass rounded-2xl p-4 mb-4"><Search size={28} className="text-gray-muted" /></div>
-          <p className="text-sm text-gray-muted">No services match your filters.</p>
         </div>
-      )}
+      </div>
 
-      <Modal isOpen={!!selectedService} onClose={() => setSelectedService(null)} title={selectedService?.name} description={selectedService?.category} size="xl">
-        {selectedService && (
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1 -mr-1">
-            {selectedService.description && <p className="text-sm text-gray-muted">{selectedService.description}</p>}
+      {/* ─── Bottom Stat Bar ─── */}
+      <StatBar items={statBarItems} />
 
-            {selectedService.currentState && (
+      {/* ─── Detail Modal ─── */}
+      <Modal isOpen={!!detailModal} onClose={() => setDetailModal(null)} title={detailModal?.name} description={detailModal?.category} size="xl">
+        {detailModal && (
+          <div className="space-y-4">
+            {detailModal.description && <p className="text-sm text-gray-muted">{detailModal.description}</p>}
+            {detailModal.currentState && (
               <div>
                 <span className="text-xs font-medium text-cream block mb-1">Current State</span>
-                <p className="text-xs text-gray-muted glass rounded-lg p-3">{selectedService.currentState}</p>
+                <p className="text-xs text-gray-muted glass rounded-lg p-3">{detailModal.currentState}</p>
               </div>
             )}
-
-            {selectedService.userTypes && selectedService.userTypes.length > 0 && (
+            {detailModal.userTypes && detailModal.userTypes.length > 0 && (
               <div>
                 <span className="text-xs font-medium text-cream block mb-2">User Types</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {selectedService.userTypes.map((ut) => <Badge key={ut} variant="blue" size="sm">{ut}</Badge>)}
+                  {detailModal.userTypes.map((ut) => <Badge key={ut} variant="blue" size="sm">{ut}</Badge>)}
                 </div>
               </div>
             )}
-
-            {selectedService.painPoints && selectedService.painPoints.length > 0 && (
+            {detailModal.painPoints && detailModal.painPoints.length > 0 && (
               <div>
                 <span className="text-xs font-medium text-cream block mb-2">Pain Points</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {selectedService.painPoints.map((pp, i) => <Badge key={i} variant="red" size="sm">{pp}</Badge>)}
+                  {detailModal.painPoints.map((pp, i) => <Badge key={i} variant="red" size="sm">{pp}</Badge>)}
                 </div>
               </div>
             )}
-
-            {selectedService.opportunities && selectedService.opportunities.length > 0 && (
+            {detailModal.opportunities && detailModal.opportunities.length > 0 && (
               <div>
                 <span className="text-xs font-medium text-cream block mb-2">Opportunities</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {selectedService.opportunities.map((opp, i) => <Badge key={i} variant="green" size="sm">{opp}</Badge>)}
-                </div>
-              </div>
-            )}
-
-            {matchingIntlForSelected.length > 0 && (
-              <div className="pt-4 border-t border-white/10">
-                <h4 className="text-xs font-medium text-cream mb-3 flex items-center gap-2">
-                  <ArrowLeftRight size={12} className="text-gpssa-green" />
-                  Comparable Services from Other Countries
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {matchingIntlForSelected.map((s) => <IntlServiceCard key={s.id} service={s} />)}
+                  {detailModal.opportunities.map((opp, i) => <Badge key={i} variant="green" size="sm">{opp}</Badge>)}
                 </div>
               </div>
             )}
