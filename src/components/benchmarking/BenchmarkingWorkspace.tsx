@@ -84,6 +84,38 @@ function scoreSurface(score: number) {
   return "bg-orange-400/12";
 }
 
+function heatColor(score: number): string {
+  const t = Math.max(0, Math.min(100, score)) / 100;
+  if (t < 0.5) {
+    const p = t / 0.5;
+    const r = Math.round(220 - p * 40);
+    const g = Math.round(50 + p * 140);
+    const b = Math.round(50 + p * 10);
+    return `rgb(${r},${g},${b})`;
+  }
+  const p = (t - 0.5) / 0.5;
+  const r = Math.round(180 - p * 140);
+  const g = Math.round(190 + p * 60);
+  const b = Math.round(60 + p * 120);
+  return `rgb(${r},${g},${b})`;
+}
+
+function heatBg(score: number): string {
+  const t = Math.max(0, Math.min(100, score)) / 100;
+  if (t < 0.5) {
+    const p = t / 0.5;
+    const r = Math.round(220 - p * 40);
+    const g = Math.round(50 + p * 140);
+    const b = Math.round(50 + p * 10);
+    return `rgba(${r},${g},${b},0.18)`;
+  }
+  const p = (t - 0.5) / 0.5;
+  const r = Math.round(180 - p * 140);
+  const g = Math.round(190 + p * 60);
+  const b = Math.round(60 + p * 120);
+  return `rgba(${r},${g},${b},0.18)`;
+}
+
 /* ─── Evidence list ─── */
 
 function EvidenceList({ sources }: { sources: BenchmarkSourceReference[] }) {
@@ -193,12 +225,16 @@ interface CountryPeer {
 /* ─── Custom quadrant dot: flag emoji ─── */
 
 function FlagDot(props: Record<string, unknown>) {
-  const { cx, cy, payload } = props as { cx: number; cy: number; payload: { countryCode: string; flag: string } };
-  if (!cx || !cy) return null;
+  const { cx, cy, payload } = props as { cx: number; cy: number; payload: { countryCode: string; flag: string; name: string } };
+  if (cx == null || cy == null || isNaN(cx) || isNaN(cy)) return null;
   return (
     <g>
-      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={16}>
+      <circle cx={cx} cy={cy} r={16} fill="rgba(6,18,38,0.7)" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+      <text x={cx} y={cy - 1} textAnchor="middle" dominantBaseline="central" fontSize={18}>
         {payload.flag || "●"}
+      </text>
+      <text x={cx} y={cy + 20} textAnchor="middle" fontSize={9} fill="#B8C2CF" fontWeight={500}>
+        {payload.name}
       </text>
     </g>
   );
@@ -240,6 +276,9 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
   const [countryPeers, setCountryPeers] = useState<CountryPeer[]>([]);
   const [addingCountry, setAddingCountry] = useState<string | null>(null);
   const selectorRef = useRef<HTMLDivElement>(null);
+
+  // Bar chart dimension state ("overall" = average across all dimensions)
+  const [barDimSlug, setBarDimSlug] = useState<string>("overall");
 
   // Quadrant axis state
   const [xDimSlug, setXDimSlug] = useState(workspace.dimensions[0]?.slug ?? "");
@@ -359,16 +398,29 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
     });
   }, [selectedInstitutions, workspace.dimensions, workspace.targetInstitution.scores]);
 
+  const barDimName = barDimSlug === "overall"
+    ? "Overall Score"
+    : workspace.dimensions.find((d) => d.slug === barDimSlug)?.name ?? barDimSlug;
+
   const overallBars = useMemo(() => {
     return comparisonInstitutions
-      .map((inst, idx) => ({
-        name: inst.shortName,
-        countryCode: inst.countryCode,
-        score: average(workspace.dimensions.map((d) => inst.scores[d.slug] ?? 0)),
-        fill: CHART_COLORS[idx % CHART_COLORS.length],
-      }))
+      .map((inst, idx) => {
+        const score = barDimSlug === "overall"
+          ? average(workspace.dimensions.map((d) => inst.scores[d.slug] ?? 0))
+          : (inst.scores[barDimSlug] ?? 0);
+        const flag = inst.countryCode.length === 2
+          ? String.fromCodePoint(0x1f1e6 + inst.countryCode.toUpperCase().charCodeAt(0) - 65, 0x1f1e6 + inst.countryCode.toUpperCase().charCodeAt(1) - 65)
+          : "";
+        return {
+          name: inst.shortName,
+          countryCode: inst.countryCode,
+          flag,
+          score: Math.round(score),
+          fill: CHART_COLORS[idx % CHART_COLORS.length],
+        };
+      })
       .sort((a, b) => b.score - a.score);
-  }, [comparisonInstitutions, workspace.dimensions]);
+  }, [comparisonInstitutions, workspace.dimensions, barDimSlug]);
 
   const radarData = useMemo(() => {
     return workspace.dimensions.map((dim) => {
@@ -615,20 +667,60 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
 
             {/* Bar chart */}
             {viewMode === "bars" && (
-              <div className="h-full w-full min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%" minHeight={1}>
-                  <BarChart data={overallBars} layout="vertical" margin={{ top: 12, right: 20, bottom: 12, left: 16 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                    <XAxis type="number" domain={[0, 100]} tick={{ fill: "#8A9BB0", fontSize: 11 }} />
-                    <YAxis dataKey="name" type="category" tick={{ fill: "#E8F0F5", fontSize: 12 }} width={90} />
-                    <Tooltip contentStyle={{ backgroundColor: "rgba(10,22,40,0.96)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, color: "#E8F0F5" }} />
-                    <Bar dataKey="score" radius={[0, 10, 10, 0]} barSize={24}>
-                      {overallBars.map((item) => (
-                        <Cell key={item.name} fill={item.fill} />
+              <div className="flex h-full w-full flex-col min-h-[200px]">
+                <div className="flex items-center gap-4 px-4 py-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.14em] text-gray-muted">Dimension</span>
+                    <select
+                      value={barDimSlug}
+                      onChange={(e) => setBarDimSlug(e.target.value)}
+                      className="rounded-lg bg-white/[0.06] px-2 py-1 text-[11px] text-cream outline-none"
+                    >
+                      <option value="overall">Overall Score</option>
+                      {workspace.dimensions.map((d) => (
+                        <option key={d.slug} value={d.slug}>{d.name}</option>
                       ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                    </select>
+                  </div>
+                  <span className="text-[10px] text-gray-muted/50">{barDimName}</span>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={1}>
+                    <BarChart data={overallBars} layout="vertical" margin={{ top: 8, right: 28, bottom: 8, left: 8 }}>
+                      <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                      <XAxis type="number" domain={[0, 100]} tick={{ fill: "#8A9BB0", fontSize: 11 }}>
+                        <Label value={barDimName} position="bottom" offset={-2} style={{ fill: "#B8C2CF", fontSize: 11, fontWeight: 500 }} />
+                      </XAxis>
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        tick={(tickProps: Record<string, unknown>) => {
+                          const x = Number(tickProps.x ?? 0);
+                          const y = Number(tickProps.y ?? 0);
+                          const val = (tickProps.payload as { value: string })?.value ?? "";
+                          const item = overallBars.find((b) => b.name === val);
+                          return (
+                            <g transform={`translate(${x},${y})`}>
+                              <text x={-4} y={0} textAnchor="end" dominantBaseline="central" fontSize={11} fill="#E8F0F5">
+                                {item?.flag ? `${item.flag} ` : ""}{val}
+                              </text>
+                            </g>
+                          );
+                        }}
+                        width={120}
+                      />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "rgba(10,22,40,0.96)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, color: "#E8F0F5" }}
+                        formatter={(value: unknown) => [`${value}`, barDimName]}
+                      />
+                      <Bar dataKey="score" radius={[0, 10, 10, 0]} barSize={24}>
+                        {overallBars.map((item) => (
+                          <Cell key={item.name} fill={item.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             )}
 
@@ -696,33 +788,48 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
 
             {/* Heatmap */}
             {viewMode === "heatmap" && (
-              <div className={`grid h-full w-full min-h-0 auto-rows-min overflow-auto rounded-[22px] bg-black/10`} style={{ gridTemplateColumns: `minmax(110px,1fr) repeat(${comparisonInstitutions.length},minmax(0,1fr))` }}>
-                <div className="sticky top-0 z-10 bg-navy/80 p-2 text-[10px] uppercase tracking-[0.16em] text-gray-muted backdrop-blur-md">Dimension</div>
+              <div
+                className="grid h-full w-full min-h-0 auto-rows-min overflow-auto rounded-[22px]"
+                style={{
+                  gridTemplateColumns: `minmax(120px,1fr) repeat(${comparisonInstitutions.length},minmax(0,1fr))`,
+                  background: "rgba(0,0,0,0.15)",
+                }}
+              >
+                <div className="sticky top-0 z-10 bg-navy/90 p-2.5 text-[10px] uppercase tracking-[0.16em] text-gray-muted backdrop-blur-xl border-b border-white/[0.06]">Dimension</div>
                 {comparisonInstitutions.map((inst, idx) => (
-                  <div key={inst.id} className="sticky top-0 z-10 bg-navy/80 p-2 text-center backdrop-blur-md">
+                  <div key={inst.id} className="sticky top-0 z-10 bg-navy/90 p-2.5 text-center backdrop-blur-xl border-b border-white/[0.06]">
                     <p className="text-xs font-semibold text-cream">
                       <CountryFlag code={inst.countryCode} size="xs" /> {inst.shortName}
                     </p>
                     <p className="text-[10px] text-gray-muted">{idx === 0 ? "Target" : inst.region}</p>
                   </div>
                 ))}
-                {workspace.dimensions.map((dim) => (
+                {workspace.dimensions.map((dim, dimIdx) => (
                   <div key={dim.slug} className="contents">
                     <button
                       onClick={() => setEvidenceTarget({ type: "dimension", payload: dim })}
-                      className="p-2 text-left transition-colors hover:bg-white/[0.03]"
+                      className={`p-2.5 text-left transition-colors hover:bg-white/[0.04] border-b border-white/[0.03] ${dimIdx % 2 === 0 ? "bg-white/[0.01]" : ""}`}
                     >
                       <p className="text-xs font-medium text-cream">{dim.name}</p>
                     </button>
                     {comparisonInstitutions.map((inst) => {
-                      const value = inst.scores[dim.slug] ?? 0;
+                      const value = Math.round(inst.scores[dim.slug] ?? 0);
                       return (
                         <button
                           key={`${dim.slug}-${inst.id}`}
                           onClick={() => setEvidenceTarget({ type: "dimension", payload: dim })}
-                          className={`m-0.5 rounded-xl p-2 text-center transition-transform hover:scale-[1.03] ${scoreSurface(value)}`}
+                          className={`relative m-[2px] rounded-xl p-2.5 text-center transition-all duration-200 hover:scale-[1.05] hover:z-10 hover:shadow-lg border-b border-white/[0.03] ${dimIdx % 2 === 0 ? "bg-white/[0.01]" : ""}`}
+                          style={{ background: heatBg(value) }}
                         >
-                          <p className={`font-playfair text-lg ${scoreTone(value)}`}>{value}</p>
+                          <p className="font-playfair text-lg font-semibold" style={{ color: heatColor(value) }}>{value}</p>
+                          <div
+                            className="absolute bottom-1 left-1/2 h-[3px] -translate-x-1/2 rounded-full"
+                            style={{
+                              width: `${Math.max(10, value * 0.7)}%`,
+                              background: heatColor(value),
+                              opacity: 0.5,
+                            }}
+                          />
                         </button>
                       );
                     })}
