@@ -32,8 +32,10 @@ interface BatchResult {
   errorCount: number;
 }
 
+type ResearchJobItemRecord = Awaited<ReturnType<typeof prisma.researchJobItem.findMany>>[number];
+
 async function processBatch(
-  items: typeof prisma.researchJobItem.$inferSelect extends infer T ? T[] : never,
+  items: ResearchJobItemRecord[],
   ctx: BatchContext
 ): Promise<BatchResult> {
   const startTime = Date.now();
@@ -180,6 +182,8 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
     agentConfigId: job.agentConfigId,
   };
 
+  console.log(`[engine] Job ${jobId}: starting with batchSize=${job.batchSize}, concurrency=${concurrency}, model=${job.model}`);
+
   while (true) {
     const currentJob = await prisma.researchJob.findUnique({ where: { id: jobId } });
     if (!currentJob || currentJob.status === "paused" || currentJob.status === "cancelled") break;
@@ -222,6 +226,7 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
     });
 
     // Run batches concurrently
+    console.log(`[engine] Job ${jobId}: wave of ${allPending.length} items in ${batches.length} parallel batches`);
     const settled = await Promise.allSettled(
       batches.map((batch) => processBatch(batch, batchCtx))
     );
