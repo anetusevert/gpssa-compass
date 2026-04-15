@@ -207,16 +207,16 @@ const GPSSAWorldMap = memo(function GPSSAWorldMap({
               <>
                 <div className="flex items-center justify-between text-xs mt-1">
                   <span className="text-gray-muted">{METRICS[metric].label}</span>
-                  <span className="font-mono font-semibold" style={{ color: maturityBadgeColor(tooltip.profile.maturityLabel) }}>
+                  <span className="font-mono font-semibold" style={{ color: getMetricColor(tooltip.profile, metric) }}>
                     {formatMetricValue(tooltip.profile, metric)}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <span
                     className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: maturityBadgeColor(tooltip.profile.maturityLabel) }}
+                    style={{ backgroundColor: getMetricColor(tooltip.profile, metric) }}
                   />
-                  <span className="text-[10px] font-medium" style={{ color: maturityBadgeColor(tooltip.profile.maturityLabel) }}>
+                  <span className="text-[10px] font-medium" style={{ color: getMetricColor(tooltip.profile, metric) }}>
                     {tooltip.profile.maturityLabel}
                   </span>
                   <span className="text-[10px] text-gray-muted ml-auto">Click to explore →</span>
@@ -283,8 +283,8 @@ export default function GlobalAtlasPage() {
 
       const map: Record<string, CountryProfile> = {};
       for (const c of rows) {
-        const hasData = c.maturityScore != null || c.researchStatus === "completed";
-        if (hasData) {
+        const hasScores = typeof c.maturityScore === "number" && c.maturityScore > 0;
+        if (hasScores) {
           map[c.iso3 as string] = dbRowToProfile(c);
         }
       }
