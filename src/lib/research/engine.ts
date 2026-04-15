@@ -81,40 +81,114 @@ async function processBatch(
 
     const matchedResults: Record<string, unknown>[] = [];
 
-    for (const item of items) {
-      const itemName = (item.itemLabel ?? item.itemKey ?? "").toLowerCase().trim();
-      const itemContext = (item.itemContext ?? "").toLowerCase().trim();
-      const itemResult = results.find((r) => {
-        const rName = String(
-          r.countryName ?? r.institutionName ?? r.serviceName ?? r.name ?? r.title ?? r.segment ?? r.theme ?? ""
-        ).toLowerCase().trim();
-        if (!rName || !itemName) return false;
-        const nameMatch = rName === itemName || rName.includes(itemName) || itemName.includes(rName);
-        if (!nameMatch) return false;
-        if (itemContext && r.coverageType) {
-          return String(r.coverageType).toLowerCase().includes(itemContext);
-        }
-        return true;
-      });
-
-      if (itemResult) {
-        itemResult._itemKey = item.itemKey;
-        itemResult._itemLabel = item.itemLabel;
-        const idx = results.indexOf(itemResult);
-        if (idx !== -1) results.splice(idx, 1);
-        matchedResults.push(itemResult);
-      }
+    // Fast path: single-item batch — assign the first result directly
+    if (items.length === 1 && results.length >= 1) {
+      const item = items[0];
+      const itemResult = results[0];
+      itemResult._itemKey = item.itemKey;
+      itemResult._itemLabel = item.itemLabel;
+      matchedResults.push(itemResult);
 
       await prisma.researchJobItem.update({
         where: { id: item.id },
         data: {
-          status: itemResult ? "completed" : "failed",
-          tokensUsed: Math.round(tokensUsed / items.length),
-          durationMs: Math.round(durationMs / items.length),
-          output: itemResult ? JSON.stringify(itemResult) : undefined,
-          error: itemResult ? undefined : "No matching result in LLM response",
+          status: "completed",
+          tokensUsed,
+          durationMs: Date.now() - startTime,
+          output: JSON.stringify(itemResult),
         },
       });
+    } else {
+      // Multi-item batch: try name-based matching first
+      const unmatched: { item: ResearchJobItemRecord; idx: number }[] = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const itemName = (item.itemLabel ?? item.itemKey ?? "").toLowerCase().trim();
+        const itemKey = (item.itemKey ?? "").toLowerCase().trim();
+        const itemContext = (item.itemContext ?? "").toLowerCase().trim();
+
+        const itemResult = results.find((r) => {
+          const rName = String(
+            r.countryName ?? r.institutionName ?? r.serviceName ?? r.name ?? r.title ?? r.segment ?? r.theme ?? ""
+          ).toLowerCase().trim();
+
+          // Try key/ISO3 match first
+          if (itemKey && r.iso3) {
+            if (String(r.iso3).toLowerCase() === itemKey) return true;
+          }
+
+          if (!rName || !itemName) return false;
+          const nameMatch = rName === itemName || rName.includes(itemName) || itemName.includes(rName);
+          if (!nameMatch) return false;
+
+          if (itemContext && r.coverageType) {
+            return String(r.coverageType).toLowerCase().includes(itemContext);
+          }
+          return true;
+        });
+
+        if (itemResult) {
+          itemResult._itemKey = item.itemKey;
+          itemResult._itemLabel = item.itemLabel;
+          const idx = results.indexOf(itemResult);
+          if (idx !== -1) results.splice(idx, 1);
+          matchedResults.push(itemResult);
+
+          await prisma.researchJobItem.update({
+            where: { id: item.id },
+            data: {
+              status: "completed",
+              tokensUsed: Math.round(tokensUsed / items.length),
+              durationMs: Math.round(durationMs / items.length),
+              output: JSON.stringify(itemResult),
+            },
+          });
+        } else {
+          unmatched.push({ item, idx: i });
+        }
+      }
+
+      // Positional fallback: if unmatched items remain and results remain, assign by position
+      if (unmatched.length > 0 && results.length > 0) {
+        console.log(`[engine] Positional fallback: ${unmatched.length} unmatched items, ${results.length} remaining results`);
+        const stillUnmatched: typeof unmatched = [];
+        for (const entry of unmatched) {
+          if (results.length === 0) {
+            stillUnmatched.push(entry);
+            continue;
+          }
+          const fallbackResult = results.shift()!;
+          fallbackResult._itemKey = entry.item.itemKey;
+          fallbackResult._itemLabel = entry.item.itemLabel;
+          matchedResults.push(fallbackResult);
+
+          await prisma.researchJobItem.update({
+            where: { id: entry.item.id },
+            data: {
+              status: "completed",
+              tokensUsed: Math.round(tokensUsed / items.length),
+              durationMs: Math.round(durationMs / items.length),
+              output: JSON.stringify(fallbackResult),
+            },
+          });
+        }
+        unmatched.length = 0;
+        unmatched.push(...stillUnmatched);
+      }
+
+      // Mark any truly unmatched items as failed
+      for (const { item } of unmatched) {
+        await prisma.researchJobItem.update({
+          where: { id: item.id },
+          data: {
+            status: "failed",
+            tokensUsed: Math.round(tokensUsed / items.length),
+            durationMs: Math.round(durationMs / items.length),
+            error: "No matching result in LLM response",
+          },
+        });
+      }
     }
 
     return { tokensUsed, cost, rawOutput, matchedResults, errorCount: 0 };

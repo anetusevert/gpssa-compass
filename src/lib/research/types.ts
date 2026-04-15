@@ -80,7 +80,20 @@ export interface PromptModule {
 }
 
 export function parseJsonResponse(raw: string): Record<string, unknown>[] {
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  let cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  // Extract JSON from reasoning model output that may have text before/after
+  const jsonStart = cleaned.indexOf("[") !== -1 && (cleaned.indexOf("{") === -1 || cleaned.indexOf("[") < cleaned.indexOf("{"))
+    ? cleaned.indexOf("[")
+    : cleaned.indexOf("{");
+  if (jsonStart > 0) {
+    cleaned = cleaned.substring(jsonStart);
+  }
+  const lastBrace = cleaned.lastIndexOf("}");
+  const lastBracket = cleaned.lastIndexOf("]");
+  const jsonEnd = Math.max(lastBrace, lastBracket);
+  if (jsonEnd !== -1 && jsonEnd < cleaned.length - 1) {
+    cleaned = cleaned.substring(0, jsonEnd + 1);
+  }
   const parsed = JSON.parse(cleaned);
   if (Array.isArray(parsed)) return parsed;
   for (const key of ["results", "data", "countries", "items"]) {
