@@ -638,9 +638,9 @@ export default function GlobalAtlasPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                   {[
                     { label: "Countries Tracked",  value: ALL_PROFILES.length,   unit: "",    color: "var(--gpssa-green)", desc: "Active pension systems monitored" },
-                    { label: "Global Leaders",       value: stats.leaders,         unit: "",    color: "var(--gpssa-green)", desc: "Digital maturity score ≥ 3.5/4.0" },
-                    { label: "Avg Coverage Rate",    value: stats.avgCov,          unit: "%",   color: "var(--gold)",        desc: "Workforce covered globally" },
-                    { label: "Avg Digital Score",    value: stats.avgMat,          unit: "/4",  color: "var(--adl-blue)",    desc: "Digital transformation maturity" },
+                    { label: "Global Leaders",       value: stats.leaders,         unit: "",    color: "var(--gpssa-green)", desc: "Digital maturity score >= 3.5/4.0" },
+                    { label: stats.activeLabel,       value: stats.activeAvg,       unit: "",    color: "var(--gold)",        desc: `Average across ${ALL_PROFILES.length} countries` },
+                    { label: "Regions",               value: stats.regions,         unit: "",    color: "var(--adl-blue)",    desc: "Geographic regions covered" },
                   ].map(({ label, value, unit, color, desc }) => (
                     <div
                       key={label}

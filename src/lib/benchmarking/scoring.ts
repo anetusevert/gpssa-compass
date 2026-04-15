@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { DIGITAL_LEVEL_SCORES, digitalLevelScore } from "@/lib/countries/country-data";
+import { digitalLevelScore } from "@/lib/countries/country-data";
 
 interface CountryScoreInput {
   maturityScore: number | null;
