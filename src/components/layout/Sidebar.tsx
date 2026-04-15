@@ -11,10 +11,8 @@ import {
   GitCompare,
   Layers,
   Radio,
-  Sparkles,
   Package,
   Users2,
-  Lightbulb,
   Truck,
   UserCircle,
   Network,
@@ -60,7 +58,6 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Service Catalog", href: "/dashboard/services/catalog", icon: Layers },
       { label: "Channel Capabilities", href: "/dashboard/services/channels", icon: Radio },
-      { label: "Service Analysis", href: "/dashboard/services/analysis", icon: Sparkles },
     ],
   },
   {
@@ -71,7 +68,6 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Portfolio", href: "/dashboard/products/portfolio", icon: Package },
       { label: "Segment Coverage", href: "/dashboard/products/segments", icon: Users2 },
-      { label: "Innovation", href: "/dashboard/products/innovation", icon: Lightbulb },
     ],
   },
   {

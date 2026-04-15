@@ -57,11 +57,6 @@ async function resetDomainData(screenType: ScreenType): Promise<number> {
       return result.count;
     }
 
-    case "services-analysis": {
-      const result = await prisma.serviceAnalysis.deleteMany({});
-      return result.count;
-    }
-
     case "products-portfolio": {
       const result = await prisma.product.updateMany({
         where: { researchStatus: { not: "pending" } },
@@ -82,17 +77,6 @@ async function resetDomainData(screenType: ScreenType): Promise<number> {
           researchStatus: "pending",
           researchSource: null,
           notes: null,
-        },
-      });
-      return result.count;
-    }
-
-    case "products-innovation": {
-      const result = await prisma.productInnovation.updateMany({
-        where: { researchStatus: { not: "pending" } },
-        data: {
-          researchStatus: "pending",
-          researchSource: null,
         },
       });
       return result.count;

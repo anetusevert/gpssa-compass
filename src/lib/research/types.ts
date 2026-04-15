@@ -3,26 +3,32 @@ export type ScreenType =
   | "atlas-benchmarking"
   | "services-catalog"
   | "services-channels"
-  | "services-analysis"
   | "products-portfolio"
   | "products-segments"
-  | "products-innovation"
   | "delivery-channels"
   | "delivery-personas"
-  | "delivery-models";
+  | "delivery-models"
+  | "intl-services-catalog"
+  | "intl-services-channels"
+  | "intl-products-portfolio"
+  | "intl-products-segments"
+  | "ilo-standards";
 
 export const ALL_SCREEN_TYPES: ScreenType[] = [
   "atlas-worldmap",
   "atlas-benchmarking",
   "services-catalog",
   "services-channels",
-  "services-analysis",
   "products-portfolio",
   "products-segments",
-  "products-innovation",
   "delivery-channels",
   "delivery-personas",
   "delivery-models",
+  "intl-services-catalog",
+  "intl-services-channels",
+  "intl-products-portfolio",
+  "intl-products-segments",
+  "ilo-standards",
 ];
 
 export const SCREEN_LABELS: Record<ScreenType, string> = {
@@ -30,13 +36,16 @@ export const SCREEN_LABELS: Record<ScreenType, string> = {
   "atlas-benchmarking": "Global Atlas — Benchmarking",
   "services-catalog": "Services — Catalog",
   "services-channels": "Services — Channel Capabilities",
-  "services-analysis": "Services — Analysis",
   "products-portfolio": "Products — Portfolio",
   "products-segments": "Products — Segment Coverage",
-  "products-innovation": "Products — Innovation",
   "delivery-channels": "Delivery — Channels",
   "delivery-personas": "Delivery — Personas",
   "delivery-models": "Delivery — Models",
+  "intl-services-catalog": "International — Service Catalogs",
+  "intl-services-channels": "International — Channel Capabilities",
+  "intl-products-portfolio": "International — Product Portfolios",
+  "intl-products-segments": "International — Segment Coverage",
+  "ilo-standards": "ILO & Global Standards",
 };
 
 export const SCREEN_PILLAR: Record<ScreenType, string> = {
@@ -44,13 +53,16 @@ export const SCREEN_PILLAR: Record<ScreenType, string> = {
   "atlas-benchmarking": "atlas",
   "services-catalog": "services",
   "services-channels": "services",
-  "services-analysis": "services",
   "products-portfolio": "products",
   "products-segments": "products",
-  "products-innovation": "products",
   "delivery-channels": "delivery",
   "delivery-personas": "delivery",
   "delivery-models": "delivery",
+  "intl-services-catalog": "international",
+  "intl-services-channels": "international",
+  "intl-products-portfolio": "international",
+  "intl-products-segments": "international",
+  "ilo-standards": "international",
 };
 
 export interface ResearchSource {

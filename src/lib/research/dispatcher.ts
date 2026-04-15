@@ -77,15 +77,6 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
       return DEFAULT_SERVICES.map((s) => ({ key: s.name, label: s.name, context: s.category }));
     }
 
-    case "services-analysis": {
-      return [
-        { key: "digital", label: "Digital Transformation Readiness", context: "Portal, mobile, API maturity" },
-        { key: "automation", label: "Process Automation Potential", context: "STP, decision engines, RPA" },
-        { key: "cx", label: "Customer Experience Gaps", context: "Journey friction, NPS, drop-offs" },
-        { key: "synergy", label: "Cross-Service Synergies", context: "Shared data, bundled journeys" },
-      ];
-    }
-
     case "products-portfolio": {
       const products = await prisma.product.findMany({
         where: { researchStatus: { in: ["pending", "failed"] } },
@@ -104,18 +95,6 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
         label: s.segment,
         context: s.coverageType,
       }));
-    }
-
-    case "products-innovation": {
-      const innovations = await prisma.productInnovation.findMany({
-        where: { researchStatus: { in: ["pending", "failed"] } },
-        select: { id: true, title: true, innovationType: true },
-        orderBy: { title: "asc" },
-      });
-      if (innovations.length > 0) {
-        return innovations.map((i) => ({ key: i.id, label: i.title, context: i.innovationType ?? undefined }));
-      }
-      return DEFAULT_INNOVATIONS.map((i) => ({ key: i.title, label: i.title, context: i.type }));
     }
 
     case "delivery-channels": {
@@ -152,6 +131,27 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
         return models.map((m) => ({ key: m.id, label: m.name }));
       }
       return DEFAULT_DELIVERY_MODELS.map((m) => ({ key: m.name, label: m.name, context: m.focus }));
+    }
+
+    case "intl-services-catalog":
+    case "intl-services-channels":
+    case "intl-products-portfolio": {
+      const institutions = await prisma.institution.findMany({
+        select: { id: true, name: true, country: true, countryCode: true },
+        orderBy: { name: "asc" },
+      });
+      if (institutions.length > 0) {
+        return institutions.map((i) => ({ key: i.id, label: i.name, context: i.country }));
+      }
+      return DEFAULT_INTL_INSTITUTIONS.map((i) => ({ key: i.key, label: i.label, context: i.country }));
+    }
+
+    case "intl-products-segments": {
+      return DEFAULT_INTL_COUNTRIES.map((c) => ({ key: c.iso3, label: c.name, context: c.region }));
+    }
+
+    case "ilo-standards": {
+      return DEFAULT_ILO_STANDARDS.map((s) => ({ key: s.code, label: s.title, context: s.category }));
     }
 
     default:
@@ -243,18 +243,6 @@ const DEFAULT_SEGMENTS = [
   { segment: "Non-Saudi — Others", coverageType: "Retirement Coverage" },
 ];
 
-const DEFAULT_INNOVATIONS = [
-  { title: "Gig Worker Pension Scheme", type: "New Product" },
-  { title: "Expat End-of-Service Digital Platform", type: "Digital" },
-  { title: "Micro-Pension for Informal Workers", type: "New Product" },
-  { title: "GCC Pension Portability Framework", type: "Enhancement" },
-  { title: "AI-Powered Pension Advisory", type: "Digital" },
-  { title: "Voluntary Savings Top-Up Program", type: "Enhancement" },
-  { title: "Digital Workplace Injury Claims", type: "Digital" },
-  { title: "Cross-Border Benefit Settlement Engine", type: "Digital" },
-  { title: "Portable Accrual Ledger for GCC Moves", type: "New Product" },
-];
-
 const DEFAULT_CHANNELS = [
   { name: "Digital Portal", type: "digital" },
   { name: "Mobile Application", type: "digital" },
@@ -280,4 +268,45 @@ const DEFAULT_DELIVERY_MODELS = [
   { name: "In-Person Assisted", focus: "Complex cases" },
   { name: "Partnership Ecosystem", focus: "Third-party networks" },
   { name: "Outreach & Awareness", focus: "Proactive engagement" },
+];
+
+const DEFAULT_INTL_INSTITUTIONS = [
+  { key: "gosi", label: "General Organization for Social Insurance (GOSI)", country: "Saudi Arabia" },
+  { key: "sio", label: "Social Insurance Organization (SIO)", country: "Bahrain" },
+  { key: "pifss", label: "Public Institution for Social Security (PIFSS)", country: "Kuwait" },
+  { key: "pasi", label: "Public Authority for Social Insurance (PASI)", country: "Oman" },
+  { key: "grsia", label: "General Retirement & Social Insurance Authority (GRSIA)", country: "Qatar" },
+  { key: "cpf", label: "Central Provident Fund (CPF)", country: "Singapore" },
+  { key: "superannuation", label: "Australian Prudential Regulation Authority (APRA Super)", country: "Australia" },
+  { key: "dwp", label: "Department for Work and Pensions (DWP)", country: "United Kingdom" },
+  { key: "skais", label: "Social Insurance Board (SKAIS)", country: "Estonia" },
+  { key: "bpjs", label: "BPJS Ketenagakerjaan", country: "Indonesia" },
+];
+
+const DEFAULT_INTL_COUNTRIES = [
+  { iso3: "SAU", name: "Saudi Arabia", region: "GCC" },
+  { iso3: "BHR", name: "Bahrain", region: "GCC" },
+  { iso3: "KWT", name: "Kuwait", region: "GCC" },
+  { iso3: "OMN", name: "Oman", region: "GCC" },
+  { iso3: "QAT", name: "Qatar", region: "GCC" },
+  { iso3: "SGP", name: "Singapore", region: "Asia-Pacific" },
+  { iso3: "AUS", name: "Australia", region: "Asia-Pacific" },
+  { iso3: "GBR", name: "United Kingdom", region: "Europe" },
+  { iso3: "EST", name: "Estonia", region: "Europe" },
+  { iso3: "IDN", name: "Indonesia", region: "Asia-Pacific" },
+];
+
+const DEFAULT_ILO_STANDARDS = [
+  { code: "C102", title: "Social Security (Minimum Standards) Convention, 1952", category: "coverage" },
+  { code: "R202", title: "Social Protection Floors Recommendation, 2012", category: "coverage" },
+  { code: "C128", title: "Invalidity, Old-Age and Survivors' Benefits Convention, 1967", category: "products" },
+  { code: "C130", title: "Medical Care and Sickness Benefits Convention, 1969", category: "products" },
+  { code: "C168", title: "Employment Promotion and Protection against Unemployment Convention, 1988", category: "products" },
+  { code: "C121", title: "Employment Injury Benefits Convention, 1964", category: "products" },
+  { code: "C183", title: "Maternity Protection Convention, 2000", category: "products" },
+  { code: "ISSA-GOV", title: "ISSA Guidelines on Good Governance", category: "governance" },
+  { code: "ISSA-SQ", title: "ISSA Guidelines on Service Quality", category: "services" },
+  { code: "ISSA-ICT", title: "ISSA Guidelines on Information and Communication Technology", category: "digital" },
+  { code: "ISSA-AS", title: "ISSA Guidelines on Administrative Solutions", category: "services" },
+  { code: "WB-PENSION", title: "World Bank Pension Sourcebook Principles", category: "products" },
 ];

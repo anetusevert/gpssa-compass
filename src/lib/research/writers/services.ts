@@ -103,15 +103,6 @@ export async function writeServicesChannels(
   return written;
 }
 
-export async function writeServicesAnalysis(
-  results: Record<string, unknown>[],
-  _agentLabel: string
-): Promise<number> {
-  // Service analysis insights are stored as raw JSON in the research job
-  // Individual insights don't map 1:1 to a single DB entity
-  return results.length;
-}
-
 export async function writeServicesResults(
   screenType: ScreenType,
   results: Record<string, unknown>[],
@@ -122,8 +113,6 @@ export async function writeServicesResults(
       return writeServicesCatalog(results, agentLabel);
     case "services-channels":
       return writeServicesChannels(results, agentLabel);
-    case "services-analysis":
-      return writeServicesAnalysis(results, agentLabel);
     default:
       return 0;
   }

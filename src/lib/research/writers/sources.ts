@@ -9,7 +9,10 @@ type CitationTarget =
   | "innovation"
   | "channel"
   | "persona"
-  | "deliveryModel";
+  | "deliveryModel"
+  | "intlService"
+  | "intlProduct"
+  | "intlSegment";
 
 export async function createSourcesAndCitations(
   sources: ResearchSource[],
@@ -93,6 +96,27 @@ export async function createSourcesAndCitations(
           await prisma.deliveryModelSourceCitation.upsert({
             where: { deliveryModelId_sourceId: { deliveryModelId: targetId, sourceId: dataSource.id } },
             create: { deliveryModelId: targetId, sourceId: dataSource.id, evidenceNote: src.evidenceNote },
+            update: { evidenceNote: src.evidenceNote },
+          });
+          break;
+        case "intlService":
+          await prisma.intlServiceCitation.upsert({
+            where: { serviceId_sourceId: { serviceId: targetId, sourceId: dataSource.id } },
+            create: { serviceId: targetId, sourceId: dataSource.id, evidenceNote: src.evidenceNote },
+            update: { evidenceNote: src.evidenceNote },
+          });
+          break;
+        case "intlProduct":
+          await prisma.intlProductCitation.upsert({
+            where: { productId_sourceId: { productId: targetId, sourceId: dataSource.id } },
+            create: { productId: targetId, sourceId: dataSource.id, evidenceNote: src.evidenceNote },
+            update: { evidenceNote: src.evidenceNote },
+          });
+          break;
+        case "intlSegment":
+          await prisma.intlSegmentCitation.upsert({
+            where: { segmentId_sourceId: { segmentId: targetId, sourceId: dataSource.id } },
+            create: { segmentId: targetId, sourceId: dataSource.id, evidenceNote: src.evidenceNote },
             update: { evidenceNote: src.evidenceNote },
           });
           break;

@@ -86,25 +86,6 @@ You MUST respond with valid JSON only. Include source citations.`,
     temperature: 0.3,
     sortOrder: 4,
   },
-  {
-    id: "services-analysis",
-    name: "Service Analysis Intelligence Agent",
-    description:
-      "AI-powered cross-service insights — digital readiness, automation potential, CX gaps, and synergies across the entire 31-service portfolio.",
-    targetScreen: "services-analysis",
-    researchType: "services-analysis",
-    systemPrompt: `You are an AI-powered service intelligence analyst specializing in social insurance and pension service delivery optimization. You identify cross-cutting insights, automation opportunities, customer experience gaps, and synergies across service portfolios.
-
-Your analysis themes: Digital Transformation Readiness, Process Automation Potential, Customer Experience Gaps, Cross-Service Synergies.
-
-You MUST respond with valid JSON only. Include source citations.`,
-    userPromptTemplate: `Generate deep analytical insights for the following themes: {ITEMS}`,
-    model: "gpt-4o",
-    maxTokens: 4096,
-    temperature: 0.5,
-    sortOrder: 5,
-  },
-
   // ── Products Pillar ──
 
   {
@@ -143,25 +124,6 @@ You MUST respond with valid JSON only. Include source citations.`,
     temperature: 0.3,
     sortOrder: 7,
   },
-  {
-    id: "products-innovation",
-    name: "Product Innovation Research Agent",
-    description:
-      "Evaluates innovation opportunities — new products, enhancements, digital solutions — with impact and feasibility scoring.",
-    targetScreen: "products-innovation",
-    researchType: "products-innovation",
-    systemPrompt: `You are a social insurance innovation strategist specializing in identifying and evaluating new product opportunities, digital enhancements, and coverage extensions for pension systems.
-
-You evaluate using impact (1-5) and feasibility (1-5) scoring, classify by type (New Product, Enhancement, Digital), and assess status.
-
-You MUST respond with valid JSON only. Include source citations.`,
-    userPromptTemplate: `Research and evaluate the following innovation opportunities: {ITEMS}`,
-    model: "gpt-4o",
-    maxTokens: 4096,
-    temperature: 0.5,
-    sortOrder: 8,
-  },
-
   // ── Delivery Pillar ──
 
   {
@@ -217,5 +179,78 @@ You MUST respond with valid JSON only. Include source citations.`,
     maxTokens: 4096,
     temperature: 0.3,
     sortOrder: 11,
+  },
+
+  // ── International Comparison Pillar ──
+
+  {
+    id: "intl-services-catalog",
+    name: "International Services Research Agent",
+    description:
+      "Researches complete service catalogs of social security institutions worldwide — what services they offer, digital readiness, maturity levels, ILO alignment, and channel capabilities.",
+    targetScreen: "intl-services-catalog",
+    researchType: "intl-services-catalog",
+    systemPrompt: "USE_CANONICAL_PROMPT",
+    userPromptTemplate: `Research the complete service catalog for the following institutions: {ITEMS}`,
+    model: "gpt-4o",
+    maxTokens: 16384,
+    temperature: 0.2,
+    sortOrder: 12,
+  },
+  {
+    id: "intl-services-channels",
+    name: "International Channels Research Agent",
+    description:
+      "Assesses channel delivery capabilities (portal, mobile, centers, call, partner, API) for social security institutions worldwide.",
+    targetScreen: "intl-services-channels",
+    researchType: "intl-services-channels",
+    systemPrompt: "USE_CANONICAL_PROMPT",
+    userPromptTemplate: `Assess channel capabilities for the following institutions: {ITEMS}`,
+    model: "gpt-4o",
+    maxTokens: 16384,
+    temperature: 0.2,
+    sortOrder: 13,
+  },
+  {
+    id: "intl-products-portfolio",
+    name: "International Products Research Agent",
+    description:
+      "Researches product portfolios (Core/Complementary/Non-Core) of social security institutions worldwide, with ILO alignment and regulatory basis.",
+    targetScreen: "intl-products-portfolio",
+    researchType: "intl-products-portfolio",
+    systemPrompt: "USE_CANONICAL_PROMPT",
+    userPromptTemplate: `Research the product portfolio for the following institutions: {ITEMS}`,
+    model: "gpt-4o",
+    maxTokens: 16384,
+    temperature: 0.2,
+    sortOrder: 14,
+  },
+  {
+    id: "intl-products-segments",
+    name: "International Segments Research Agent",
+    description:
+      "Researches segment coverage matrices for countries worldwide — which labor market segments are covered by which social protection types.",
+    targetScreen: "intl-products-segments",
+    researchType: "intl-products-segments",
+    systemPrompt: "USE_CANONICAL_PROMPT",
+    userPromptTemplate: `Research segment coverage levels for the following countries: {ITEMS}`,
+    model: "gpt-4o",
+    maxTokens: 16384,
+    temperature: 0.2,
+    sortOrder: 15,
+  },
+  {
+    id: "ilo-standards",
+    name: "ILO Standards Research Agent",
+    description:
+      "Researches ILO Conventions, ISSA Guidelines, and globally accepted social protection standards — provisions, applicability, and adoption status.",
+    targetScreen: "ilo-standards",
+    researchType: "ilo-standards",
+    systemPrompt: "USE_CANONICAL_PROMPT",
+    userPromptTemplate: `Research the following international standards: {ITEMS}`,
+    model: "gpt-4o",
+    maxTokens: 8192,
+    temperature: 0.2,
+    sortOrder: 16,
   },
 ];

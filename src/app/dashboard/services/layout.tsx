@@ -1,12 +1,11 @@
 "use client";
 
-import { Layers, Radio, Sparkles } from "lucide-react";
+import { Layers, Radio } from "lucide-react";
 import { SectionTabs } from "@/components/ui/SectionTabs";
 
 const servicesTabs = [
   { id: "catalog", label: "Service Catalog", href: "/dashboard/services/catalog", icon: Layers },
   { id: "channels", label: "Channel Capabilities", href: "/dashboard/services/channels", icon: Radio },
-  { id: "analysis", label: "Service Analysis", href: "/dashboard/services/analysis", icon: Sparkles },
 ];
 
 export default function ServicesLayout({

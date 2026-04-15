@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
-  Globe, GitCompare, Layers, Radio, Sparkles,
-  Package, Users2, Lightbulb,
+  Globe, GitCompare, Layers, Radio,
+  Package, Users2,
   Truck, UserCircle, Network,
   LayoutDashboard, type LucideIcon,
 } from "lucide-react";
@@ -21,10 +21,8 @@ const ROUTES: Record<string, { label: string; icon: LucideIcon; pillar: "atlas" 
   "/dashboard/atlas/benchmarking":       { label: "Benchmarking",        icon: GitCompare,      pillar: "atlas" },
   "/dashboard/services/catalog":         { label: "Service Catalog",     icon: Layers,          pillar: "services" },
   "/dashboard/services/channels":        { label: "Channel Capabilities",icon: Radio,           pillar: "services" },
-  "/dashboard/services/analysis":        { label: "Service Analysis",    icon: Sparkles,        pillar: "services" },
   "/dashboard/products/portfolio":       { label: "Portfolio",           icon: Package,         pillar: "products" },
   "/dashboard/products/segments":        { label: "Segment Coverage",    icon: Users2,          pillar: "products" },
-  "/dashboard/products/innovation":      { label: "Innovation",          icon: Lightbulb,       pillar: "products" },
   "/dashboard/delivery/channels":        { label: "Channels",            icon: Truck,           pillar: "delivery" },
   "/dashboard/delivery/personas":        { label: "Personas",            icon: UserCircle,      pillar: "delivery" },
   "/dashboard/delivery/models":          { label: "Delivery Models",     icon: Network,         pillar: "delivery" },

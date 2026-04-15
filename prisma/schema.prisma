@@ -209,6 +209,8 @@ model Institution {
   benchmarkDatasets BenchmarkDataset[] @relation("BenchmarkTargetInstitution")
   benchmarkScores BenchmarkInstitutionScore[]
   sourceCitations InstitutionSourceCitation[]
+  internationalServices InternationalService[]
+  internationalProducts InternationalProduct[]
 
   @@index([countryCode])
   @@index([countryId])
@@ -515,6 +517,9 @@ model DataSource {
   channelCitations       ChannelSourceCitation[]
   personaCitations       PersonaSourceCitation[]
   deliveryModelCitations DeliveryModelSourceCitation[]
+  intlServiceCitations   IntlServiceCitation[]
+  intlProductCitations   IntlProductCitation[]
+  intlSegmentCitations   IntlSegmentCitation[]
 }
 
 model ServiceSourceCitation {
@@ -776,5 +781,135 @@ model DeliveryModelSourceCitation {
   source          DataSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@unique([deliveryModelId, sourceId])
+  @@index([sourceId])
+}
+
+// ── ILO & International Comparison Models ──
+
+model ILOStandard {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  title           String
+  category        String
+  description     String?
+  provisions      String?
+  applicableTo    String?
+  adoptionStatus  String?
+  url             String?
+  researchStatus  String   @default("pending")
+  researchSource  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model InternationalService {
+  id                  String        @id @default(cuid())
+  institutionId       String?
+  institution         Institution?  @relation(fields: [institutionId], references: [id])
+  countryIso3         String
+  name                String
+  category            String
+  description         String?
+  userTypes           String?
+  digitalReadiness    Float?
+  maturityLevel       String?
+  channelCapabilities String?
+  painPoints          String?
+  strengths           String?
+  iloAlignment        String?
+  researchStatus      String        @default("pending")
+  researchSource      String?
+  sourceCitations     IntlServiceCitation[]
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([countryIso3])
+  @@index([institutionId])
+}
+
+model InternationalProduct {
+  id              String        @id @default(cuid())
+  institutionId   String?
+  institution     Institution?  @relation(fields: [institutionId], references: [id])
+  countryIso3     String
+  name            String
+  tier            String
+  status          String        @default("Active")
+  description     String?
+  targetSegments  String?
+  coverageType    String?
+  keyFeatures     String?
+  regulatoryBasis String?
+  iloAlignment    String?
+  researchStatus  String        @default("pending")
+  researchSource  String?
+  sourceCitations IntlProductCitation[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([countryIso3])
+  @@index([institutionId])
+}
+
+model InternationalSegmentCoverage {
+  id              String   @id @default(cuid())
+  countryIso3     String
+  segment         String
+  coverageType    String
+  level           String
+  population      String?
+  notes           String?
+  regulatoryBasis String?
+  researchStatus  String   @default("pending")
+  researchSource  String?
+  sourceCitations IntlSegmentCitation[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([countryIso3, segment, coverageType])
+  @@index([countryIso3])
+}
+
+// ── International Citation Join Tables ──
+
+model IntlServiceCitation {
+  id           String               @id @default(cuid())
+  serviceId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime             @default(now())
+  service      InternationalService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  source       DataSource           @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, sourceId])
+  @@index([sourceId])
+}
+
+model IntlProductCitation {
+  id           String               @id @default(cuid())
+  productId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime             @default(now())
+  product      InternationalProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  source       DataSource           @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, sourceId])
+  @@index([sourceId])
+}
+
+model IntlSegmentCitation {
+  id           String                       @id @default(cuid())
+  segmentId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime                     @default(now())
+  segment      InternationalSegmentCoverage @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  source       DataSource                   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([segmentId, sourceId])
   @@index([sourceId])
 }

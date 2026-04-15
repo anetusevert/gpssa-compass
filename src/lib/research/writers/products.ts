@@ -82,48 +82,6 @@ export async function writeProductsSegments(
   return written;
 }
 
-export async function writeProductsInnovation(
-  results: Record<string, unknown>[],
-  agentLabel: string
-): Promise<number> {
-  let written = 0;
-  for (const r of results) {
-    const title = String(r.title ?? "");
-    if (!title) continue;
-
-    const existing = await prisma.productInnovation.findFirst({
-      where: { title: { equals: title, mode: "insensitive" } },
-    });
-
-    const data = {
-      description: r.description ? String(r.description) : undefined,
-      targetSegment: r.targetSegment ? String(r.targetSegment) : undefined,
-      impactScore: typeof r.impactScore === "number" ? r.impactScore : undefined,
-      feasibilityScore: typeof r.feasibilityScore === "number" ? r.feasibilityScore : undefined,
-      status: String(r.status ?? "Research"),
-      innovationType: r.innovationType ? String(r.innovationType) : undefined,
-      estimatedPopulation: r.estimatedPopulation ? String(r.estimatedPopulation) : undefined,
-      researchStatus: "completed" as const,
-      researchSource: agentLabel,
-    };
-
-    let innovationId: string;
-    if (existing) {
-      await prisma.productInnovation.update({ where: { id: existing.id }, data });
-      innovationId = existing.id;
-    } else {
-      const created = await prisma.productInnovation.create({ data: { title, ...data } });
-      innovationId = created.id;
-    }
-
-    if (Array.isArray(r.sources)) {
-      await createSourcesAndCitations(r.sources as ResearchSource[], "innovation", innovationId);
-    }
-    written++;
-  }
-  return written;
-}
-
 export async function writeProductsResults(
   screenType: ScreenType,
   results: Record<string, unknown>[],
@@ -134,8 +92,6 @@ export async function writeProductsResults(
       return writeProductsPortfolio(results, agentLabel);
     case "products-segments":
       return writeProductsSegments(results, agentLabel);
-    case "products-innovation":
-      return writeProductsInnovation(results, agentLabel);
     default:
       return 0;
   }
