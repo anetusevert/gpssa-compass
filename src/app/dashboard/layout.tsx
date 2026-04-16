@@ -17,7 +17,9 @@ export default function DashboardLayout({
   const collapsed = useSidebarStore((s) => s.collapsed);
   const isFullViewport = pathname === "/dashboard/atlas/benchmarking"
     || pathname === "/dashboard/services/catalog"
-    || pathname === "/dashboard/services/channels";
+    || pathname === "/dashboard/services/channels"
+    || pathname === "/dashboard/delivery/channels"
+    || pathname === "/dashboard/delivery/personas";
   const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
 
   return (

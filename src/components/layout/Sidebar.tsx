@@ -15,7 +15,6 @@ import {
   Users2,
   Truck,
   UserCircle,
-  Network,
   Bot,
   Users,
   Database,
@@ -91,7 +90,6 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Channels", href: "/dashboard/delivery/channels", icon: Truck },
       { label: "Personas", href: "/dashboard/delivery/personas", icon: UserCircle },
-      { label: "Delivery Models", href: "/dashboard/delivery/models", icon: Network },
     ],
   },
   {

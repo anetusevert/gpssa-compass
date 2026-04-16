@@ -7,7 +7,7 @@ import Image from "next/image";
 import {
   Globe, GitCompare, Layers, Radio,
   Package, Users2,
-  Truck, UserCircle, Network,
+  Truck, UserCircle,
   LayoutDashboard, type LucideIcon,
 } from "lucide-react";
 
@@ -23,9 +23,8 @@ const ROUTES: Record<string, { label: string; icon: LucideIcon; pillar: "atlas" 
   "/dashboard/services/channels":        { label: "Channel Capabilities",icon: Radio,           pillar: "services" },
   "/dashboard/products/portfolio":       { label: "Portfolio",           icon: Package,         pillar: "products" },
   "/dashboard/products/segments":        { label: "Segment Coverage",    icon: Users2,          pillar: "products" },
-  "/dashboard/delivery/channels":        { label: "Channels",            icon: Truck,           pillar: "delivery" },
+  "/dashboard/delivery/channels":        { label: "Channels & Delivery Model", icon: Truck,      pillar: "delivery" },
   "/dashboard/delivery/personas":        { label: "Personas",            icon: UserCircle,      pillar: "delivery" },
-  "/dashboard/delivery/models":          { label: "Delivery Models",     icon: Network,         pillar: "delivery" },
 };
 
 const PILLAR_COLORS: Record<string, string> = {

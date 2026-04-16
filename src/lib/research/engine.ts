@@ -365,7 +365,7 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
 
     // Check error threshold
     const updatedJob = await prisma.researchJob.findUnique({ where: { id: jobId } });
-    if (updatedJob && updatedJob.errorCount >= 15) {
+    if (updatedJob && updatedJob.errorCount >= 25) {
       await prisma.researchJob.update({
         where: { id: jobId },
         data: { status: "failed", lastError: "Too many errors — job halted" },

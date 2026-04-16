@@ -19,12 +19,12 @@ interface PersonaCardProps {
 }
 
 const cardVariants = {
-  initial: { opacity: 0, y: 40, filter: "blur(10px)", scale: 0.95 },
+  initial: { opacity: 0, y: 30, filter: "blur(8px)", scale: 0.97 },
   animate: {
     opacity: 1, y: 0, filter: "blur(0px)", scale: 1,
-    transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] as const },
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
   },
-  hover: { y: -8, transition: { duration: 0.3, ease: "easeOut" as const } },
+  hover: { y: -6, transition: { duration: 0.25, ease: "easeOut" as const } },
   tap: { scale: 0.98, transition: { duration: 0.1 } },
 };
 
@@ -46,8 +46,8 @@ function CoverageBadge({ status }: { status: "full" | "partial" | "none" }) {
   };
   const { icon: Icon, label, color, bg, border } = config[status];
   return (
-    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${bg} ${border} border`}>
-      <Icon className={`w-3 h-3 ${color}`} />
+    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider ${bg} ${border} border`}>
+      <Icon className={`w-2.5 h-2.5 ${color}`} />
       <span className={color}>{label}</span>
     </div>
   );
@@ -93,48 +93,48 @@ export function PersonaCard({ persona, index, onClick }: PersonaCardProps) {
       tabIndex={0}
       aria-label={`View details for ${persona.name}`}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      className={`group relative cursor-pointer rounded-2xl overflow-hidden bg-gradient-to-br from-navy-light/90 to-navy/90 border border-white/10 ring-2 ring-transparent transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-teal/50 ${colors.ring}`}
-      style={{ animationDelay: `${index * 0.1}s` }}
+      className={`group relative cursor-pointer rounded-xl overflow-hidden bg-gradient-to-br from-navy-light/90 to-navy/90 border border-white/10 ring-2 ring-transparent transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-teal/50 ${colors.ring}`}
+      style={{ animationDelay: `${index * 0.06}s` }}
     >
       <motion.div
         variants={glowVariants}
-        className={`absolute -inset-1 rounded-2xl opacity-0 blur-xl -z-10 bg-gradient-to-br ${colors.glow}`}
+        className={`absolute -inset-1 rounded-xl opacity-0 blur-xl -z-10 bg-gradient-to-br ${colors.glow}`}
       />
 
-      <div className="relative p-5 flex flex-col h-full min-h-[320px]">
-        <div className="flex items-center justify-between mb-4">
+      <div className="relative p-3 sm:p-4 flex flex-col h-full">
+        <div className="flex items-center justify-between mb-2">
           <CoverageBadge status={coverageStatus} />
-          <div className="p-1.5 rounded-lg bg-white/5 border border-white/10">
-            <Icon className={`w-4 h-4 ${colors.accent}`} />
+          <div className="p-1 rounded-md bg-white/5 border border-white/10">
+            <Icon className={`w-3.5 h-3.5 ${colors.accent}`} />
           </div>
         </div>
 
-        <div className="flex-shrink-0 mb-4 flex justify-center">
-          <PersonaAvatar persona={persona} size="lg" />
+        <div className="flex-shrink-0 mb-2 flex justify-center">
+          <PersonaAvatar persona={persona} size="md" showGlow={false} />
         </div>
 
-        <div className="text-center mb-3">
-          <h3 className="text-base font-bold text-cream mb-1 font-playfair group-hover:text-white transition-colors">
+        <div className="text-center mb-2">
+          <h3 className="text-sm font-bold text-cream mb-0.5 font-playfair group-hover:text-white transition-colors leading-tight">
             {persona.name}
           </h3>
-          <p className={`text-[11px] font-medium ${colors.accent}`}>{persona.tagline}</p>
+          <p className={`text-[10px] font-medium leading-tight ${colors.accent}`}>{persona.tagline}</p>
         </div>
 
-        <div className="flex-1 flex flex-col justify-end gap-2 mt-auto">
-          <div className="p-2.5 rounded-lg bg-navy/60 border border-white/5 space-y-1.5">
+        <div className="mt-auto space-y-1.5">
+          <div className="p-2 rounded-lg bg-navy/60 border border-white/5 space-y-1">
             <StatPill icon={TrendingUp} value={`${persona.demographics.registrationRate}%`} label="Registered" color={colors.accent} />
             <StatPill icon={Percent} value={`${persona.demographics.populationShare}%`} label="Workforce" color="text-white/60" />
           </div>
 
-          <motion.div className="flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-white/50 group-hover:text-white/80 transition-colors">
+          <motion.div className="flex items-center justify-center gap-1 py-1 text-[10px] font-medium text-white/50 group-hover:text-white/80 transition-colors">
             <span>Explore Journey</span>
             <motion.div variants={arrowVariants}>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3 h-3" />
             </motion.div>
           </motion.div>
         </div>
 
-        <div className={`absolute bottom-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-transparent via-teal to-transparent`} />
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-transparent via-teal to-transparent" />
       </div>
     </motion.div>
   );
