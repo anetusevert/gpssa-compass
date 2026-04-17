@@ -19,7 +19,9 @@ export default function DashboardLayout({
     || pathname === "/dashboard/services/catalog"
     || pathname === "/dashboard/services/channels"
     || pathname === "/dashboard/delivery/channels"
-    || pathname === "/dashboard/delivery/personas";
+    || pathname === "/dashboard/delivery/personas"
+    || pathname === "/dashboard/products/portfolio"
+    || pathname === "/dashboard/products/segments";
   const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
 
   return (

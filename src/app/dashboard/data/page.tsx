@@ -9,6 +9,7 @@ import {
   Layers,
   Package,
   BookOpen,
+  Users2,
   ArrowRight,
   Download,
   Upload,
@@ -22,6 +23,7 @@ interface DataCounts {
   services: number;
   institutions: number;
   products: number;
+  segments: number;
   sources: number;
 }
 
@@ -56,6 +58,15 @@ const TILES = [
     countKey: "products" as const,
   },
   {
+    id: "segments",
+    label: "Segments",
+    description: "Segment coverage matrix data — labor market segments mapped against social protection pillars.",
+    icon: Users2,
+    href: "/dashboard/data/segments",
+    color: "#F59E0B",
+    countKey: "segments" as const,
+  },
+  {
     id: "sources",
     label: "Sources",
     description: "Data sources, research references, and citation linkages backing all research data.",
@@ -70,23 +81,25 @@ export default function DataHubPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
-  const [counts, setCounts] = useState<DataCounts>({ services: 0, institutions: 0, products: 0, sources: 0 });
+  const [counts, setCounts] = useState<DataCounts>({ services: 0, institutions: 0, products: 0, segments: 0, sources: 0 });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     async function fetchCounts() {
       try {
-        const [svcRes, instRes, prodRes, srcRes] = await Promise.all([
+        const [svcRes, instRes, prodRes, segRes, srcRes] = await Promise.all([
           fetch("/api/services"),
           fetch("/api/research/institutions"),
           fetch("/api/products"),
+          fetch("/api/products/segments"),
           fetch("/api/admin/data/sources"),
         ]);
         setCounts({
           services: svcRes.ok ? (await svcRes.json()).length : 0,
           institutions: instRes.ok ? (await instRes.json()).length : 0,
           products: prodRes.ok ? (await prodRes.json()).length : 0,
+          segments: segRes.ok ? (await segRes.json()).length : 0,
           sources: srcRes.ok ? (await srcRes.json()).length : 0,
         });
       } catch { /* ignore */ } finally {
@@ -115,7 +128,7 @@ export default function DataHubPage() {
     }
   }
 
-  const totalRecords = counts.services + counts.institutions + counts.products + counts.sources;
+  const totalRecords = counts.services + counts.institutions + counts.products + counts.segments + counts.sources;
 
   return (
     <div className="space-y-8">

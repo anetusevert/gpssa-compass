@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users2, AlertTriangle, ShieldCheck, Table2, Globe2, ArrowLeftRight } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { StatCard } from "@/components/ui/StatCard";
+import { Users2, AlertTriangle, ShieldCheck, Globe2, ArrowLeftRight } from "lucide-react";
 import { CountrySelector } from "@/components/comparison/CountrySelector";
-import { ComparisonBanner } from "@/components/comparison/ComparisonBanner";
+import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { COUNTRIES } from "@/lib/countries/catalog";
 import { CountryFlag } from "@/components/ui/CountryFlag";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Types
+   ═══════════════════════════════════════════════════════════════════════════ */
 type CoverageLevel = "Covered" | "Voluntary" | "Limited" | "Not Covered";
 
 const COVERAGE_COLUMNS = [
@@ -21,6 +23,14 @@ const COVERAGE_COLUMNS = [
 ] as const;
 
 type CoverageColumn = (typeof COVERAGE_COLUMNS)[number];
+
+const COL_SHORT: Record<CoverageColumn, string> = {
+  "Retirement Coverage": "Retirement",
+  "Occupational Hazard": "Occ. Hazard",
+  Unemployment: "Unemploy.",
+  "Housing Security": "Housing",
+  "Health Security": "Health",
+};
 
 interface SegmentRow {
   id: string;
@@ -41,11 +51,21 @@ interface IntlSegment {
   notes: string | null;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Constants
+   ═══════════════════════════════════════════════════════════════════════════ */
 const cellStyles: Record<CoverageLevel, string> = {
   Covered: "bg-gpssa-green/15 border-gpssa-green/30 text-gpssa-green",
   Voluntary: "bg-gold/15 border-gold/30 text-gold",
   Limited: "bg-adl-blue/15 border-adl-blue/30 text-adl-blue",
   "Not Covered": "bg-red-500/10 border-red-500/20 text-red-400",
+};
+
+const cellShort: Record<CoverageLevel, string> = {
+  Covered: "Covered",
+  Voluntary: "Voluntary",
+  Limited: "Limited",
+  "Not Covered": "Not Cov.",
 };
 
 const STATIC_SEGMENT_MATRIX: SegmentRow[] = [
@@ -63,43 +83,70 @@ function countGaps(matrix: SegmentRow[]): number {
   return matrix.reduce((acc, row) => acc + Object.values(row.cells).filter((v) => v === "Not Covered").length, 0);
 }
 
-const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
-const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.38, ease: [0.16, 1, 0.3, 1] as const } } };
-
-function CoverageMatrix({ title, iso3, rows }: { title: string; iso3: string; rows: SegmentRow[] }) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   Coverage Matrix (compact, fits viewport)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function CompactMatrix({
+  title,
+  iso3,
+  rows,
+  highlightGaps,
+  gapSet,
+}: {
+  title: string;
+  iso3: string;
+  rows: SegmentRow[];
+  highlightGaps?: boolean;
+  gapSet?: Set<string>;
+}) {
   return (
-    <div className="glass-card overflow-hidden border border-white/[0.06]">
-      <div className="p-5 border-b border-white/5 flex items-center gap-2">
+    <div className="glass-card overflow-hidden border border-white/[0.06] flex flex-col h-full">
+      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2 shrink-0">
         <CountryFlag code={iso3} size="sm" />
-        <Table2 size={16} className="text-gold" />
-        <h2 className="font-playfair text-lg font-semibold text-cream">{title}</h2>
+        <h2 className="font-playfair text-sm font-semibold text-cream">{title}</h2>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[720px]">
+      <div className="flex-1 min-h-0 overflow-auto">
+        <table className="w-full text-[10px]">
           <thead>
             <tr className="border-b border-white/5 bg-white/[0.02]">
-              <th className="text-left p-3 md:p-4 text-xs uppercase tracking-wide text-gray-muted font-medium w-[220px]">Segment</th>
-              <th className="text-center p-3 md:p-4 text-xs uppercase tracking-wide text-gray-muted font-medium whitespace-nowrap">Population</th>
+              <th className="text-left p-2 text-[9px] uppercase tracking-wide text-gray-muted font-medium w-[160px]">Segment</th>
+              <th className="text-center p-2 text-[9px] uppercase tracking-wide text-gray-muted font-medium w-[50px]">Pop.</th>
               {COVERAGE_COLUMNS.map((col) => (
-                <th key={col} className="text-center p-3 md:p-4 text-[10px] md:text-xs uppercase tracking-wide text-gray-muted font-medium leading-tight">{col}</th>
+                <th key={col} className="text-center p-1.5 text-[8px] uppercase tracking-wide text-gray-muted font-medium leading-tight">{COL_SHORT[col]}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, idx) => (
-              <motion.tr key={row.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 + idx * 0.04, ease: [0.16, 1, 0.3, 1] }} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                <td className="p-3 md:p-4 align-top">
-                  <p className="font-medium text-cream">{row.name}</p>
-                  <p className="text-xs text-gray-muted mt-0.5">{row.detail}</p>
+              <motion.tr
+                key={row.id}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.03 + idx * 0.03, ease: [0.16, 1, 0.3, 1] }}
+                className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+              >
+                <td className="p-2 align-top">
+                  <p className="font-medium text-cream text-[10px] leading-tight">{row.name}</p>
+                  <p className="text-[8px] text-gray-muted mt-0.5 line-clamp-1">{row.detail}</p>
                 </td>
-                <td className="p-3 md:p-4 text-center align-middle">
-                  <span className="font-playfair text-base font-semibold text-cream tabular-nums">{row.populationLabel}</span>
+                <td className="p-1.5 text-center align-middle">
+                  <span className="font-playfair text-[11px] font-semibold text-cream tabular-nums">{row.populationLabel}</span>
                 </td>
                 {COVERAGE_COLUMNS.map((col) => {
                   const level = row.cells[col];
+                  const isGap = highlightGaps && gapSet?.has(`${row.name}::${col}`);
                   return (
-                    <td key={col} className="p-2 md:p-3 align-middle text-center">
-                      <span className={`inline-flex items-center justify-center min-h-[2.25rem] w-full max-w-[120px] mx-auto px-1.5 py-1 rounded-lg border text-[10px] md:text-xs font-medium leading-tight ${cellStyles[level]}`}>{level}</span>
+                    <td key={col} className="p-1 align-middle text-center">
+                      <motion.span
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.05 + idx * 0.03, duration: 0.25 }}
+                        className={`inline-flex items-center justify-center min-h-[1.75rem] w-full max-w-[80px] mx-auto px-1 py-0.5 rounded-md border text-[9px] font-medium leading-tight ${cellStyles[level]} ${
+                          isGap ? "ring-1 ring-gpssa-green/40 shadow-sm shadow-gpssa-green/20" : ""
+                        }`}
+                      >
+                        {cellShort[level]}
+                      </motion.span>
                     </td>
                   );
                 })}
@@ -112,10 +159,16 @@ function CoverageMatrix({ title, iso3, rows }: { title: string; iso3: string; ro
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Page Component
+   ═══════════════════════════════════════════════════════════════════════════ */
 export default function SegmentCoveragePage() {
   const [segmentMatrix, setSegmentMatrix] = useState<SegmentRow[]>(STATIC_SEGMENT_MATRIX);
   const [intlSegments, setIntlSegments] = useState<IntlSegment[]>([]);
   const [comparisonCountries, setComparisonCountries] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const comparisonCountry = comparisonCountries[0] ?? null;
 
   useEffect(() => {
     fetch("/api/products/segments")
@@ -134,25 +187,24 @@ export default function SegmentCoveragePage() {
           rowMap.get(seg)!.cells[covType] = level;
         }
         if (rowMap.size > 0) setSegmentMatrix(Array.from(rowMap.values()));
-      }).catch(() => {});
+      }).catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    if (comparisonCountries.length === 0) { setIntlSegments([]); return; }
-    const params = new URLSearchParams({ countries: comparisonCountries.join(",") });
-    fetch(`/api/international/segments?${params}`)
+    if (!comparisonCountry) { setIntlSegments([]); return; }
+    fetch(`/api/international/segments?countries=${comparisonCountry}`)
       .then((r) => r.ok ? r.json() : [])
       .then((data) => { if (Array.isArray(data)) setIntlSegments(data); })
       .catch(() => setIntlSegments([]));
-  }, [comparisonCountries]);
+  }, [comparisonCountry]);
 
-  const intlMatrices = useMemo(() => {
-    const map = new Map<string, SegmentRow[]>();
+  const intlMatrix = useMemo(() => {
+    if (!comparisonCountry || intlSegments.length === 0) return null;
+    const rows: SegmentRow[] = [];
     for (const s of intlSegments) {
       const covType = s.coverageType as CoverageColumn;
       if (!COVERAGE_COLUMNS.includes(covType)) continue;
-      if (!map.has(s.countryIso3)) map.set(s.countryIso3, []);
-      const rows = map.get(s.countryIso3)!;
       let row = rows.find((r) => r.name === s.segment);
       if (!row) {
         row = { id: `${s.countryIso3}-${s.segment}`, name: s.segment, detail: s.notes ?? "", populationLabel: s.population ?? "N/A", populationM: null, cells: Object.fromEntries(COVERAGE_COLUMNS.map((c) => [c, "Not Covered" as CoverageLevel])) as Record<CoverageColumn, CoverageLevel> };
@@ -160,112 +212,140 @@ export default function SegmentCoveragePage() {
       }
       row.cells[covType] = (s.level as CoverageLevel) ?? "Not Covered";
     }
-    return map;
-  }, [intlSegments]);
+    return rows;
+  }, [intlSegments, comparisonCountry]);
 
-  const gapInsights = useMemo(() => {
-    if (intlSegments.length === 0) return [];
-    const gpssaGaps = new Set<string>();
-    for (const row of segmentMatrix) {
+  const gapHighlightSet = useMemo(() => {
+    if (!intlMatrix) return new Set<string>();
+    const gaps = new Set<string>();
+    for (const gpssaRow of segmentMatrix) {
       for (const col of COVERAGE_COLUMNS) {
-        if (row.cells[col] === "Not Covered") gpssaGaps.add(`${col}`);
+        if (gpssaRow.cells[col] === "Not Covered") {
+          const intlRow = intlMatrix.find((r) => r.name === gpssaRow.name);
+          if (intlRow && (intlRow.cells[col] === "Covered" || intlRow.cells[col] === "Voluntary")) {
+            gaps.add(`${gpssaRow.name}::${col}`);
+          }
+        }
       }
     }
-
-    const insights: { coverageType: string; countriesWithCoverage: { iso3: string; name: string }[] }[] = [];
-    for (const gap of Array.from(gpssaGaps)) {
-      const countriesCovering = intlSegments
-        .filter((s) => s.coverageType === gap && (s.level === "Covered" || s.level === "Voluntary"))
-        .map((s) => s.countryIso3);
-      const uniqueCountries = Array.from(new Set(countriesCovering)).map((iso3) => {
-        const c = COUNTRIES.find((c) => c.iso3 === iso3);
-        return { iso3, name: c?.name ?? iso3 };
-      });
-      if (uniqueCountries.length > 0) {
-        insights.push({ coverageType: gap, countriesWithCoverage: uniqueCountries });
-      }
-    }
-    return insights;
-  }, [segmentMatrix, intlSegments]);
+    return gaps;
+  }, [segmentMatrix, intlMatrix]);
 
   const totalPopulationM = segmentMatrix.reduce((acc, r) => acc + (r.populationM ?? 0), 0);
   const gapCount = countGaps(segmentMatrix);
+  const countryName = comparisonCountry ? COUNTRIES.find((c) => c.iso3 === comparisonCountry)?.name : null;
+
+  const statBarItems: StatBarItem[] = useMemo(() => {
+    const items: StatBarItem[] = [
+      { icon: Users2, value: segmentMatrix.length, label: "Segments" },
+      { icon: AlertTriangle, value: gapCount, label: "Gap Cells" },
+      { icon: ShieldCheck, value: `~${totalPopulationM.toFixed(1)}M`, label: "Population" },
+    ];
+    if (comparisonCountry && countryName) {
+      items.push({ icon: ArrowLeftRight, value: intlMatrix?.length ?? 0, label: countryName });
+    }
+    return items;
+  }, [segmentMatrix.length, gapCount, totalPopulationM, comparisonCountry, countryName, intlMatrix]);
+
+  if (loading) {
+    return <div className="flex h-full items-center justify-center"><LoadingSpinner size="lg" /></div>;
+  }
 
   return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-8 p-6 md:p-8 pb-12">
-      <motion.div variants={fadeUp}>
-        <PageHeader title="Segment Coverage" description="Coverage matrix by labor-market segment versus major social-protection pillars, with international comparison." badge={{ label: "Products pillar", variant: "gold" }} />
-      </motion.div>
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Header */}
+      <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-white/[0.06]">
+        <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Segment Coverage</h1>
+        <div className="h-4 w-px bg-white/10" />
+        <CountrySelector
+          selected={comparisonCountries}
+          onChange={setComparisonCountries}
+          pillar="products"
+          variant="inline"
+          maxSelections={1}
+        />
+        {comparisonCountry && gapHighlightSet.size > 0 && (
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-gpssa-green/40 ring-1 ring-gpssa-green/40 shadow-sm shadow-gpssa-green/20" />
+            <span className="text-[9px] text-gray-muted">{gapHighlightSet.size} gap{gapHighlightSet.size !== 1 ? "s" : ""} highlighted</span>
+          </div>
+        )}
+      </div>
 
-      <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={Users2} label="Segments in view" value={segmentMatrix.length} trend="neutral" />
-        <StatCard icon={AlertTriangle} label="Coverage gap cells" value={gapCount} trend="neutral" change="Not covered" />
-        <StatCard icon={ShieldCheck} label="Population modeled (M)" value={`~${totalPopulationM.toFixed(1)}M`} trend="neutral" change="excl. atypical" />
-      </motion.div>
-
-      <motion.div variants={fadeUp}>
-        <CountrySelector selected={comparisonCountries} onChange={setComparisonCountries} pillar="products" />
-      </motion.div>
-
-      <AnimatePresence>
-        {comparisonCountries.length > 0 && <ComparisonBanner selectedCountries={comparisonCountries} />}
-      </AnimatePresence>
-
-      {/* Gap insights */}
-      {gapInsights.length > 0 && (
-        <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {gapInsights.map((insight) => (
-            <div key={insight.coverageType} className="glass-card rounded-xl p-4 border border-gpssa-green/15">
-              <div className="flex items-center gap-2 mb-2">
-                <ArrowLeftRight size={12} className="text-gpssa-green" />
-                <span className="text-xs font-medium text-cream">{insight.coverageType}</span>
+      {/* Main content */}
+      <div className="flex-1 min-h-0 flex overflow-hidden p-4 gap-4">
+        <AnimatePresence mode="wait">
+          {comparisonCountry && intlMatrix && intlMatrix.length > 0 ? (
+            <motion.div
+              key="side-by-side"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex gap-4 w-full h-full min-h-0"
+            >
+              <div className="flex-1 min-w-0 h-full">
+                <CompactMatrix
+                  title="GPSSA Coverage"
+                  iso3="ARE"
+                  rows={segmentMatrix}
+                  highlightGaps
+                  gapSet={gapHighlightSet}
+                />
               </div>
-              <p className="text-[10px] text-gray-muted mb-2">
-                {insight.countriesWithCoverage.length} comparison {insight.countriesWithCoverage.length === 1 ? "country provides" : "countries provide"} coverage where GPSSA has gaps
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {insight.countriesWithCoverage.map((c) => (
-                  <span key={c.iso3} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-gpssa-green/10 text-gpssa-green">
-                    <CountryFlag code={c.iso3} size="xs" /> {c.name}
-                  </span>
-                ))}
+              <div className="flex-1 min-w-0 h-full">
+                <CompactMatrix
+                  title={`${countryName} Coverage`}
+                  iso3={comparisonCountry}
+                  rows={intlMatrix}
+                />
               </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="single"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <CompactMatrix
+                title="GPSSA Segment × Coverage Matrix"
+                iso3="ARE"
+                rows={segmentMatrix}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {comparisonCountry && intlSegments.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="glass-card rounded-xl p-6 text-center max-w-xs pointer-events-auto">
+              <Globe2 size={24} className="mx-auto text-gray-muted mb-2" />
+              <p className="text-xs text-cream mb-1">No data for {countryName}</p>
+              <p className="text-[10px] text-gray-muted">Run the International Segments Research Agent from Admin to populate.</p>
             </div>
-          ))}
-        </motion.div>
-      )}
+          </div>
+        )}
+      </div>
 
-      <motion.div variants={fadeUp}>
-        <CoverageMatrix title="GPSSA Segment × Coverage Matrix" iso3="ARE" rows={segmentMatrix} />
-      </motion.div>
-
-      {/* International matrices */}
-      {Array.from(intlMatrices.entries()).map(([iso3, rows]) => {
-        const country = COUNTRIES.find((c) => c.iso3 === iso3);
-        return (
-          <motion.div key={iso3} variants={fadeUp}>
-            <CoverageMatrix title={`${country?.name ?? iso3} Segment × Coverage`} iso3={iso3} rows={rows} />
-          </motion.div>
-        );
-      })}
-
-      {comparisonCountries.length > 0 && intlSegments.length === 0 && (
-        <div className="glass-card rounded-xl p-8 text-center">
-          <Globe2 size={32} className="mx-auto text-gray-muted mb-3" />
-          <p className="text-sm text-cream mb-1">No international segment data available yet</p>
-          <p className="text-xs text-gray-muted">Run the International Segments Research Agent from Admin → Agents to populate comparison data.</p>
-        </div>
-      )}
-
-      <motion.div variants={fadeUp} className="p-4 border-t border-white/5 flex flex-wrap gap-3 text-xs text-gray-muted">
-        <span className="uppercase tracking-wide text-cream/80 mr-1">Legend:</span>
-        {([["Covered", "Mandatory / statutory"], ["Voluntary", "Opt-in or employer-sponsored"], ["Limited", "Partial, capped, or uneven access"], ["Not Covered", "No primary scheme"]] as const).map(([label, hint]) => (
-          <span key={label} className="inline-flex items-center gap-1.5">
-            <span className={`rounded-md px-2 py-0.5 border ${cellStyles[label as CoverageLevel]}`}>{label}</span>
-            <span className="hidden sm:inline">{hint}</span>
+      {/* Legend + StatBar */}
+      <div className="shrink-0 flex items-center gap-3 px-5 py-1.5 border-t border-white/[0.04] bg-white/[0.01]">
+        <span className="text-[9px] uppercase tracking-wide text-cream/60 mr-1">Legend</span>
+        {([
+          ["Covered", "Mandatory / statutory"],
+          ["Voluntary", "Opt-in / employer-sponsored"],
+          ["Limited", "Partial / uneven access"],
+          ["Not Covered", "No primary scheme"],
+        ] as const).map(([label, hint]) => (
+          <span key={label} className="inline-flex items-center gap-1">
+            <span className={`rounded-md px-1.5 py-0.5 border text-[8px] font-medium ${cellStyles[label as CoverageLevel]}`}>{label}</span>
+            <span className="text-[8px] text-gray-muted hidden lg:inline">{hint}</span>
           </span>
         ))}
-      </motion.div>
-    </motion.div>
+      </div>
+      <StatBar items={statBarItems} />
+    </div>
   );
 }
