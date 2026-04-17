@@ -1,32 +1,47 @@
 import type { PromptModule } from "../types";
 import { parseJsonResponse } from "../types";
 
-const systemPrompt = `You are a service design and government operations expert specializing in social insurance service delivery. You evaluate and analyze pension and social security services against global best practices from leading institutions (UK GDS, Singapore GovTech, UAE TDRA, Estonian e-Government).
+const systemPrompt = `You are a world-class social security and pension service design expert. You research and analyze the full service catalog of any country's social security / pension institution with publication-grade thoroughness.
 
-Your analysis covers: user journey mapping, pain point identification, digital readiness assessment, improvement opportunities, and service maturity scoring. You provide evidence-based evaluations grounded in established service design frameworks.
+Your analysis covers: institutional structure, service categorization, user journey mapping, pain point identification, digital readiness assessment, maturity scoring, ILO/ISSA alignment, and international best-practice comparison.
 
-You MUST respond with valid JSON only. Include source citations.`;
+You MUST respond with valid JSON only. No markdown, no commentary — just the JSON object.`;
 
 function buildUserPrompt(items: { key: string; label: string; context?: string }[]): string {
-  const list = items.map((item, i) => `${i + 1}. ${item.label}${item.context ? ` — Context: ${item.context}` : ""}`).join("\n");
-  return `Analyze the following GPSSA social insurance services and provide comprehensive research:
+  const item = items[0];
+  const iso3 = item.key;
+  const countryName = item.label;
 
-${list}
+  return `Research the complete social security and pension service catalog for ${countryName} (${iso3}).
 
-Return a JSON object with a "results" array:
+Identify the PRIMARY social security / pension institution in this country and catalog ALL of its services across every category: registration, contributions, pensions, benefits, employer services, digital services, complaints, certificates, etc.
+
+Return a JSON object with a "results" array. Each element represents one service offered by the institution:
 {
   "results": [
     {
-      "serviceName": "string — exact service name as provided",
-      "category": "string — service category (Employer, Insured, Beneficiary, GCC, Military, General)",
-      "description": "string — detailed description of the service",
-      "userTypes": ["string"] — types of users who access this service,
-      "currentState": "string — assessment of current delivery state",
-      "painPoints": ["string", "string", "string"] — key pain points for users,
+      "countryIso3": "${iso3}",
+      "institutionName": "string — full official name of the primary social security institution",
+      "serviceName": "string — name of the specific service",
+      "category": "string — service category: Registration | Contributions | Pensions | Benefits | Employer | Insured | Beneficiary | Digital | Complaints | Certificates | General",
+      "description": "string — 2-3 sentence description of what the service does and who it serves",
+      "userTypes": ["string"] — e.g. ["Employers", "Insured Persons", "Retirees", "Beneficiaries"],
+      "digitalReadiness": number (0-100) — how digitally mature this specific service is,
+      "maturityLevel": "Basic | Developing | Competent | Advanced | Leading",
+      "currentState": "string — brief assessment of current delivery quality",
+      "painPoints": ["string", "string", "string"] — key friction points for users,
       "opportunities": ["string", "string", "string"] — improvement opportunities,
-      "digitalReadiness": number (0-100) — digital transformation readiness score,
-      "maturityLevel": "string — Basic | Developing | Competent | Advanced | Leading",
-      "bestPracticeComparison": "string — how leading institutions deliver this service",
+      "strengths": ["string", "string"] — what works well,
+      "iloAlignment": "string — relevant ILO/ISSA convention or guideline alignment",
+      "bestPracticeComparison": "string — how leading institutions (Singapore CPF, Estonia, UK DWP) deliver this service better or similarly",
+      "channelCapabilities": {
+        "portal": "Full | Partial | Planned | None",
+        "mobile": "Full | Partial | Planned | None",
+        "centers": "Full | Partial | Planned | None",
+        "call": "Full | Partial | Planned | None",
+        "partner": "Full | Partial | Planned | None",
+        "api": "Full | Partial | Planned | None"
+      },
       "sources": [
         { "title": "string", "url": "string", "publisher": "string", "publishedDate": "string", "evidenceNote": "string" }
       ]
@@ -34,7 +49,7 @@ Return a JSON object with a "results" array:
   ]
 }
 
-Ground analysis in comparable services from GOSI (Saudi Arabia), SIO (Bahrain), PIFSS (Kuwait), and leading international examples.`;
+Aim for 5-15 services per country depending on institution size. Cover ALL major service categories. Be thorough and evidence-based.`;
 }
 
 export const servicesCatalogPrompt: PromptModule = {

@@ -54,27 +54,26 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
       ];
     }
 
-    case "services-catalog": {
-      const services = await prisma.gPSSAService.findMany({
-        where: { researchStatus: { in: ["pending", "failed"] } },
-        select: { id: true, name: true, category: true },
-        orderBy: { name: "asc" },
-      });
-      if (services.length > 0) {
-        return services.map((s) => ({ key: s.id, label: s.name, context: s.category }));
-      }
-      return DEFAULT_SERVICES.map((s) => ({ key: s.name, label: s.name, context: s.category }));
-    }
-
+    case "services-catalog":
     case "services-channels": {
-      const services = await prisma.gPSSAService.findMany({
-        select: { id: true, name: true, category: true },
+      let countries = await prisma.country.findMany({
+        select: { iso3: true, name: true },
         orderBy: { name: "asc" },
       });
-      if (services.length > 0) {
-        return services.map((s) => ({ key: s.id, label: s.name, context: s.category }));
+      if (countries.length === 0) {
+        for (const c of COUNTRIES) {
+          await prisma.country.upsert({
+            where: { iso3: c.iso3 },
+            update: {},
+            create: { iso3: c.iso3, iso2: c.iso2, name: c.name, flag: c.flag, region: c.region, subRegion: c.subRegion },
+          });
+        }
+        countries = await prisma.country.findMany({
+          select: { iso3: true, name: true },
+          orderBy: { name: "asc" },
+        });
       }
-      return DEFAULT_SERVICES.map((s) => ({ key: s.name, label: s.name, context: s.category }));
+      return countries.map((c) => ({ key: c.iso3, label: c.name }));
     }
 
     case "products-portfolio": {
@@ -181,7 +180,7 @@ export async function createScreenResearchJob(
       status: "running",
       totalItems: items.length,
       model: model ?? agent.model,
-      batchSize: screenType === "atlas-worldmap" ? 1 : Math.min(5, items.length),
+      batchSize: (screenType === "atlas-worldmap" || screenType === "services-catalog" || screenType === "services-channels") ? 1 : Math.min(5, items.length),
       concurrency: 5,
       agentConfigId,
       startedAt: new Date(),

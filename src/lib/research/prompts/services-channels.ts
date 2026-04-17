@@ -1,35 +1,44 @@
 import type { PromptModule } from "../types";
 import { parseJsonResponse } from "../types";
 
-const systemPrompt = `You are a channel strategy and omnichannel delivery expert for social insurance organizations. You evaluate how government services are delivered across digital, assisted, and partner channels, assessing capability levels and identifying gaps.
+const systemPrompt = `You are a world-class omnichannel delivery and digital government expert specializing in social security service delivery. You evaluate how countries deliver social security services across digital, physical, voice, partnership, and integration channels.
 
-Your framework evaluates channels across: Portal, Mobile App, Service Centers, Call Center, Partner Channels, and API/Integration. Capability levels are: Full (end-to-end digital completion), Partial (some steps digital, some manual), Planned (on roadmap), None (not available on this channel).
+Your framework evaluates 6 channels: Portal (web), Mobile App, Service Centers (in-person), Call Center (phone), Partner Channels (banks, government portals, employers), and API/Integration (B2B, system-to-system).
 
-You MUST respond with valid JSON only. Include source citations.`;
+Capability levels: Full (end-to-end completion on this channel), Partial (some steps available, others require another channel), Planned (officially on the institution's roadmap), None (not available).
+
+You MUST respond with valid JSON only. No markdown, no commentary — just the JSON object.`;
 
 function buildUserPrompt(items: { key: string; label: string; context?: string }[]): string {
-  const list = items.map((item, i) => `${i + 1}. ${item.label}${item.context ? ` — Category: ${item.context}` : ""}`).join("\n");
-  return `Assess the channel capability levels for the following GPSSA social insurance services:
+  const item = items[0];
+  const iso3 = item.key;
+  const countryName = item.label;
 
-${list}
+  return `Research the channel delivery capabilities for ${countryName} (${iso3})'s primary social security / pension institution.
 
-For each service, evaluate its availability and capability across 6 channels: portal, mobile, centers (in-person), call (call center), partner (government/banking partners), api (system integration).
+For each major service the institution offers, assess its availability and capability level across all 6 channels. Also provide an overall institutional channel maturity assessment.
 
-Return a JSON object with a "results" array:
+Return a JSON object with a "results" array. Each element represents one service's channel capabilities:
 {
   "results": [
     {
-      "serviceName": "string — exact service name as provided",
-      "serviceCategory": "string — Employer | Insured | Beneficiary | Agent/Guardian | GCC | Military | General",
+      "countryIso3": "${iso3}",
+      "institutionName": "string — full official name of the primary social security institution",
+      "serviceName": "string — name of the specific service",
+      "serviceCategory": "string — Registration | Contributions | Pensions | Benefits | Employer | Insured | Beneficiary | Digital | Complaints | Certificates | General",
       "channels": {
-        "portal": "Full" | "Partial" | "Planned" | "None",
-        "mobile": "Full" | "Partial" | "Planned" | "None",
-        "centers": "Full" | "Partial" | "Planned" | "None",
-        "call": "Full" | "Partial" | "Planned" | "None",
-        "partner": "Full" | "Partial" | "Planned" | "None",
-        "api": "Full" | "Partial" | "Planned" | "None"
+        "portal": "Full | Partial | Planned | None",
+        "mobile": "Full | Partial | Planned | None",
+        "centers": "Full | Partial | Planned | None",
+        "call": "Full | Partial | Planned | None",
+        "partner": "Full | Partial | Planned | None",
+        "api": "Full | Partial | Planned | None"
       },
-      "notes": "string — key observations about this service's channel coverage",
+      "channelMaturityScore": number (0-100) — overall digital channel maturity for this service,
+      "digitalTransformationStage": "Pre-Digital | Emerging | Developing | Advanced | Leading",
+      "notes": "string — key observations about channel coverage, gaps, and standout capabilities",
+      "bestChannelPractice": "string — what the institution does particularly well in channel delivery",
+      "gapAnalysis": "string — most significant channel gaps compared to global leaders",
       "sources": [
         { "title": "string", "url": "string", "publisher": "string", "publishedDate": "string", "evidenceNote": "string" }
       ]
@@ -37,7 +46,7 @@ Return a JSON object with a "results" array:
   ]
 }
 
-Base assessments on GPSSA's published service catalog, gpssa.gov.ae capabilities, and comparable GCC institution channel strategies.`;
+Cover 5-15 services per country. Be thorough — assess every major service the institution offers across all 6 channels.`;
 }
 
 export const servicesChannelsPrompt: PromptModule = {

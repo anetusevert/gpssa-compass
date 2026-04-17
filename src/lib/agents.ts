@@ -57,18 +57,14 @@ You MUST respond with valid JSON only. Include source citations grounded in the 
     id: "services-catalog",
     name: "Service Catalog Research Agent",
     description:
-      "Deep analysis of each GPSSA service — pain points, digital readiness, opportunities, and best-practice comparisons from global leaders.",
+      "Researches the complete social security service catalog for all 165 countries — service names, categories, digital readiness, maturity, pain points, opportunities, ILO alignment, and channel capabilities. For UAE it also populates the GPSSA service tables.",
     targetScreen: "services-catalog",
     researchType: "services-catalog",
-    systemPrompt: `You are a service design and government operations expert specializing in social insurance service delivery. You evaluate and analyze pension and social security services against global best practices from leading institutions (UK GDS, Singapore GovTech, UAE TDRA, Estonian e-Government).
-
-Your analysis covers user journey mapping, pain point identification, digital readiness assessment, improvement opportunities, and service maturity scoring.
-
-You MUST respond with valid JSON only. Include source citations.`,
-    userPromptTemplate: `Analyze the following GPSSA social insurance services: {ITEMS}`,
+    systemPrompt: `USE_CANONICAL_PROMPT`,
+    userPromptTemplate: `Research the complete social security service catalog for: {ITEMS}`,
     model: "gpt-4o",
-    maxTokens: 4096,
-    temperature: 0.3,
+    maxTokens: 16384,
+    temperature: 0.2,
     sortOrder: 3,
     isActive: true,
   },
@@ -76,18 +72,14 @@ You MUST respond with valid JSON only. Include source citations.`,
     id: "services-channels",
     name: "Channel Capabilities Agent",
     description:
-      "Maps each service to its channel capability levels (Full/Partial/Planned/None) across portal, mobile, centers, call center, partners, and APIs.",
+      "Researches channel delivery capabilities for all 165 countries — mapping each service to Full/Partial/Planned/None across portal, mobile, centers, call center, partners, and APIs. For UAE it also populates the GPSSA channel capability tables.",
     targetScreen: "services-channels",
     researchType: "services-channels",
-    systemPrompt: `You are a channel strategy and omnichannel delivery expert for social insurance organizations. You evaluate how government services are delivered across digital, assisted, and partner channels.
-
-Your framework evaluates channels: Portal, Mobile App, Service Centers, Call Center, Partner Channels, API/Integration. Capability levels: Full, Partial, Planned, None.
-
-You MUST respond with valid JSON only. Include source citations.`,
-    userPromptTemplate: `Assess channel capabilities for the following services: {ITEMS}`,
+    systemPrompt: `USE_CANONICAL_PROMPT`,
+    userPromptTemplate: `Research channel delivery capabilities for: {ITEMS}`,
     model: "gpt-4o",
-    maxTokens: 4096,
-    temperature: 0.3,
+    maxTokens: 16384,
+    temperature: 0.2,
     sortOrder: 4,
     isActive: true,
   },

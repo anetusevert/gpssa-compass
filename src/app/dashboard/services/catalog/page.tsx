@@ -42,6 +42,11 @@ interface GPSSAService {
   currentState: string | null;
   painPoints: string[] | null;
   opportunities: string[] | null;
+  digitalReadiness: number | null;
+  maturityLevel: string | null;
+  bestPracticeComparison: string | null;
+  strengths: string[] | null;
+  iloAlignment: string | null;
 }
 
 interface IntlService {
@@ -65,10 +70,11 @@ interface IntlService {
    ═══════════════════════════════════════════════════════════════════════════ */
 const CATEGORIES = [
   "Employer", "Insured", "Beneficiary", "Agent/Guardian", "GCC", "Military", "General",
+  "Registration", "Contributions", "Pensions", "Benefits", "Digital", "Complaints", "Certificates",
 ] as const;
 type Category = (typeof CATEGORIES)[number];
 
-const categoryConfig: Record<Category, { icon: typeof Layers; color: "green" | "blue" | "gold" | "gray" | "red"; accent: string; bg: string }> = {
+const categoryConfig: Record<string, { icon: typeof Layers; color: "green" | "blue" | "gold" | "gray" | "red"; accent: string; bg: string }> = {
   Employer:        { icon: Briefcase, color: "blue",  accent: "border-adl-blue/40",       bg: "bg-adl-blue/[0.08]" },
   Insured:         { icon: Shield,    color: "green", accent: "border-gpssa-green/40",     bg: "bg-gpssa-green/[0.08]" },
   Beneficiary:     { icon: UserCheck, color: "gold",  accent: "border-gold/40",            bg: "bg-gold/[0.08]" },
@@ -76,6 +82,13 @@ const categoryConfig: Record<Category, { icon: typeof Layers; color: "green" | "
   GCC:             { icon: Globe2,    color: "blue",  accent: "border-adl-blue/40",        bg: "bg-adl-blue/[0.08]" },
   Military:        { icon: Sword,     color: "red",   accent: "border-red-400/40",         bg: "bg-red-400/[0.08]" },
   General:         { icon: FileText,  color: "green", accent: "border-gpssa-green/40",     bg: "bg-gpssa-green/[0.08]" },
+  Registration:    { icon: Users,     color: "blue",  accent: "border-adl-blue/40",        bg: "bg-adl-blue/[0.08]" },
+  Contributions:   { icon: Briefcase, color: "gold",  accent: "border-gold/40",            bg: "bg-gold/[0.08]" },
+  Pensions:        { icon: Shield,    color: "green", accent: "border-gpssa-green/40",     bg: "bg-gpssa-green/[0.08]" },
+  Benefits:        { icon: UserCheck, color: "gold",  accent: "border-gold/40",            bg: "bg-gold/[0.08]" },
+  Digital:         { icon: Sparkles,  color: "blue",  accent: "border-adl-blue/40",        bg: "bg-adl-blue/[0.08]" },
+  Complaints:      { icon: AlertTriangle, color: "red", accent: "border-red-400/40",       bg: "bg-red-400/[0.08]" },
+  Certificates:    { icon: FileText,  color: "green", accent: "border-gpssa-green/40",     bg: "bg-gpssa-green/[0.08]" },
 };
 
 const CAT_GLOW: Record<string, string> = {
@@ -90,8 +103,10 @@ const CAT_GLOW: Record<string, string> = {
 
 const COUNTRY_COLORS = ["#22C55E", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
 
+const STATIC_EXTRA: Pick<GPSSAService, "digitalReadiness" | "maturityLevel" | "bestPracticeComparison" | "strengths" | "iloAlignment"> = { digitalReadiness: null, maturityLevel: null, bestPracticeComparison: null, strengths: null, iloAlignment: null };
+
 const STATIC_SERVICES: GPSSAService[] = [
-  { id: "s-01", name: "Registration of an Insured", category: "Employer", description: "Register new insured individuals under an employer's account with GPSSA.", userTypes: ["Employer", "HR"], currentState: "Semi-digital process with paper-based document submission.", painPoints: ["Manual document verification", "Long processing times", "Duplicate entry risks"], opportunities: ["Digital onboarding portal", "AI document verification", "Real-time validation"] },
+  { id: "s-01", name: "Registration of an Insured", category: "Employer", description: "Register new insured individuals under an employer's account with GPSSA.", userTypes: ["Employer", "HR"], currentState: "Semi-digital process with paper-based document submission.", painPoints: ["Manual document verification", "Long processing times", "Duplicate entry risks"], opportunities: ["Digital onboarding portal", "AI document verification", "Real-time validation"], ...STATIC_EXTRA },
   { id: "s-02", name: "Employers Registration", category: "Employer", description: "Register new employers with GPSSA for pension and social security contributions.", userTypes: ["Employer"], currentState: "Partially online with in-person verification required.", painPoints: ["Complex registration forms", "Multiple visits required", "Inconsistent processing"], opportunities: ["End-to-end digital registration", "eKYC integration", "Automated compliance checks"] },
   { id: "s-03", name: "Apply for End Of Service - Civil", category: "Employer", description: "Process end-of-service benefits for civil sector employees.", userTypes: ["Employer", "HR"], currentState: "Manual calculation with multi-step approval workflow.", painPoints: ["Complex benefit calculations", "Delayed payments", "Paper-heavy process"], opportunities: ["Automated benefit calculator", "Digital approval workflow", "Direct bank transfers"] },
   { id: "s-04", name: "Benefit Exchange - Inward", category: "Employer", description: "Handle incoming benefit transfers from other pension authorities.", userTypes: ["Employer", "Insured"], currentState: "Manual inter-authority coordination.", painPoints: ["Slow inter-authority communication", "Data reconciliation issues", "Lack of transparency"], opportunities: ["API integration with GCC authorities", "Blockchain-based verification", "Real-time tracking"] },
@@ -122,7 +137,7 @@ const STATIC_SERVICES: GPSSAService[] = [
   { id: "s-29", name: "Generate Certificates", category: "General", description: "Generate various certificates including service certificates, pension certificates, and salary certificates.", userTypes: ["Insured", "Employer", "Beneficiary"], currentState: "Semi-digital with manual approval steps.", painPoints: ["Approval bottlenecks", "Format inconsistencies", "No instant generation"], opportunities: ["Instant digital certificate generation", "QR code verification", "API for third-party verification"] },
   { id: "s-30", name: "Submit Complaint", category: "General", description: "Submit and track complaints about GPSSA services.", userTypes: ["Insured", "Employer", "Beneficiary"], currentState: "Multi-channel submission with manual routing.", painPoints: ["Inconsistent routing", "Slow resolution", "Poor tracking"], opportunities: ["AI-powered routing", "Sentiment analysis", "SLA tracking dashboard"] },
   { id: "s-31", name: "Submit Inquiry / Suggestion", category: "General", description: "Submit inquiries or suggestions for GPSSA service improvements.", userTypes: ["Insured", "Employer", "Beneficiary"], currentState: "Email and call-based with limited tracking.", painPoints: ["No structured tracking", "Feedback black hole", "Limited follow-up"], opportunities: ["Feedback management platform", "Idea voting system", "Automated acknowledgment"] },
-];
+].map((s) => ({ ...STATIC_EXTRA, ...s }));
 
 type VizMode = "list" | "bar" | "radar";
 
@@ -469,7 +484,7 @@ export default function ServiceCatalogPage() {
   const [intlServices, setIntlServices] = useState<IntlService[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [comparisonCountries, setComparisonCountries] = useState<string[]>([]);
+  const [comparisonCountries, setComparisonCountries] = useState<string[]>(["SGP", "GBR", "EST", "SAU", "AUS"]);
   const [vizMode, setVizMode] = useState<VizMode>("list");
   const [detailModal, setDetailModal] = useState<GPSSAService | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -487,8 +502,25 @@ export default function ServiceCatalogPage() {
             const enriched = STATIC_SERVICES.map((staticSvc) => {
               const apiMatch = data.find((d) => d.id === staticSvc.id || (d.name as string)?.toLowerCase() === staticSvc.name.toLowerCase());
               if (!apiMatch) return staticSvc;
-              const parsed = { userTypes: parseJsonField<string[]>(apiMatch.userTypes), painPoints: parseJsonField<string[]>(apiMatch.painPoints), opportunities: parseJsonField<string[]>(apiMatch.opportunities) };
-              return { ...staticSvc, painPoints: parsed.painPoints?.length ? parsed.painPoints : staticSvc.painPoints, opportunities: parsed.opportunities?.length ? parsed.opportunities : staticSvc.opportunities, userTypes: parsed.userTypes?.length ? parsed.userTypes : staticSvc.userTypes, description: (apiMatch.description as string) || staticSvc.description, currentState: (apiMatch.currentState as string) || staticSvc.currentState };
+              const parsed = {
+                userTypes: parseJsonField<string[]>(apiMatch.userTypes),
+                painPoints: parseJsonField<string[]>(apiMatch.painPoints),
+                opportunities: parseJsonField<string[]>(apiMatch.opportunities),
+                strengths: parseJsonField<string[]>(apiMatch.strengths),
+              };
+              return {
+                ...staticSvc,
+                painPoints: parsed.painPoints?.length ? parsed.painPoints : staticSvc.painPoints,
+                opportunities: parsed.opportunities?.length ? parsed.opportunities : staticSvc.opportunities,
+                userTypes: parsed.userTypes?.length ? parsed.userTypes : staticSvc.userTypes,
+                description: (apiMatch.description as string) || staticSvc.description,
+                currentState: (apiMatch.currentState as string) || staticSvc.currentState,
+                digitalReadiness: typeof apiMatch.digitalReadiness === "number" ? apiMatch.digitalReadiness : null,
+                maturityLevel: apiMatch.maturityLevel ? String(apiMatch.maturityLevel) : null,
+                bestPracticeComparison: apiMatch.bestPracticeComparison ? String(apiMatch.bestPracticeComparison) : null,
+                strengths: parsed.strengths?.length ? parsed.strengths : null,
+                iloAlignment: apiMatch.iloAlignment ? String(apiMatch.iloAlignment) : null,
+              };
             });
             setServices(enriched);
           } else { setServices(STATIC_SERVICES); }
@@ -508,11 +540,20 @@ export default function ServiceCatalogPage() {
   }, [comparisonCountries]);
 
   /* ── Derived data ── */
+  const activeCats = useMemo(() => {
+    const allCats = new Set<string>();
+    for (const s of services) allCats.add(s.category);
+    for (const s of intlServices) allCats.add(s.category);
+    const ordered = CATEGORIES.filter((c) => allCats.has(c));
+    Array.from(allCats).forEach((c) => { if (!ordered.includes(c as Category)) ordered.push(c as Category); });
+    return ordered;
+  }, [services, intlServices]);
+
   const catCounts = useMemo(() => {
     const map = new Map<string, number>();
     for (const s of services) map.set(s.category, (map.get(s.category) ?? 0) + 1);
-    return CATEGORIES.map((cat) => ({ cat, count: map.get(cat) ?? 0 }));
-  }, [services]);
+    return activeCats.map((cat) => ({ cat, count: map.get(cat) ?? 0 }));
+  }, [services, activeCats]);
 
   const categoryServices = useMemo(() => {
     if (!activeCategory) return [];
@@ -540,7 +581,7 @@ export default function ServiceCatalogPage() {
   }, [intlServices]);
 
   const comparisonCatData = useMemo(() => {
-    return CATEGORIES.map((cat) => {
+    return activeCats.map((cat) => {
       const gpssa = services.filter((s) => s.category === cat).length;
       const intl = comparisonCountries.map((iso3, idx) => {
         const count = (intlByCountry.get(iso3) ?? []).filter((s) => s.category === cat).length;
@@ -548,7 +589,7 @@ export default function ServiceCatalogPage() {
       });
       return { cat, gpssa, intl };
     });
-  }, [services, comparisonCountries, intlByCountry]);
+  }, [services, comparisonCountries, intlByCountry, activeCats]);
 
   const maxCatCount = useMemo(() =>
     Math.max(1, ...comparisonCatData.flatMap((c) => [c.gpssa, ...c.intl.map((i) => i.count)]))
@@ -571,7 +612,7 @@ export default function ServiceCatalogPage() {
   const statBarItems: StatBarItem[] = useMemo(() => {
     const items: StatBarItem[] = [
       { icon: Layers, value: services.length, label: "GPSSA Services" },
-      { icon: FolderOpen, value: CATEGORIES.length, label: "Categories" },
+      { icon: FolderOpen, value: activeCats.length, label: "Categories" },
       { icon: AlertTriangle, value: services.reduce((a, s) => a + (s.painPoints?.length ?? 0), 0), label: "Pain Points" },
       { icon: Lightbulb, value: services.reduce((a, s) => a + (s.opportunities?.length ?? 0), 0), label: "Opportunities" },
     ];
@@ -579,7 +620,7 @@ export default function ServiceCatalogPage() {
       items.push({ icon: Globe2, value: intlServices.length, label: `Intl (${comparisonCountries.length})` });
     }
     return items;
-  }, [services, intlServices.length, comparisonCountries.length, isComparing]);
+  }, [services, intlServices.length, comparisonCountries.length, isComparing, activeCats.length]);
 
   if (loading) {
     return <div className="flex h-full items-center justify-center"><LoadingSpinner size="lg" /></div>;
@@ -777,6 +818,29 @@ export default function ServiceCatalogPage() {
         {detailModal && (
           <div className="space-y-4">
             {detailModal.description && <p className="text-sm text-gray-muted">{detailModal.description}</p>}
+
+            {(detailModal.digitalReadiness != null || detailModal.maturityLevel) && (
+              <div className="flex items-center gap-4 glass rounded-lg p-3">
+                {detailModal.digitalReadiness != null && (
+                  <div className="flex items-center gap-2 flex-1">
+                    <Sparkles size={12} className="text-gpssa-green shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex justify-between text-[10px] mb-1">
+                        <span className="text-gray-muted">Digital Readiness</span>
+                        <span className="text-gpssa-green font-semibold">{detailModal.digitalReadiness}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                        <motion.div className="h-full rounded-full bg-gpssa-green/70" initial={{ width: 0 }} animate={{ width: `${detailModal.digitalReadiness}%` }} transition={{ duration: 0.6 }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {detailModal.maturityLevel && (
+                  <Badge variant="blue" size="sm">{detailModal.maturityLevel}</Badge>
+                )}
+              </div>
+            )}
+
             {detailModal.currentState && (
               <div>
                 <span className="text-xs font-medium text-cream block mb-1">Current State</span>
@@ -788,6 +852,14 @@ export default function ServiceCatalogPage() {
                 <span className="text-xs font-medium text-cream block mb-2">User Types</span>
                 <div className="flex flex-wrap gap-1.5">
                   {detailModal.userTypes.map((ut) => <Badge key={ut} variant="blue" size="sm">{ut}</Badge>)}
+                </div>
+              </div>
+            )}
+            {detailModal.strengths && detailModal.strengths.length > 0 && (
+              <div>
+                <span className="text-xs font-medium text-cream block mb-2">Strengths</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {detailModal.strengths.map((s, i) => <Badge key={i} variant="green" size="sm">{s}</Badge>)}
                 </div>
               </div>
             )}
@@ -804,6 +876,21 @@ export default function ServiceCatalogPage() {
                 <span className="text-xs font-medium text-cream block mb-2">Opportunities</span>
                 <div className="flex flex-wrap gap-1.5">
                   {detailModal.opportunities.map((opp, i) => <Badge key={i} variant="green" size="sm">{opp}</Badge>)}
+                </div>
+              </div>
+            )}
+            {detailModal.bestPracticeComparison && (
+              <div>
+                <span className="text-xs font-medium text-cream block mb-1">Best Practice Comparison</span>
+                <p className="text-xs text-gray-muted glass rounded-lg p-3">{detailModal.bestPracticeComparison}</p>
+              </div>
+            )}
+            {detailModal.iloAlignment && (
+              <div className="flex items-center gap-2 glass rounded-lg p-3">
+                <Scale size={12} className="text-gold shrink-0" />
+                <div>
+                  <span className="text-[10px] font-medium text-cream block">ILO/ISSA Alignment</span>
+                  <p className="text-[10px] text-gray-muted">{detailModal.iloAlignment}</p>
                 </div>
               </div>
             )}
