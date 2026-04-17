@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Globe,
@@ -16,6 +16,7 @@ import {
   UserCircle,
   Network,
   ArrowRight,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -110,22 +111,16 @@ function AtlasBar() {
       whileHover={{ scale: 1.008, y: -1 }}
       whileTap={{ scale: 0.997 }}
     >
-      {/* Animated glow orb */}
       <motion.div
         className="pointer-events-none absolute -left-16 -top-16 h-40 w-40 rounded-full opacity-40"
         style={{
           background: "radial-gradient(circle, rgba(0,168,107,0.25) 0%, transparent 70%)",
         }}
-        animate={{
-          x: [0, 30, 0],
-          y: [0, 8, 0],
-          scale: [1, 1.2, 1],
-        }}
+        animate={{ x: [0, 30, 0], y: [0, 8, 0], scale: [1, 1.2, 1] }}
         transition={{ duration: 8, ease: "easeInOut", repeat: Infinity }}
       />
 
       <div className="relative z-10 flex items-center gap-4 px-6 py-3">
-        {/* Icon */}
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
           style={{
@@ -136,7 +131,6 @@ function AtlasBar() {
           <Globe size={18} className="text-[#00A86B]" strokeWidth={1.6} />
         </div>
 
-        {/* Title area */}
         <div className="flex flex-1 items-center gap-3">
           <h3 className="font-playfair text-lg font-bold text-cream">
             Global Atlas
@@ -147,7 +141,6 @@ function AtlasBar() {
           </p>
         </div>
 
-        {/* Sub-links */}
         <div className="hidden md:flex items-center gap-1.5 mr-2">
           {[
             { label: "World Map", href: "/dashboard/atlas", icon: Globe },
@@ -170,7 +163,6 @@ function AtlasBar() {
           })}
         </div>
 
-        {/* Arrow */}
         <motion.div
           className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.04] transition-colors duration-200 group-hover:bg-white/[0.08]"
           animate={{ x: [0, 3, 0] }}
@@ -184,42 +176,34 @@ function AtlasBar() {
 }
 
 /* ──────────────────────────────────────────────
- *  Pillar Tile
+ *  Pillar Tile (with inline sub-item pills)
  * ────────────────────────────────────────────── */
 
 function PillarTile({
   pillar,
   index,
-  isOpen,
-  onToggle,
+  onOpenModal,
 }: {
   pillar: Pillar;
   index: number;
-  isOpen: boolean;
-  onToggle: () => void;
+  onOpenModal: () => void;
 }) {
   const router = useRouter();
   const Icon = pillar.icon;
 
   return (
     <motion.div
-      className="relative flex flex-col"
+      className="relative"
       initial={{ opacity: 0, y: 30, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.6, ease: EASE, delay: 0.25 + index * 0.1 }}
     >
       <motion.button
-        onClick={onToggle}
-        className="glass-pillar group relative w-full overflow-hidden rounded-[20px] text-left"
-        whileHover={isOpen ? undefined : { y: -6, scale: 1.02 }}
+        onClick={onOpenModal}
+        className="glass-pillar group relative h-full w-full overflow-hidden rounded-[20px] text-left"
+        whileHover={{ y: -6, scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        style={{
-          borderColor: isOpen
-            ? `color-mix(in srgb, var(${pillar.accentVar}) 25%, transparent)`
-            : undefined,
-        }}
       >
-        {/* Animated background orb */}
         <motion.div
           className="pointer-events-none absolute rounded-full"
           style={{
@@ -228,16 +212,12 @@ function PillarTile({
             right: -40,
             top: -40,
             background: `radial-gradient(circle, ${pillar.glowColor} 0%, transparent 70%)`,
+            opacity: 0.4,
           }}
-          animate={
-            isOpen
-              ? { opacity: 0.9, scale: 1.2 }
-              : { opacity: 0.4, scale: 1 }
-          }
-          transition={{ duration: 0.6, ease: EASE }}
+          animate={{ x: [0, 8, 0], y: [0, -6, 0], scale: [1, 1.08, 1] }}
+          transition={{ duration: 9, ease: "easeInOut", repeat: Infinity }}
         />
 
-        {/* Secondary orb, bottom-left */}
         <motion.div
           className="pointer-events-none absolute rounded-full"
           style={{
@@ -248,95 +228,229 @@ function PillarTile({
             background: `radial-gradient(circle, ${pillar.glowColor} 0%, transparent 70%)`,
             opacity: 0.15,
           }}
-          animate={{
-            x: [0, 10, 0],
-            y: [0, -8, 0],
-          }}
+          animate={{ x: [0, 10, 0], y: [0, -8, 0] }}
           transition={{ duration: 10, ease: "easeInOut", repeat: Infinity }}
         />
 
-        {/* Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center gap-4 px-6 py-10 text-center min-h-[240px]">
-          {/* Icon container with glow */}
-          <motion.div
-            className="flex h-14 w-14 items-center justify-center rounded-2xl"
-            style={{
-              background: `linear-gradient(135deg, color-mix(in srgb, var(${pillar.accentVar}) 18%, transparent), color-mix(in srgb, var(${pillar.accentVar}) 6%, transparent))`,
-              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.2)`,
-            }}
-            whileHover={{ rotate: [0, -5, 5, 0], transition: { duration: 0.5 } }}
-          >
-            <Icon size={24} className="icon-white" strokeWidth={1.4} />
-          </motion.div>
+        <div className="relative z-10 flex flex-col items-center justify-between gap-3 px-5 py-7 text-center h-full">
+          <div className="flex flex-col items-center gap-3">
+            <motion.div
+              className="flex h-12 w-12 items-center justify-center rounded-2xl"
+              style={{
+                background: `linear-gradient(135deg, color-mix(in srgb, var(${pillar.accentVar}) 18%, transparent), color-mix(in srgb, var(${pillar.accentVar}) 6%, transparent))`,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.2)",
+              }}
+            >
+              <Icon size={22} className="icon-white" strokeWidth={1.4} />
+            </motion.div>
 
-          <div>
-            <h3 className="font-playfair text-xl font-bold text-cream">
-              {pillar.title}
-            </h3>
-            <p className="mt-1 text-xs text-white/35 leading-relaxed">
-              {pillar.subtitle}
-            </p>
+            <div>
+              <h3 className="font-playfair text-lg font-bold text-cream">
+                {pillar.title}
+              </h3>
+              <p className="mt-0.5 text-[11px] text-white/35">
+                {pillar.subtitle}
+              </p>
+            </div>
           </div>
 
-          {/* Expand indicator */}
-          <motion.div
-            animate={{ rotate: isOpen ? 45 : 0 }}
-            transition={{ duration: 0.3, ease: EASE }}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.05] transition-colors duration-200 group-hover:bg-white/[0.1]"
-          >
-            <span className="text-white/40 text-sm leading-none select-none group-hover:text-white/60 transition-colors duration-200">
-              +
-            </span>
-          </motion.div>
+          {/* Inline sub-item pills */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 mt-1">
+            {pillar.items.map((item) => {
+              const SubIcon = item.icon;
+              return (
+                <span
+                  key={item.href}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(item.href);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.stopPropagation();
+                      router.push(item.href);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg bg-white/[0.04] px-2.5 py-1.5 text-[10px] text-white/50 transition-all duration-200 hover:bg-white/[0.1] hover:text-white/80 cursor-pointer"
+                >
+                  <SubIcon size={10} strokeWidth={1.8} />
+                  {item.label}
+                </span>
+              );
+            })}
+          </div>
         </div>
       </motion.button>
+    </motion.div>
+  );
+}
 
-      {/* Expanded sub-items */}
-      <AnimatePresence>
-        {isOpen && (
+/* ──────────────────────────────────────────────
+ *  Pillar Modal (cinematic zoom-in)
+ * ────────────────────────────────────────────── */
+
+function PillarModal({
+  pillar,
+  onClose,
+}: {
+  pillar: Pillar;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const Icon = pillar.icon;
+
+  const handleNavigate = useCallback(
+    (href: string) => {
+      onClose();
+      router.push(href);
+    },
+    [onClose, router]
+  );
+
+  return (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        onClick={onClose}
+      />
+
+      {/* Modal card */}
+      <motion.div
+        className="fixed inset-0 z-50 flex items-center justify-center px-6 pointer-events-none"
+        initial={{ opacity: 0, scale: 0.88, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.92, y: 20 }}
+        transition={{ duration: 0.4, ease: EASE }}
+      >
+        <div
+          className="pointer-events-auto relative w-full max-w-lg overflow-hidden rounded-[28px]"
+          style={{
+            background:
+              "linear-gradient(160deg, rgba(17, 34, 64, 0.92), rgba(7, 17, 34, 0.96))",
+            border: "1px solid rgba(255,255,255,0.06)",
+            boxShadow: `0 40px 120px rgba(0,0,0,0.5), 0 0 120px ${pillar.glowColor}`,
+          }}
+        >
+          {/* Accent glow */}
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.4, ease: EASE }}
-            className="overflow-hidden"
+            className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full"
+            style={{
+              background: `radial-gradient(circle, ${pillar.glowColor} 0%, transparent 65%)`,
+            }}
+            animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
+            transition={{ duration: 4, ease: "easeInOut", repeat: Infinity }}
+          />
+          <motion.div
+            className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full"
+            style={{
+              background: `radial-gradient(circle, ${pillar.glowColor} 0%, transparent 70%)`,
+              opacity: 0.2,
+            }}
+          />
+
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] text-white/50 transition-colors duration-200 hover:bg-white/[0.12] hover:text-white"
           >
-            <div className="pt-2 pb-1 px-1.5 space-y-1">
+            <X size={16} />
+          </button>
+
+          {/* Content */}
+          <div className="relative z-10 px-8 py-10">
+            {/* Header */}
+            <div className="flex flex-col items-center text-center mb-8">
+              <motion.div
+                className="flex h-16 w-16 items-center justify-center rounded-2xl mb-4"
+                style={{
+                  background: `linear-gradient(135deg, color-mix(in srgb, var(${pillar.accentVar}) 22%, transparent), color-mix(in srgb, var(${pillar.accentVar}) 8%, transparent))`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 40px rgba(0,0,0,0.25)`,
+                }}
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
+              >
+                <Icon size={28} className="icon-white" strokeWidth={1.3} />
+              </motion.div>
+
+              <motion.h2
+                className="font-playfair text-2xl font-bold text-cream"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: EASE, delay: 0.15 }}
+              >
+                {pillar.title}
+              </motion.h2>
+              <motion.p
+                className="mt-1.5 text-sm text-white/40"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: EASE, delay: 0.2 }}
+              >
+                {pillar.subtitle}
+              </motion.p>
+            </div>
+
+            {/* Separator */}
+            <motion.div
+              className="mx-auto mb-6 h-px w-24"
+              style={{
+                background: `linear-gradient(90deg, transparent, color-mix(in srgb, var(${pillar.accentVar}) 40%, transparent), transparent)`,
+              }}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 0.6, ease: EASE, delay: 0.25 }}
+            />
+
+            {/* Sub-item cards */}
+            <div className="space-y-2">
               {pillar.items.map((item, i) => {
                 const SubIcon = item.icon;
                 return (
                   <motion.button
                     key={item.href}
-                    onClick={() => router.push(item.href)}
-                    initial={{ opacity: 0, x: -12 }}
+                    onClick={() => handleNavigate(item.href)}
+                    initial={{ opacity: 0, x: -16 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.35, ease: EASE, delay: i * 0.06 }}
-                    whileHover={{ x: 4, scale: 1.01 }}
-                    className="group/sub flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors duration-200 hover:bg-white/[0.05]"
+                    transition={{ duration: 0.4, ease: EASE, delay: 0.3 + i * 0.07 }}
+                    whileHover={{ x: 6, scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    className="group/card flex w-full items-center gap-4 rounded-2xl px-5 py-4 text-left transition-all duration-250 hover:bg-white/[0.06]"
+                    style={{
+                      background: "rgba(255,255,255,0.02)",
+                    }}
                   >
                     <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-shadow duration-300"
                       style={{
-                        background: `linear-gradient(135deg, color-mix(in srgb, var(${pillar.accentVar}) 12%, transparent), transparent)`,
+                        background: `linear-gradient(135deg, color-mix(in srgb, var(${pillar.accentVar}) 15%, transparent), color-mix(in srgb, var(${pillar.accentVar}) 5%, transparent))`,
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 6px 20px rgba(0,0,0,0.15)",
                       }}
                     >
-                      <SubIcon size={14} className="icon-white" strokeWidth={1.8} />
+                      <SubIcon size={18} className="icon-white" strokeWidth={1.6} />
                     </div>
-                    <span className="text-sm text-white/60 group-hover/sub:text-white transition-colors duration-200">
+                    <span className="flex-1 text-sm font-medium text-white/70 group-hover/card:text-white transition-colors duration-200">
                       {item.label}
                     </span>
                     <ArrowRight
-                      size={12}
-                      className="ml-auto text-white/0 group-hover/sub:text-white/40 transition-colors duration-200"
+                      size={14}
+                      className="text-white/0 group-hover/card:text-white/50 transition-all duration-200 group-hover/card:translate-x-1"
                     />
                   </motion.button>
                 );
               })}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+          </div>
+        </div>
+      </motion.div>
+    </>
   );
 }
 
@@ -349,6 +463,8 @@ export default function DashboardHome() {
   const rawName = (session?.user?.name ?? "there").split(" ")[0];
   const userName = rawName.split(".")[0];
   const [openPillar, setOpenPillar] = useState<string | null>(null);
+
+  const activePillar = PILLARS.find((p) => p.id === openPillar) ?? null;
 
   return (
     <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden">
@@ -409,22 +525,15 @@ export default function DashboardHome() {
 
       {/* Main content */}
       <div className="relative z-10 w-full max-w-3xl px-6 space-y-3">
-        {/* Atlas top bar */}
         <AtlasBar />
 
-        {/* Three pillar tiles */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-3">
           {PILLARS.map((pillar, i) => (
             <PillarTile
               key={pillar.id}
               pillar={pillar}
               index={i}
-              isOpen={openPillar === pillar.id}
-              onToggle={() =>
-                setOpenPillar((prev) =>
-                  prev === pillar.id ? null : pillar.id
-                )
-              }
+              onOpenModal={() => setOpenPillar(pillar.id)}
             />
           ))}
         </div>
@@ -446,6 +555,17 @@ export default function DashboardHome() {
           className="adl-logo-white object-contain opacity-60"
         />
       </motion.footer>
+
+      {/* Pillar Modal */}
+      <AnimatePresence>
+        {activePillar && (
+          <PillarModal
+            key={activePillar.id}
+            pillar={activePillar}
+            onClose={() => setOpenPillar(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
