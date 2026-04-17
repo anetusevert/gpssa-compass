@@ -252,6 +252,7 @@ export default function GlobalAtlasPage() {
   const [lastUpdated,  setLastUpdated]  = useState<Date | null>(null);
   const [refreshing,   setRefreshing]   = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval>>();
+  const benchSyncDone = useRef(false);
 
   const loadCountries = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
@@ -283,13 +284,21 @@ export default function GlobalAtlasPage() {
 
       const map: Record<string, CountryProfile> = {};
       for (const c of rows) {
-        const hasScores = typeof c.maturityScore === "number" && c.maturityScore > 0;
+        const hasScores =
+          (typeof c.maturityScore === "number" && c.maturityScore > 0) ||
+          (c.researchStatus === "completed" &&
+            typeof c.coverageRate === "number" && c.coverageRate > 0);
         if (hasScores) {
           map[c.iso3 as string] = dbRowToProfile(c);
         }
       }
       setDbProfiles(map);
       setLastUpdated(new Date());
+
+      if (!benchSyncDone.current && Object.keys(map).length > 0) {
+        benchSyncDone.current = true;
+        fetch("/api/research/benchmarking/sync", { method: "POST" }).catch(() => {});
+      }
     } catch { /* ignore */ } finally {
       if (showSpinner) setRefreshing(false);
     }

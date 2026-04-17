@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { ScreenType, ResearchSource } from "../types";
 import { createSourcesAndCitations } from "./sources";
+import { ensureCountryBenchmarkScores } from "@/lib/benchmarking/scoring";
 
 function jsonifyArr(val: unknown): string | undefined {
   return Array.isArray(val) && val.length > 0 ? JSON.stringify(val) : undefined;
@@ -75,6 +76,18 @@ export async function writeAtlasWorldmap(
       },
     });
     written++;
+
+    try {
+      const dataset = await prisma.benchmarkDataset.findFirst({
+        where: { targetInstitutionId: { not: null } },
+        orderBy: { createdAt: "desc" },
+      });
+      if (dataset) {
+        await ensureCountryBenchmarkScores(country.iso3, dataset.id);
+      }
+    } catch (e) {
+      console.warn(`[atlas-writer] Benchmarking sync failed for ${country.iso3}:`, e);
+    }
   }
   return written;
 }
