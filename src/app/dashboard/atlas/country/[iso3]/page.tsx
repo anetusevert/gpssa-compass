@@ -135,6 +135,47 @@ function dbToProfile(c: DbCountry): CountryProfile {
   };
 }
 
+function mergeProfiles(db: CountryProfile, fallback: CountryProfile): CountryProfile {
+  return {
+    iso3: db.iso3,
+    name: db.name,
+    flag: db.flag || fallback.flag,
+    region: db.region || fallback.region,
+    institution: db.institution !== "Unknown" ? db.institution : fallback.institution,
+    maturityScore: db.maturityScore > 0 ? db.maturityScore : fallback.maturityScore,
+    maturityLabel: db.maturityScore > 0 ? db.maturityLabel : fallback.maturityLabel,
+    coverageRate: db.coverageRate > 0 ? db.coverageRate : fallback.coverageRate,
+    replacementRate: db.replacementRate > 0 ? db.replacementRate : fallback.replacementRate,
+    sustainability: db.sustainability > 0 ? db.sustainability : fallback.sustainability,
+    serviceBreadth: db.serviceBreadth > 0 ? db.serviceBreadth : fallback.serviceBreadth,
+    productCoverage: db.productCoverage > 0 ? db.productCoverage : fallback.productCoverage,
+    channelStrategy: db.channelStrategy > 0 ? db.channelStrategy : fallback.channelStrategy,
+    systemType: db.systemType !== "Unknown" ? db.systemType : fallback.systemType,
+    yearEstablished: db.yearEstablished > 0 ? db.yearEstablished : fallback.yearEstablished,
+    digitalLevel: db.digitalLevel !== "Unknown" ? db.digitalLevel : fallback.digitalLevel,
+    keyFeatures: db.keyFeatures.length > 0 ? db.keyFeatures : fallback.keyFeatures,
+    challenges: db.challenges.length > 0 ? db.challenges : fallback.challenges,
+    insights: db.insights.length > 0 ? db.insights : fallback.insights,
+    legislativeFramework: db.legislativeFramework ?? fallback.legislativeFramework,
+    contributionRates: db.contributionRates ?? fallback.contributionRates,
+    retirementAge: db.retirementAge ?? fallback.retirementAge,
+    benefitTypes: (db.benefitTypes?.length ?? 0) > 0 ? db.benefitTypes : fallback.benefitTypes,
+    fundManagement: db.fundManagement ?? fallback.fundManagement,
+    recentReforms: (db.recentReforms?.length ?? 0) > 0 ? db.recentReforms : fallback.recentReforms,
+    internationalRankings: db.internationalRankings ?? fallback.internationalRankings,
+    iloConventionsRatified: db.iloConventionsRatified ?? fallback.iloConventionsRatified,
+    populationCovered: db.populationCovered ?? fallback.populationCovered,
+    socialProtectionExpenditure: db.socialProtectionExpenditure ?? fallback.socialProtectionExpenditure,
+    dependencyRatio: db.dependencyRatio ?? fallback.dependencyRatio,
+    pensionFundAssets: db.pensionFundAssets ?? fallback.pensionFundAssets,
+    benefitCalculation: db.benefitCalculation ?? fallback.benefitCalculation,
+    indexationMechanism: db.indexationMechanism ?? fallback.indexationMechanism,
+    vestingPeriod: db.vestingPeriod ?? fallback.vestingPeriod,
+    governanceQuality: db.governanceQuality ?? fallback.governanceQuality,
+    dataSources: db.dataSources ?? fallback.dataSources,
+  };
+}
+
 function scoreColor(value: number, max: number): string {
   const pct = value / max;
   if (pct >= 0.85) return "#00C896";
@@ -265,10 +306,11 @@ export default function CountryDetailPage() {
   }, [iso3]);
 
   const profile: CountryProfile | null = useMemo(() => {
-    if (dbData && dbData.researchStatus === "completed") return dbToProfile(dbData);
-    if (COUNTRIES[iso3]) return COUNTRIES[iso3];
-    if (dbData) return dbToProfile(dbData);
-    return null;
+    const staticProfile = COUNTRIES[iso3] ?? null;
+    if (!dbData) return staticProfile;
+    const dbProfile = dbToProfile(dbData);
+    if (staticProfile) return mergeProfiles(dbProfile, staticProfile);
+    return dbProfile;
   }, [dbData, iso3]);
 
   const institutions = dbData?.institutions ?? [];

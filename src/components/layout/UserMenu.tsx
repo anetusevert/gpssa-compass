@@ -114,10 +114,7 @@ export function UserMenu({ collapsed }: UserMenuProps) {
       });
       if (res.ok) {
         const data = await res.json();
-        const avatarUrl = data.avatar?.startsWith("/uploads/avatars/")
-          ? `/api/avatars/${user?.id}?t=${Date.now()}`
-          : data.avatar;
-        await updateSession({ avatar: avatarUrl });
+        await updateSession({ avatar: data.avatar });
       }
     } catch {
       /* ignore */
@@ -134,17 +131,17 @@ export function UserMenu({ collapsed }: UserMenuProps) {
       <button
         onClick={() => setOpen(!open)}
         className={`flex w-full items-center rounded-lg text-sm text-gray-muted transition-colors duration-200 hover:bg-white/5 hover:text-cream ${
-          collapsed ? "justify-center px-1 py-2.5" : "gap-3 px-3 py-2.5"
+          collapsed ? "justify-center px-1 py-1.5" : "gap-2.5 px-2.5 py-1.5"
         }`}
       >
         {user?.avatar ? (
           <img
             src={user.avatar}
             alt={user.name || ""}
-            className="w-8 h-8 rounded-full object-cover shrink-0 ring-2 ring-white/10"
+            className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-white/10"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gpssa-green/40 to-adl-blue/40 flex items-center justify-center text-cream text-xs font-bold shrink-0 ring-2 ring-white/10">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gpssa-green/40 to-adl-blue/40 flex items-center justify-center text-cream text-[10px] font-bold shrink-0 ring-1 ring-white/10">
             {(user?.name || "U").charAt(0).toUpperCase()}
           </div>
         )}

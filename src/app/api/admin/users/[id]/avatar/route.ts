@@ -47,10 +47,8 @@ export async function POST(
       );
     }
 
-    const avatarPath = await uploadService.saveAvatar(targetUserId, file);
-    const user = await userService.updateAvatar(targetUserId, avatarPath);
-
-    return NextResponse.json({ avatar: user.avatar });
+    const avatar = await uploadService.saveAvatar(targetUserId, file);
+    return NextResponse.json({ avatar });
   } catch (err) {
     console.error("Failed to upload avatar for user:", err);
     return NextResponse.json(

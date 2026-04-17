@@ -284,11 +284,7 @@ export default function GlobalAtlasPage() {
 
       const map: Record<string, CountryProfile> = {};
       for (const c of rows) {
-        const hasScores =
-          (typeof c.maturityScore === "number" && c.maturityScore > 0) ||
-          (c.researchStatus === "completed" &&
-            typeof c.coverageRate === "number" && c.coverageRate > 0);
-        if (hasScores) {
+        if (c.iso3) {
           map[c.iso3 as string] = dbRowToProfile(c);
         }
       }
@@ -311,7 +307,15 @@ export default function GlobalAtlasPage() {
   }, [loadCountries]);
 
   const mergedCountries = useMemo<Record<string, CountryProfile>>(() => {
-    return { ...COUNTRIES, ...dbProfiles };
+    const result: Record<string, CountryProfile> = { ...dbProfiles };
+    for (const [iso, staticProfile] of Object.entries(COUNTRIES)) {
+      const db = result[iso];
+      const dbHasData = db && (db.maturityScore > 0 || db.coverageRate > 0);
+      if (!dbHasData) {
+        result[iso] = staticProfile;
+      }
+    }
+    return result;
   }, [dbProfiles]);
 
   const ALL_PROFILES = useMemo(() => Object.values(mergedCountries), [mergedCountries]);

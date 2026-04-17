@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/admin-guard";
-import { userService, uploadService } from "@/lib/services";
+import { uploadService } from "@/lib/services";
 
 export async function POST(req: NextRequest) {
   const { error, session } = await requireAuth();
@@ -33,10 +33,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const avatarPath = await uploadService.saveAvatar(userId, file);
-    const user = await userService.updateAvatar(userId, avatarPath);
-
-    return NextResponse.json({ avatar: user.avatar });
+    const avatar = await uploadService.saveAvatar(userId, file);
+    return NextResponse.json({ avatar });
   } catch (err) {
     console.error("Failed to upload avatar:", err);
     return NextResponse.json(

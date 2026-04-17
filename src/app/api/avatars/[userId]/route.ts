@@ -14,7 +14,7 @@ export async function GET(
     return new NextResponse(new Uint8Array(result.buffer), {
       headers: {
         "Content-Type": result.mimeType,
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "public, max-age=86400, immutable",
       },
     });
   } catch {

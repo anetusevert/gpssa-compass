@@ -254,6 +254,13 @@ export function dbRowToProfile(c: Record<string, unknown>): CountryProfile {
     internationalRankings: parseJsonObj<InternationalRankings>(c.internationalRankings as string),
     iloConventionsRatified: (c.iloConventionsRatified as string) ?? undefined,
     populationCovered: (c.populationCovered as string) ?? undefined,
+    socialProtectionExpenditure: (c.socialProtectionExpenditure as string) ?? undefined,
+    dependencyRatio: (c.dependencyRatio as string) ?? undefined,
+    pensionFundAssets: (c.pensionFundAssets as string) ?? undefined,
+    benefitCalculation: (c.benefitCalculation as string) ?? undefined,
+    indexationMechanism: (c.indexationMechanism as string) ?? undefined,
+    vestingPeriod: (c.vestingPeriod as string) ?? undefined,
+    governanceQuality: (c.governanceQuality as string) ?? undefined,
     dataSources: parseJsonObj<DataSourceRef[]>(c.dataSources as string) ?? undefined,
   };
 }

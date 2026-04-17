@@ -66,6 +66,14 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(138, 155, 176, 0.5);
 }
 
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 input::placeholder,
 textarea::placeholder {
   color: var(--gray-muted);

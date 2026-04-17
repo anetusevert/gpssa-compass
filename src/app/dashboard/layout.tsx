@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { Sidebar, useSidebarStore } from "@/components/layout/Sidebar";
 import { PageTransitionLoader } from "@/components/ui/PageTransitionLoader";
 
-const SIDEBAR_EXPANDED = 280;
-const SIDEBAR_COLLAPSED = 72;
+const SIDEBAR_EXPANDED = 260;
+const SIDEBAR_COLLAPSED = 56;
 
 export default function DashboardLayout({
   children,
