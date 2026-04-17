@@ -113,8 +113,7 @@ export function UserMenu({ collapsed }: UserMenuProps) {
         body: formData,
       });
       if (res.ok) {
-        const data = await res.json();
-        await updateSession({ avatar: data.avatar });
+        await updateSession({});
       }
     } catch {
       /* ignore */

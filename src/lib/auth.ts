@@ -41,7 +41,7 @@ export const authOptions: AuthOptions = {
           name: user.name,
           role: user.role,
           userType: user.userType,
-          image: user.avatar,
+          image: null,
         };
       },
     }),
@@ -54,11 +54,9 @@ export const authOptions: AuthOptions = {
         token.id = user.id;
         token.role = (user as any).role;
         token.userType = (user as any).userType;
-        token.avatar = (user as any).image;
       }
       if (trigger === "update" && session) {
         token.name = session.name ?? token.name;
-        token.avatar = session.avatar ?? token.avatar;
       }
       return token;
     },
@@ -73,10 +71,13 @@ export const authOptions: AuthOptions = {
             where: { id: token.id as string },
             select: { avatar: true, name: true },
           });
-          (session.user as any).avatar = dbUser?.avatar || null;
+          const hasAvatar = !!dbUser?.avatar;
+          (session.user as any).avatar = hasAvatar
+            ? `/api/avatars/${token.id}`
+            : null;
           if (dbUser?.name) session.user.name = dbUser.name;
         } catch {
-          (session.user as any).avatar = token.avatar;
+          (session.user as any).avatar = null;
         }
       }
       return session;

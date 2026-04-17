@@ -22,7 +22,7 @@ export class UploadService {
       data: { avatar: dataUrl },
     });
 
-    return dataUrl;
+    return `/api/avatars/${userId}?t=${Date.now()}`;
   }
 
   async readAvatar(userId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {

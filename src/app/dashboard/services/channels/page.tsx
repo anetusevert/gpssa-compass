@@ -23,6 +23,10 @@ import {
   Sparkles,
   AlertTriangle,
   ArrowLeftRight,
+  Check,
+  Minus,
+  Clock,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -515,13 +519,23 @@ export default function ChannelCapabilitiesPage() {
                 );
               })}
               {/* Legend */}
-              <div className="ml-auto flex items-center gap-2 shrink-0">
-                {(["Full", "Partial", "Planned", "None"] as Capability[]).map((lvl) => (
-                  <span key={lvl} className="inline-flex items-center gap-1 text-[9px] text-gray-muted">
-                    <span className={`w-2.5 h-2.5 rounded-full ${DOT_COLORS[lvl]}`} />
-                    {lvl}
-                  </span>
-                ))}
+              <div className="ml-auto flex items-center gap-2.5 shrink-0">
+                <span className="inline-flex items-center gap-1 text-[9px] text-gray-muted">
+                  <span className="w-4 h-4 rounded flex items-center justify-center bg-gpssa-green/20 border border-gpssa-green/40"><Check size={9} className="text-gpssa-green" strokeWidth={3} /></span>
+                  Full
+                </span>
+                <span className="inline-flex items-center gap-1 text-[9px] text-gray-muted">
+                  <span className="w-4 h-4 rounded flex items-center justify-center bg-gold/15 border border-gold/35"><Minus size={9} className="text-gold" strokeWidth={3} /></span>
+                  Partial
+                </span>
+                <span className="inline-flex items-center gap-1 text-[9px] text-gray-muted">
+                  <span className="w-4 h-4 rounded flex items-center justify-center bg-adl-blue/15 border border-adl-blue/35"><Clock size={8} className="text-adl-blue" /></span>
+                  Planned
+                </span>
+                <span className="inline-flex items-center gap-1 text-[9px] text-gray-muted">
+                  <span className="w-4 h-4 rounded flex items-center justify-center bg-white/[0.03] border border-white/[0.08]"><X size={8} className="text-white/20" strokeWidth={2} /></span>
+                  None
+                </span>
               </div>
             </div>
           </motion.div>
@@ -934,7 +948,17 @@ function ComparisonHeatmap({
                     const level = row.channels[ch.id];
                     return (
                       <div key={ch.id} className="flex-1 flex justify-center py-1.5 min-w-[44px]">
-                        <div className={`w-5 h-5 rounded ${CELL_COLORS[level]} transition-colors`} />
+                        <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                          level === "Full" ? "bg-gpssa-green/20 border border-gpssa-green/40" :
+                          level === "Partial" ? "bg-gold/15 border border-gold/35" :
+                          level === "Planned" ? "bg-adl-blue/15 border border-adl-blue/35" :
+                          "bg-white/[0.03] border border-white/[0.08]"
+                        }`}>
+                          {level === "Full" && <Check size={12} className="text-gpssa-green" strokeWidth={3} />}
+                          {level === "Partial" && <Minus size={12} className="text-gold" strokeWidth={3} />}
+                          {level === "Planned" && <Clock size={10} className="text-adl-blue" />}
+                          {level === "None" && <X size={10} className="text-white/20" strokeWidth={2} />}
+                        </div>
                       </div>
                     );
                   })}
