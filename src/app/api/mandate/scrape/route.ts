@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
   const followPdfs = body.followPdfs !== false;
   const force = !!body.force;
 
-  let cachedEtags: Record<string, string> = {};
-  let cachedLastModified: Record<string, string> = {};
+  const cachedEtags: Record<string, string> = {};
+  const cachedLastModified: Record<string, string> = {};
   if (!force) {
     const rows = await prisma.gpssaPage.findMany({
       select: { url: true, etag: true, lastModified: true },

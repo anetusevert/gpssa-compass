@@ -8,7 +8,9 @@
  * (federal-law / circular / policy) are filterable from a top tab strip.
  */
 
-import { useEffect, useMemo, useState } from "react";
+export const dynamic = "force-dynamic";
+
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Filter, Loader2, Scale } from "lucide-react";
@@ -37,6 +39,14 @@ const CATEGORY_TABS = [
 type TabId = (typeof CATEGORY_TABS)[number]["id"];
 
 export default function MandateLegalPage() {
+  return (
+    <Suspense fallback={<div className="flex h-full items-center justify-center text-white/45"><Loader2 size={16} className="mr-2 animate-spin" /> Loading…</div>}>
+      <MandateLegalView />
+    </Suspense>
+  );
+}
+
+function MandateLegalView() {
   const searchParams = useSearchParams();
   const initialSlug = searchParams.get("slug");
 

@@ -223,7 +223,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
       const article = payload.articles.find((x) => x.id === e.articleId);
       const color = (article?.pillar && PILLAR_COLOR[article.pillar]) || "rgba(255,255,255,0.4)";
       const active = isActive(
-        new Set([...highlight.articles, ...highlight.rfis]),
+        new Set<string>([...Array.from(highlight.articles), ...Array.from(highlight.rfis)]),
         [e.articleId, e.rfiId]
       );
       a2r.push({ id: `a2r-${e.articleId}-${e.rfiId}`, d: buildPath(sx, sy, tx, ty), color, active });
@@ -240,7 +240,10 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
       const ty = centerY(s);
       const rfi = payload.rfiSections.find((x) => x.id === e.rfiId);
       const color = rfi ? RFI_KIND_ACCENT[rfi.kind] : "rgba(255,255,255,0.4)";
-      const active = isActive(new Set([...highlight.rfis, ...highlight.screens]), [e.rfiId, e.screenId]);
+      const active = isActive(
+        new Set<string>([...Array.from(highlight.rfis), ...Array.from(highlight.screens)]),
+        [e.rfiId, e.screenId]
+      );
       r2s.push({ id: `r2s-${e.rfiId}-${e.screenId}`, d: buildPath(sx, sy, tx, ty), color, active });
     }
 
@@ -256,7 +259,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
       const screen = payload.appScreens.find((x) => x.id === e.screenId);
       const color = (screen?.pillar && SCREEN_COLOR[screen.pillar]) || "rgba(255,255,255,0.4)";
       const active = isActive(
-        new Set([...highlight.articles, ...highlight.screens]),
+        new Set<string>([...Array.from(highlight.articles), ...Array.from(highlight.screens)]),
         [e.articleId, e.screenId]
       );
       a2s.push({ id: `a2s-${e.articleId}-${e.screenId}`, d: buildPath(sx, sy, tx, ty), color, active });

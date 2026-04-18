@@ -514,7 +514,7 @@ function BenchmarkPanel({ services, intl, comparator, loading }: BenchmarkPanelP
           {(loading || bundleLoading) && <span className="text-[9px] text-gray-muted animate-pulse">loading</span>}
         </div>
         <p className="text-[10px] text-gray-muted mb-4">
-          GPSSA's measured maturity across ILO C102 service branches, overlaid against the chosen comparator.
+          GPSSA&apos;s measured maturity across ILO C102 service branches, overlaid against the chosen comparator.
         </p>
         <div className="flex-1 flex items-center justify-center">
           <RangeBandRadar

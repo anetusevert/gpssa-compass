@@ -29,7 +29,7 @@ function dataReadySlide(
   pillar: string,
   total = 0
 ): SlideRenderer {
-  return ({ snapshot }) => {
+  return function DataReadySlide({ snapshot }) {
     if (!snapshot) {
       return (
         <SlidePlaceholder

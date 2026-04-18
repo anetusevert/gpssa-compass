@@ -76,7 +76,7 @@ export function htmlToMarkdown(rawHtml: string, baseUrl: string): HtmlExtraction
     $(sel).remove();
   }
 
-  let $root: cheerio.Cheerio<cheerio.AnyNode> | null = null;
+  let $root: ReturnType<typeof $> | null = null;
   for (const sel of CONTENT_SELECTORS) {
     const $candidate = $(sel).first();
     if ($candidate.length > 0) {

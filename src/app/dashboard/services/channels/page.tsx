@@ -466,7 +466,7 @@ function ChannelBenchmark({
           {refLoading && <span className="text-[9px] text-gray-muted animate-pulse">loading</span>}
         </div>
         <p className="text-[10px] text-gray-muted mb-4">
-          GPSSA's six-channel mix overlaid against {comparator ? comparator.shortLabel : "the chosen comparator"}.
+          GPSSA&apos;s six-channel mix overlaid against {comparator ? comparator.shortLabel : "the chosen comparator"}.
         </p>
         <div className="flex-1 flex items-center justify-center">
           <RangeBandRadar
@@ -818,7 +818,7 @@ export default function ChannelCapabilitiesPage() {
                     {comparator ? `Channels — GPSSA vs ${comparator.label}` : "Pick a comparator to begin"}
                   </h2>
                   <p className="text-xs text-gray-muted leading-relaxed max-w-2xl">
-                    Hold GPSSA's six-channel mix up against an OSI standard, a regional best-practice or a peer.
+                    Hold GPSSA&apos;s six-channel mix up against an OSI standard, a regional best-practice or a peer.
                   </p>
                 </div>
                 {!comparator && (

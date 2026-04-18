@@ -22,7 +22,9 @@
  *   3. Citations — provenance graph (sources cited by each requirement)
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+export const dynamic = "force-dynamic";
+
+import { Suspense, useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -131,6 +133,14 @@ const TABS = [
 ] as const;
 
 export default function StandardsBrowserPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>}>
+      <StandardsBrowserView />
+    </Suspense>
+  );
+}
+
+function StandardsBrowserView() {
   const router = useRouter();
   const params = useSearchParams();
   const initialTab = (params.get("tab") as "standards" | "computed" | "citations") || "standards";
