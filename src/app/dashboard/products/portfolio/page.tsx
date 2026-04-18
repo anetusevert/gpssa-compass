@@ -24,6 +24,7 @@ import { CountrySelector } from "@/components/comparison/CountrySelector";
 import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { COUNTRIES } from "@/lib/countries/catalog";
 import { CountryFlag } from "@/components/ui/CountryFlag";
+import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Types
@@ -41,6 +42,8 @@ interface Product {
   targetSegments: string[];
   coverageType: string;
   keyFeatures: string[];
+  regulatoryBasis: string | null;
+  comparableInternational: string | null;
 }
 
 interface IntlProduct {
@@ -68,7 +71,12 @@ function parseJsonField<T>(val: unknown): T | null {
 /* ═══════════════════════════════════════════════════════════════════════════
    Static seed data
    ═══════════════════════════════════════════════════════════════════════════ */
-const STATIC_PRODUCTS: Product[] = [
+const STATIC_EXTRAS: Pick<Product, "regulatoryBasis" | "comparableInternational"> = {
+  regulatoryBasis: null,
+  comparableInternational: null,
+};
+
+const STATIC_PRODUCTS: Product[] = ([
   { id: "p-core-1", name: "Retirement / Pension Coverage", description: "Mandatory defined-benefit pension for UAE nationals with coordinated employer and employee contributions toward long-term retirement security.", tier: "Core", status: "Active", targetSegments: ["UAE nationals", "Formal employment", "Public & private sector"], coverageType: "Mandatory social insurance (DB)", keyFeatures: ["Actuarially governed benefit accrual", "Employer + employee contribution schedules", "Service credit purchase and merge pathways"] },
   { id: "p-core-2", name: "Occupational Hazard Insurance", description: "Workplace injury, occupational disability, and death-in-service coverage aligned with employer obligations and medical evidence workflows.", tier: "Core", status: "Active", targetSegments: ["Insured employees", "Employers", "High-risk sectors"], coverageType: "Mandatory hazard indemnity", keyFeatures: ["Claims adjudication with medical review", "Disability grading and rehabilitation linkage", "Survivor benefits coordination"] },
   { id: "p-core-3", name: "Unemployment Insurance (DEWS)", description: "Dubai Establishment Workers Savings and related end-of-service benefit constructs that smooth income shocks and protect accrued entitlements.", tier: "Core", status: "Active", targetSegments: ["Private sector workers", "Eligible establishments", "DEWS participants"], coverageType: "Savings + unemployment support", keyFeatures: ["Employer-funded savings accumulation", "End-of-service benefit portability", "Compliance monitoring for covered entities"] },
@@ -79,7 +87,7 @@ const STATIC_PRODUCTS: Product[] = [
   { id: "p-nc-2", name: "Savings & Investment Products", description: "Voluntary additional retirement savings vehicles that layer on top of mandatory DB accruals for members seeking higher replacement rates.", tier: "Non-Core", status: "Active", targetSegments: ["Higher earners", "Mid-career planners", "Self-directed savers"], coverageType: "Voluntary defined contribution", keyFeatures: ["Flexible contribution schedules", "Investment choice within guardrails", "Tax-advantaged treatment where applicable"] },
   { id: "p-nc-3", name: "Credit & Debt Counseling", description: "Financial wellness programs that help members avoid liquidity crises that can erode contribution continuity and retirement outcomes.", tier: "Non-Core", status: "Concept", targetSegments: ["Financially stressed members", "Young families", "Debt-distressed cohorts"], coverageType: "Financial wellness (non-insurance)", keyFeatures: ["Confidential counseling intake", "Restructuring guidance with licensed partners", "Early warning signals from contribution patterns"] },
   { id: "p-nc-4", name: "Financial Literacy Programs", description: "Education and awareness campaigns that build understanding of pension rights, contribution mechanics, and long-horizon planning.", tier: "Non-Core", status: "Active", targetSegments: ["Students", "New labor market entrants", "Low-literacy segments"], coverageType: "Awareness & education", keyFeatures: ["Modular learning paths", "Employer co-branded sessions", "Digital micro-learning and gamified quizzes"] },
-];
+] as Omit<Product, "regulatoryBasis" | "comparableInternational">[]).map((p) => ({ ...STATIC_EXTRAS, ...p }));
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Constants
@@ -420,26 +428,34 @@ export default function ProductPortfolioPage() {
 
   const isComparing = comparisonCountries.length > 0;
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/products");
-        if (res.ok) {
-          const data: Record<string, unknown>[] = await res.json();
-          if (data.length > 0) {
-            setProducts(data.map((d) => ({
-              id: String(d.id), name: String(d.name), description: String(d.description ?? ""),
-              tier: String(d.tier ?? "Core") as ProductTier, status: String(d.status ?? "Active") as ProductStatus,
-              targetSegments: Array.isArray(d.targetSegments) ? d.targetSegments.map(String) : parseJsonField<string[]>(d.targetSegments) ?? [],
-              coverageType: String(d.coverageType ?? ""),
-              keyFeatures: Array.isArray(d.keyFeatures) ? d.keyFeatures.map(String) : parseJsonField<string[]>(d.keyFeatures) ?? [],
-            })));
-          } else { setProducts(STATIC_PRODUCTS); }
+  const loadProducts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/products", { cache: "no-store" });
+      if (res.ok) {
+        const data: Record<string, unknown>[] = await res.json();
+        if (data.length > 0) {
+          setProducts(data.map((d) => ({
+            id: String(d.id), name: String(d.name), description: String(d.description ?? ""),
+            tier: String(d.tier ?? "Core") as ProductTier, status: String(d.status ?? "Active") as ProductStatus,
+            targetSegments: Array.isArray(d.targetSegments) ? d.targetSegments.map(String) : parseJsonField<string[]>(d.targetSegments) ?? [],
+            coverageType: String(d.coverageType ?? ""),
+            keyFeatures: Array.isArray(d.keyFeatures) ? d.keyFeatures.map(String) : parseJsonField<string[]>(d.keyFeatures) ?? [],
+            regulatoryBasis: d.regulatoryBasis ? String(d.regulatoryBasis) : null,
+            comparableInternational: d.comparableInternational ? String(d.comparableInternational) : null,
+          })));
         } else { setProducts(STATIC_PRODUCTS); }
-      } catch { setProducts(STATIC_PRODUCTS); } finally { setLoading(false); }
-    }
-    load();
+      } else { setProducts(STATIC_PRODUCTS); }
+    } catch { setProducts(STATIC_PRODUCTS); } finally { setLoading(false); }
   }, []);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  useResearchUpdates({
+    targetScreens: ["products-portfolio", "products-innovation"],
+    onComplete: () => { loadProducts(); },
+  });
 
   useEffect(() => {
     if (comparisonCountries.length === 0) { setIntlProducts([]); return; }
@@ -746,6 +762,28 @@ export default function ProductPortfolioPage() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {detailModal.regulatoryBasis && (
+              <div>
+                <span className="text-xs font-medium text-cream block mb-1.5 flex items-center gap-1.5">
+                  <Scale size={12} className="text-gold" /> Regulatory Basis
+                </span>
+                <p className="text-xs text-gray-muted glass rounded-lg p-3 leading-relaxed">
+                  {detailModal.regulatoryBasis}
+                </p>
+              </div>
+            )}
+
+            {detailModal.comparableInternational && (
+              <div>
+                <span className="text-xs font-medium text-cream block mb-1.5 flex items-center gap-1.5">
+                  <Globe2 size={12} className="text-adl-blue" /> Comparable International Practice
+                </span>
+                <p className="text-xs text-gray-muted glass rounded-lg p-3 leading-relaxed">
+                  {detailModal.comparableInternational}
+                </p>
               </div>
             )}
           </div>

@@ -1,5 +1,8 @@
 import type { PromptModule, ScreenType } from "../types";
 import { atlasWorldmapPrompt } from "./atlas-worldmap";
+import { atlasSystemPrompt } from "./atlas-system";
+import { atlasPerformancePrompt } from "./atlas-performance";
+import { atlasInsightsPrompt } from "./atlas-insights";
 import { atlasBenchmarkingPrompt } from "./atlas-benchmarking";
 import { servicesCatalogPrompt } from "./services-catalog";
 import { servicesChannelsPrompt } from "./services-channels";
@@ -16,6 +19,9 @@ import { iloStandardsPrompt } from "./ilo-standards";
 
 export const PROMPT_MODULES: Partial<Record<ScreenType, PromptModule>> = {
   "atlas-worldmap": atlasWorldmapPrompt,
+  "atlas-system": atlasSystemPrompt,
+  "atlas-performance": atlasPerformancePrompt,
+  "atlas-insights": atlasInsightsPrompt,
   "atlas-benchmarking": atlasBenchmarkingPrompt,
   "services-catalog": servicesCatalogPrompt,
   "services-channels": servicesChannelsPrompt,

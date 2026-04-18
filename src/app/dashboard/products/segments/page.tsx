@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users2, AlertTriangle, ShieldCheck, Globe2, ArrowLeftRight } from "lucide-react";
+import { Users2, AlertTriangle, ShieldCheck, Globe2, ArrowLeftRight, Scale } from "lucide-react";
 import { CountrySelector } from "@/components/comparison/CountrySelector";
 import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { COUNTRIES } from "@/lib/countries/catalog";
 import { CountryFlag } from "@/components/ui/CountryFlag";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Modal } from "@/components/ui/Modal";
+import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Types
@@ -20,6 +22,9 @@ const COVERAGE_COLUMNS = [
   "Unemployment",
   "Housing Security",
   "Health Security",
+  "Maternity",
+  "Disability",
+  "Survivors",
 ] as const;
 
 type CoverageColumn = (typeof COVERAGE_COLUMNS)[number];
@@ -30,6 +35,9 @@ const COL_SHORT: Record<CoverageColumn, string> = {
   Unemployment: "Unemploy.",
   "Housing Security": "Housing",
   "Health Security": "Health",
+  Maternity: "Maternity",
+  Disability: "Disability",
+  Survivors: "Survivors",
 };
 
 interface SegmentRow {
@@ -39,6 +47,8 @@ interface SegmentRow {
   populationLabel: string;
   populationM: number | null;
   cells: Record<CoverageColumn, CoverageLevel>;
+  regulatoryBasis?: Partial<Record<CoverageColumn, string>>;
+  notes?: Partial<Record<CoverageColumn, string>>;
 }
 
 interface IntlSegment {
@@ -68,15 +78,22 @@ const cellShort: Record<CoverageLevel, string> = {
   "Not Covered": "Not Cov.",
 };
 
+function defaultCells(overrides: Partial<Record<CoverageColumn, CoverageLevel>>): Record<CoverageColumn, CoverageLevel> {
+  const base = Object.fromEntries(
+    COVERAGE_COLUMNS.map((c) => [c, "Not Covered" as CoverageLevel])
+  ) as Record<CoverageColumn, CoverageLevel>;
+  return { ...base, ...overrides };
+}
+
 const STATIC_SEGMENT_MATRIX: SegmentRow[] = [
-  { id: "s1", name: "Saudi — Formal employment", detail: "Private ~2.2M · Civil ~1.2M · Military ~1M", populationLabel: "~4.4M", populationM: 4.4, cells: { "Retirement Coverage": "Covered", "Occupational Hazard": "Covered", Unemployment: "Covered", "Housing Security": "Voluntary", "Health Security": "Covered" } },
-  { id: "s2", name: "Saudi — Self-employed", detail: "Independent professionals & own-account workers", populationLabel: "~0.4M", populationM: 0.4, cells: { "Retirement Coverage": "Voluntary", "Occupational Hazard": "Not Covered", Unemployment: "Not Covered", "Housing Security": "Not Covered", "Health Security": "Covered" } },
-  { id: "s3", name: "Saudi — Informal employment", detail: "Gig, casual labor, micro-enterprise", populationLabel: "~0.3M", populationM: 0.3, cells: { "Retirement Coverage": "Not Covered", "Occupational Hazard": "Not Covered", Unemployment: "Not Covered", "Housing Security": "Not Covered", "Health Security": "Limited" } },
-  { id: "s4", name: "Non-Saudi — Formal employment", detail: "6.4M expat labor force", populationLabel: "~6.4M", populationM: 6.4, cells: { "Retirement Coverage": "Not Covered", "Occupational Hazard": "Covered", Unemployment: "Limited", "Housing Security": "Not Covered", "Health Security": "Covered" } },
-  { id: "s5", name: "Non-Saudi — Domestic workers", detail: "Household staff, drivers, nannies", populationLabel: "~1.5M", populationM: 1.5, cells: { "Retirement Coverage": "Not Covered", "Occupational Hazard": "Limited", Unemployment: "Not Covered", "Housing Security": "Not Covered", "Health Security": "Covered" } },
-  { id: "s6", name: "Non-Saudi — Others", detail: "Dependents, students, retired", populationLabel: "~2.0M", populationM: 2.0, cells: { "Retirement Coverage": "Not Covered", "Occupational Hazard": "Not Covered", Unemployment: "Not Covered", "Housing Security": "Not Covered", "Health Security": "Limited" } },
-  { id: "s7", name: "GCC-posted nationals", detail: "Cross-border GCC workers", populationLabel: "~50K", populationM: 0.05, cells: { "Retirement Coverage": "Covered", "Occupational Hazard": "Covered", Unemployment: "Limited", "Housing Security": "Not Covered", "Health Security": "Covered" } },
-  { id: "s8", name: "Military & security", detail: "Armed forces & security personnel", populationLabel: "~100K", populationM: 0.1, cells: { "Retirement Coverage": "Covered", "Occupational Hazard": "Covered", Unemployment: "Not Covered", "Housing Security": "Covered", "Health Security": "Covered" } },
+  { id: "s1", name: "Saudi — Formal employment", detail: "Private ~2.2M · Civil ~1.2M · Military ~1M", populationLabel: "~4.4M", populationM: 4.4, cells: defaultCells({ "Retirement Coverage": "Covered", "Occupational Hazard": "Covered", Unemployment: "Covered", "Housing Security": "Voluntary", "Health Security": "Covered", Maternity: "Covered", Disability: "Covered", Survivors: "Covered" }) },
+  { id: "s2", name: "Saudi — Self-employed", detail: "Independent professionals & own-account workers", populationLabel: "~0.4M", populationM: 0.4, cells: defaultCells({ "Retirement Coverage": "Voluntary", "Health Security": "Covered", Maternity: "Voluntary", Disability: "Voluntary", Survivors: "Voluntary" }) },
+  { id: "s3", name: "Saudi — Informal employment", detail: "Gig, casual labor, micro-enterprise", populationLabel: "~0.3M", populationM: 0.3, cells: defaultCells({ "Health Security": "Limited", Maternity: "Limited", Disability: "Limited", Survivors: "Limited" }) },
+  { id: "s4", name: "Non-Saudi — Formal employment", detail: "6.4M expat labor force", populationLabel: "~6.4M", populationM: 6.4, cells: defaultCells({ "Occupational Hazard": "Covered", Unemployment: "Limited", "Health Security": "Covered", Maternity: "Limited", Disability: "Limited", Survivors: "Limited" }) },
+  { id: "s5", name: "Non-Saudi — Domestic workers", detail: "Household staff, drivers, nannies", populationLabel: "~1.5M", populationM: 1.5, cells: defaultCells({ "Occupational Hazard": "Limited", "Health Security": "Covered", Maternity: "Limited" }) },
+  { id: "s6", name: "Non-Saudi — Others", detail: "Dependents, students, retired", populationLabel: "~2.0M", populationM: 2.0, cells: defaultCells({ "Health Security": "Limited" }) },
+  { id: "s7", name: "GCC-posted nationals", detail: "Cross-border GCC workers", populationLabel: "~50K", populationM: 0.05, cells: defaultCells({ "Retirement Coverage": "Covered", "Occupational Hazard": "Covered", Unemployment: "Limited", "Health Security": "Covered", Maternity: "Covered", Disability: "Covered", Survivors: "Covered" }) },
+  { id: "s8", name: "Military & security", detail: "Armed forces & security personnel", populationLabel: "~100K", populationM: 0.1, cells: defaultCells({ "Retirement Coverage": "Covered", "Occupational Hazard": "Covered", "Housing Security": "Covered", "Health Security": "Covered", Maternity: "Covered", Disability: "Covered", Survivors: "Covered" }) },
 ];
 
 function countGaps(matrix: SegmentRow[]): number {
@@ -92,12 +109,14 @@ function CompactMatrix({
   rows,
   highlightGaps,
   gapSet,
+  onRowClick,
 }: {
   title: string;
   iso3: string;
   rows: SegmentRow[];
   highlightGaps?: boolean;
   gapSet?: Set<string>;
+  onRowClick?: (row: SegmentRow) => void;
 }) {
   return (
     <div className="glass-card overflow-hidden border border-white/[0.06] flex flex-col h-full">
@@ -123,7 +142,8 @@ function CompactMatrix({
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.03 + idx * 0.03, ease: [0.16, 1, 0.3, 1] }}
-                className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                className={`border-b border-white/5 transition-colors ${onRowClick ? "cursor-pointer hover:bg-gpssa-green/[0.04]" : "hover:bg-white/[0.02]"}`}
               >
                 <td className="p-2 align-top">
                   <p className="font-medium text-cream text-[10px] leading-tight">{row.name}</p>
@@ -167,11 +187,12 @@ export default function SegmentCoveragePage() {
   const [intlSegments, setIntlSegments] = useState<IntlSegment[]>([]);
   const [comparisonCountries, setComparisonCountries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detailRow, setDetailRow] = useState<{ row: SegmentRow; scope: string; iso3: string } | null>(null);
 
   const comparisonCountry = comparisonCountries[0] ?? null;
 
-  useEffect(() => {
-    fetch("/api/products/segments")
+  const loadSegments = useCallback(() => {
+    fetch("/api/products/segments", { cache: "no-store" })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (!Array.isArray(data) || data.length === 0) return;
@@ -182,14 +203,33 @@ export default function SegmentCoveragePage() {
           const level = String(item.level ?? "Limited") as CoverageLevel;
           if (!seg || !COVERAGE_COLUMNS.includes(covType)) continue;
           if (!rowMap.has(seg)) {
-            rowMap.set(seg, { id: seg, name: seg, detail: String(item.notes ?? ""), populationLabel: String(item.population ?? "N/A"), populationM: null, cells: Object.fromEntries(COVERAGE_COLUMNS.map((c) => [c, "Limited" as CoverageLevel])) as Record<CoverageColumn, CoverageLevel> });
+            rowMap.set(seg, {
+              id: seg,
+              name: seg,
+              detail: String(item.notes ?? ""),
+              populationLabel: String(item.population ?? "N/A"),
+              populationM: null,
+              cells: defaultCells({}),
+              regulatoryBasis: {},
+              notes: {},
+            });
           }
-          rowMap.get(seg)!.cells[covType] = level;
+          const row = rowMap.get(seg)!;
+          row.cells[covType] = level;
+          if (item.regulatoryBasis) row.regulatoryBasis![covType] = String(item.regulatoryBasis);
+          if (item.notes) row.notes![covType] = String(item.notes);
         }
         if (rowMap.size > 0) setSegmentMatrix(Array.from(rowMap.values()));
       }).catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { loadSegments(); }, [loadSegments]);
+
+  useResearchUpdates({
+    targetScreens: ["products-segments"],
+    onComplete: () => { loadSegments(); },
+  });
 
   useEffect(() => {
     if (!comparisonCountry) { setIntlSegments([]); return; }
@@ -291,6 +331,7 @@ export default function SegmentCoveragePage() {
                   rows={segmentMatrix}
                   highlightGaps
                   gapSet={gapHighlightSet}
+                  onRowClick={(row) => setDetailRow({ row, scope: "GPSSA", iso3: "ARE" })}
                 />
               </div>
               <div className="flex-1 min-w-0 h-full">
@@ -298,6 +339,7 @@ export default function SegmentCoveragePage() {
                   title={`${countryName} Coverage`}
                   iso3={comparisonCountry}
                   rows={intlMatrix}
+                  onRowClick={(row) => setDetailRow({ row, scope: countryName ?? comparisonCountry, iso3: comparisonCountry })}
                 />
               </div>
             </motion.div>
@@ -314,6 +356,7 @@ export default function SegmentCoveragePage() {
                 title="GPSSA Segment × Coverage Matrix"
                 iso3="ARE"
                 rows={segmentMatrix}
+                onRowClick={(row) => setDetailRow({ row, scope: "GPSSA", iso3: "ARE" })}
               />
             </motion.div>
           )}
@@ -346,6 +389,59 @@ export default function SegmentCoveragePage() {
         ))}
       </div>
       <StatBar items={statBarItems} />
+
+      <Modal
+        isOpen={!!detailRow}
+        onClose={() => setDetailRow(null)}
+        title={detailRow ? `${detailRow.scope} — ${detailRow.row.name}` : ""}
+        description={detailRow?.row.detail || undefined}
+        size="lg"
+      >
+        {detailRow && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-cream/80">
+              <span className="inline-flex items-center gap-1.5">
+                <CountryFlag code={detailRow.iso3} size="sm" />
+                <span className="font-medium">{detailRow.scope}</span>
+              </span>
+              <span className="text-gray-muted">·</span>
+              <span className="text-cream/70">
+                Population: <span className="font-playfair text-cream">{detailRow.row.populationLabel}</span>
+              </span>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {COVERAGE_COLUMNS.map((col) => {
+                const level = detailRow.row.cells[col];
+                const reg = detailRow.row.regulatoryBasis?.[col];
+                const note = detailRow.row.notes?.[col];
+                return (
+                  <div key={col} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] uppercase tracking-wide text-gray-muted">{col}</span>
+                      <span className={`rounded-md px-2 py-0.5 border text-[10px] font-medium ${cellStyles[level]}`}>
+                        {level}
+                      </span>
+                    </div>
+                    {reg && (
+                      <p className="text-[11px] text-cream/80 flex items-start gap-1.5">
+                        <Scale size={11} className="text-gold mt-0.5 shrink-0" />
+                        <span>{reg}</span>
+                      </p>
+                    )}
+                    {note && note !== reg && (
+                      <p className="text-[11px] text-gray-muted mt-1 leading-relaxed">{note}</p>
+                    )}
+                    {!reg && !note && (
+                      <p className="text-[10px] text-gray-muted/70 italic">No regulatory basis captured yet.</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

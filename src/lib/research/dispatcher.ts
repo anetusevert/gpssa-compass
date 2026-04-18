@@ -10,29 +10,36 @@ interface DispatchItem {
 
 async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]> {
   switch (screenType) {
-    case "atlas-worldmap": {
-      let countries = await prisma.country.findMany({
-        where: { researchStatus: { in: ["pending", "failed"] } },
-        select: { iso3: true, name: true },
-        orderBy: { name: "asc" },
-      });
-      if (countries.length === 0) {
-        const total = await prisma.country.count();
-        if (total === 0) {
-          for (const c of COUNTRIES) {
-            await prisma.country.upsert({
-              where: { iso3: c.iso3 },
-              update: {},
-              create: { iso3: c.iso3, iso2: c.iso2, name: c.name, flag: c.flag, region: c.region, subRegion: c.subRegion },
-            });
-          }
-          countries = await prisma.country.findMany({
-            where: { researchStatus: { in: ["pending", "failed"] } },
-            select: { iso3: true, name: true },
-            orderBy: { name: "asc" },
+    case "atlas-worldmap":
+    case "atlas-system":
+    case "atlas-performance":
+    case "atlas-insights": {
+      const statusField =
+        screenType === "atlas-system"
+          ? "systemStatus"
+          : screenType === "atlas-performance"
+            ? "performanceStatus"
+            : screenType === "atlas-insights"
+              ? "insightsStatus"
+              : "researchStatus";
+
+      // Ensure full catalog is upserted before dispatching
+      const total = await prisma.country.count();
+      if (total === 0) {
+        for (const c of COUNTRIES) {
+          await prisma.country.upsert({
+            where: { iso3: c.iso3 },
+            update: {},
+            create: { iso3: c.iso3, iso2: c.iso2, name: c.name, flag: c.flag, region: c.region, subRegion: c.subRegion },
           });
         }
       }
+
+      const countries = await prisma.country.findMany({
+        where: { [statusField]: { in: ["pending", "failed"] } } as Record<string, unknown>,
+        select: { iso3: true, name: true },
+        orderBy: { name: "asc" },
+      });
       return countries.map((c) => ({ key: c.iso3, label: c.name }));
     }
 
@@ -56,11 +63,8 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
 
     case "services-catalog":
     case "services-channels": {
-      let countries = await prisma.country.findMany({
-        select: { iso3: true, name: true },
-        orderBy: { name: "asc" },
-      });
-      if (countries.length === 0) {
+      const total = await prisma.country.count();
+      if (total === 0) {
         for (const c of COUNTRIES) {
           await prisma.country.upsert({
             where: { iso3: c.iso3 },
@@ -68,12 +72,24 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
             create: { iso3: c.iso3, iso2: c.iso2, name: c.name, flag: c.flag, region: c.region, subRegion: c.subRegion },
           });
         }
-        countries = await prisma.country.findMany({
-          select: { iso3: true, name: true },
-          orderBy: { name: "asc" },
-        });
       }
-      return countries.map((c) => ({ key: c.iso3, label: c.name }));
+      const allCountries = await prisma.country.findMany({
+        select: { iso3: true, name: true },
+        orderBy: { name: "asc" },
+      });
+
+      // Pending = country has 0 completed InternationalService records yet.
+      // Avoids re-spending tokens on already-researched countries.
+      const completedRows = await prisma.internationalService.groupBy({
+        by: ["countryIso3"],
+        where: { researchStatus: "completed" },
+        _count: { _all: true },
+      });
+      const completedSet = new Set(completedRows.map((r) => r.countryIso3));
+      const pending = allCountries.filter((c) => !completedSet.has(c.iso3));
+
+      const target = pending.length > 0 ? pending : allCountries;
+      return target.map((c) => ({ key: c.iso3, label: c.name }));
     }
 
     case "products-portfolio": {

@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/db";
-import { getOpenAIClient } from "@/lib/openai";
+import { getOpenAIClient, resolveSystemPrompt } from "@/lib/openai";
+import { withOpenAIRetry } from "@/lib/openai/retry";
+import { calcCostUSD } from "@/lib/openai/pricing";
 import { PROMPT_MODULES } from "./prompts";
 import { writeScreenResults } from "./writers";
 import type { ScreenType } from "./types";
-import { GPT4O_INPUT_COST, GPT4O_OUTPUT_COST } from "./types";
 import type OpenAI from "openai";
 
 interface PromptModuleRef {
@@ -34,6 +35,46 @@ interface BatchResult {
 
 type ResearchJobItemRecord = Awaited<ReturnType<typeof prisma.researchJobItem.findMany>>[number];
 
+const STRICT_BATCH_MATCHING =
+  (process.env.STRICT_BATCH_MATCHING ?? "true").toLowerCase() !== "false";
+
+function normalizeKey(v: unknown): string {
+  return String(v ?? "").toLowerCase().trim();
+}
+
+function extractResultKey(r: Record<string, unknown>): string | null {
+  const candidates = [
+    r._itemKey,
+    r.iso3,
+    r.itemKey,
+    r.id,
+    r.code,
+    r.institutionId,
+    r.serviceId,
+    r.productId,
+    r.personaId,
+    r.modelId,
+    r.channelId,
+  ];
+  for (const c of candidates) {
+    const norm = normalizeKey(c);
+    if (norm) return norm;
+  }
+  return null;
+}
+
+function extractResultLabel(r: Record<string, unknown>): string {
+  return normalizeKey(
+    r.countryName ??
+      r.institutionName ??
+      r.serviceName ??
+      r.name ??
+      r.title ??
+      r.segment ??
+      r.theme
+  );
+}
+
 async function processBatch(
   items: ResearchJobItemRecord[],
   ctx: BatchContext
@@ -50,23 +91,25 @@ async function processBatch(
     const userPrompt = ctx.promptModule.buildUserPrompt(promptItems);
     const isReasoningModel = /^(o1|o3|o4)/.test(ctx.model);
 
-    const completion = await ctx.client.chat.completions.create({
-      model: ctx.model,
-      messages: [
-        { role: "system", content: ctx.systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      max_completion_tokens: ctx.maxTokens,
-      ...(!isReasoningModel && { temperature: ctx.temperature }),
-      ...(!isReasoningModel && { response_format: { type: "json_object" } }),
-    });
+    const completion = await withOpenAIRetry(() =>
+      ctx.client.chat.completions.create({
+        model: ctx.model,
+        messages: [
+          { role: "system", content: ctx.systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_completion_tokens: ctx.maxTokens,
+        ...(!isReasoningModel && { temperature: ctx.temperature }),
+        ...(!isReasoningModel && { response_format: { type: "json_object" } }),
+      })
+    );
 
     const durationMs = Date.now() - startTime;
     const rawOutput = completion.choices[0]?.message?.content ?? "{}";
     const tokensUsed = completion.usage?.total_tokens ?? 0;
     const promptTokens = completion.usage?.prompt_tokens ?? 0;
     const completionTokens = completion.usage?.completion_tokens ?? 0;
-    const cost = promptTokens * GPT4O_INPUT_COST + completionTokens * GPT4O_OUTPUT_COST;
+    const cost = calcCostUSD(ctx.model, promptTokens, completionTokens);
 
     let results: Record<string, unknown>[];
     try {
@@ -81,7 +124,6 @@ async function processBatch(
 
     const matchedResults: Record<string, unknown>[] = [];
 
-    // Fast path: single-item batch — assign the first result directly
     if (items.length === 1 && results.length >= 1) {
       const item = items[0];
       const itemResult = results[0];
@@ -99,40 +141,45 @@ async function processBatch(
         },
       });
     } else {
-      // Multi-item batch: try name-based matching first
-      const unmatched: { item: ResearchJobItemRecord; idx: number }[] = [];
+      const remaining = [...results];
+      const unmatched: ResearchJobItemRecord[] = [];
 
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const itemName = (item.itemLabel ?? item.itemKey ?? "").toLowerCase().trim();
-        const itemKey = (item.itemKey ?? "").toLowerCase().trim();
-        const itemContext = (item.itemContext ?? "").toLowerCase().trim();
+      for (const item of items) {
+        const itemKey = normalizeKey(item.itemKey);
+        const itemLabel = normalizeKey(item.itemLabel);
+        const itemContext = normalizeKey(item.itemContext);
 
-        const itemResult = results.find((r) => {
-          const rName = String(
-            r.countryName ?? r.institutionName ?? r.serviceName ?? r.name ?? r.title ?? r.segment ?? r.theme ?? ""
-          ).toLowerCase().trim();
+        let matchIdx = -1;
 
-          // Try key/ISO3 match first
-          if (itemKey && r.iso3) {
-            if (String(r.iso3).toLowerCase() === itemKey) return true;
-          }
+        if (itemKey) {
+          matchIdx = remaining.findIndex((r) => extractResultKey(r) === itemKey);
+        }
 
-          if (!rName || !itemName) return false;
-          const nameMatch = rName === itemName || rName.includes(itemName) || itemName.includes(rName);
-          if (!nameMatch) return false;
+        if (matchIdx === -1 && itemLabel) {
+          matchIdx = remaining.findIndex((r) => {
+            const rLabel = extractResultLabel(r);
+            if (!rLabel) return false;
+            const labelMatch = rLabel === itemLabel;
+            if (!labelMatch) return false;
+            if (itemContext && r.coverageType) {
+              return normalizeKey(r.coverageType).includes(itemContext);
+            }
+            return true;
+          });
+        }
 
-          if (itemContext && r.coverageType) {
-            return String(r.coverageType).toLowerCase().includes(itemContext);
-          }
-          return true;
-        });
+        if (matchIdx === -1 && itemLabel) {
+          matchIdx = remaining.findIndex((r) => {
+            const rLabel = extractResultLabel(r);
+            if (!rLabel) return false;
+            return rLabel.includes(itemLabel) || itemLabel.includes(rLabel);
+          });
+        }
 
-        if (itemResult) {
+        if (matchIdx !== -1) {
+          const itemResult = remaining.splice(matchIdx, 1)[0];
           itemResult._itemKey = item.itemKey;
           itemResult._itemLabel = item.itemLabel;
-          const idx = results.indexOf(itemResult);
-          if (idx !== -1) results.splice(idx, 1);
           matchedResults.push(itemResult);
 
           await prisma.researchJobItem.update({
@@ -145,26 +192,27 @@ async function processBatch(
             },
           });
         } else {
-          unmatched.push({ item, idx: i });
+          unmatched.push(item);
         }
       }
 
-      // Positional fallback: if unmatched items remain and results remain, assign by position
-      if (unmatched.length > 0 && results.length > 0) {
-        console.log(`[engine] Positional fallback: ${unmatched.length} unmatched items, ${results.length} remaining results`);
-        const stillUnmatched: typeof unmatched = [];
-        for (const entry of unmatched) {
-          if (results.length === 0) {
-            stillUnmatched.push(entry);
+      if (!STRICT_BATCH_MATCHING && unmatched.length > 0 && remaining.length > 0) {
+        console.log(
+          `[engine] Positional fallback (STRICT_BATCH_MATCHING=false): ${unmatched.length} unmatched, ${remaining.length} remaining`
+        );
+        const stillUnmatched: ResearchJobItemRecord[] = [];
+        for (const item of unmatched) {
+          if (remaining.length === 0) {
+            stillUnmatched.push(item);
             continue;
           }
-          const fallbackResult = results.shift()!;
-          fallbackResult._itemKey = entry.item.itemKey;
-          fallbackResult._itemLabel = entry.item.itemLabel;
+          const fallbackResult = remaining.shift()!;
+          fallbackResult._itemKey = item.itemKey;
+          fallbackResult._itemLabel = item.itemLabel;
           matchedResults.push(fallbackResult);
 
           await prisma.researchJobItem.update({
-            where: { id: entry.item.id },
+            where: { id: item.id },
             data: {
               status: "completed",
               tokensUsed: Math.round(tokensUsed / items.length),
@@ -177,8 +225,7 @@ async function processBatch(
         unmatched.push(...stillUnmatched);
       }
 
-      // Mark any truly unmatched items as failed
-      for (const { item } of unmatched) {
+      for (const item of unmatched) {
         await prisma.researchJobItem.update({
           where: { id: item.id },
           data: {
@@ -235,14 +282,13 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
     return;
   }
 
-  const agentSysPrompt = job.agentConfig?.systemPrompt;
-  const systemPrompt =
-    !agentSysPrompt || agentSysPrompt === "USE_CANONICAL_PROMPT"
-      ? promptModule.systemPrompt
-      : agentSysPrompt;
+  const systemPrompt = resolveSystemPrompt(
+    job.agentConfig?.systemPrompt ?? "USE_CANONICAL_PROMPT",
+    screenType
+  );
   const agentLabel = `agent-${job.model}-${screenType}`;
 
-  const concurrency = job.concurrency ?? 5;
+  const concurrency = job.agentConfig?.concurrency ?? job.concurrency ?? 5;
 
   const batchCtx: BatchContext = {
     jobId,
@@ -256,7 +302,9 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
     agentConfigId: job.agentConfigId,
   };
 
-  console.log(`[engine] Job ${jobId}: starting with batchSize=${job.batchSize}, concurrency=${concurrency}, model=${job.model}`);
+  console.log(
+    `[engine] Job ${jobId}: starting with batchSize=${job.batchSize}, concurrency=${concurrency}, model=${job.model}, strictMatch=${STRICT_BATCH_MATCHING}`
+  );
 
   while (true) {
     const currentJob = await prisma.researchJob.findUnique({ where: { id: jobId } });
@@ -278,13 +326,11 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
       break;
     }
 
-    // Split into batches of batchSize
     const batches: (typeof allPending)[] = [];
     for (let i = 0; i < allPending.length; i += currentJob.batchSize) {
       batches.push(allPending.slice(i, i + currentJob.batchSize));
     }
 
-    // Mark all items in this wave as processing
     await prisma.researchJobItem.updateMany({
       where: { id: { in: allPending.map((i) => i.id) } },
       data: { status: "processing" },
@@ -299,13 +345,11 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
       data: { currentItem: itemLabels.join(", ") + suffix },
     });
 
-    // Run batches concurrently
     console.log(`[engine] Job ${jobId}: wave of ${allPending.length} items in ${batches.length} parallel batches`);
     const settled = await Promise.allSettled(
       batches.map((batch) => processBatch(batch, batchCtx))
     );
 
-    // Aggregate results
     let totalTokensWave = 0;
     let totalCostWave = 0;
     let totalErrors = 0;
@@ -324,12 +368,10 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
       }
     }
 
-    // Write all matched results to domain tables
     if (allMatchedResults.length > 0) {
       await writeScreenResults(screenType, allMatchedResults, agentLabel);
     }
 
-    // Update job progress
     const completedCount = await prisma.researchJobItem.count({
       where: { jobId, status: "completed" },
     });
@@ -363,7 +405,6 @@ export async function runScreenResearchJob(jobId: string): Promise<void> {
       });
     }
 
-    // Check error threshold
     const updatedJob = await prisma.researchJob.findUnique({ where: { id: jobId } });
     if (updatedJob && updatedJob.errorCount >= 25) {
       await prisma.researchJob.update({

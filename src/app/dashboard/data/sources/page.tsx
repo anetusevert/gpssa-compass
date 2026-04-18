@@ -37,8 +37,59 @@ interface SourceRecord {
     institutionCitations: number;
     opportunityCitations: number;
     requirementCitations: number;
+    productCitations: number;
+    segmentCitations: number;
+    innovationCitations: number;
+    channelCitations: number;
+    personaCitations: number;
+    deliveryModelCitations: number;
+    intlServiceCitations: number;
+    intlProductCitations: number;
+    intlSegmentCitations: number;
+    countryCitations: number;
   };
 }
+
+interface LinkedEntity {
+  kind: string;
+  citation: string | null;
+  evidenceNote: string | null;
+  entity: Record<string, unknown> | null;
+}
+
+interface LinkedEntities {
+  services: LinkedEntity[];
+  institutions: LinkedEntity[];
+  opportunities: LinkedEntity[];
+  requirements: LinkedEntity[];
+  products: LinkedEntity[];
+  segments: LinkedEntity[];
+  innovations: LinkedEntity[];
+  channels: LinkedEntity[];
+  personas: LinkedEntity[];
+  deliveryModels: LinkedEntity[];
+  intlServices: LinkedEntity[];
+  intlProducts: LinkedEntity[];
+  intlSegments: LinkedEntity[];
+  countries: LinkedEntity[];
+}
+
+const CITATION_LABELS: Array<{ key: keyof NonNullable<SourceRecord["_count"]>; label: string; bucket: keyof LinkedEntities }> = [
+  { key: "countryCitations", label: "Countries", bucket: "countries" },
+  { key: "institutionCitations", label: "Institutions", bucket: "institutions" },
+  { key: "serviceCitations", label: "GPSSA Services", bucket: "services" },
+  { key: "productCitations", label: "Products", bucket: "products" },
+  { key: "segmentCitations", label: "Segments", bucket: "segments" },
+  { key: "innovationCitations", label: "Innovations", bucket: "innovations" },
+  { key: "channelCitations", label: "Channels", bucket: "channels" },
+  { key: "personaCitations", label: "Personas", bucket: "personas" },
+  { key: "deliveryModelCitations", label: "Delivery Models", bucket: "deliveryModels" },
+  { key: "intlServiceCitations", label: "Intl. Services", bucket: "intlServices" },
+  { key: "intlProductCitations", label: "Intl. Products", bucket: "intlProducts" },
+  { key: "intlSegmentCitations", label: "Intl. Segments", bucket: "intlSegments" },
+  { key: "opportunityCitations", label: "Opportunities", bucket: "opportunities" },
+  { key: "requirementCitations", label: "Requirements", bucket: "requirements" },
+];
 
 const typeColor: Record<string, string> = { report: "gold", paper: "blue", database: "green", website: "gray" };
 
@@ -58,6 +109,9 @@ export default function SourcesDataPage() {
   const [showAddSource, setShowAddSource] = useState(false);
   const [sourceForm, setSourceForm] = useState({ ...EMPTY_SOURCE });
   const [savingSource, setSavingSource] = useState(false);
+
+  const [linkedById, setLinkedById] = useState<Record<string, LinkedEntities>>({});
+  const [linkedLoading, setLinkedLoading] = useState<Set<string>>(new Set());
 
   async function fetchSources() {
     setLoading(true);
@@ -88,20 +142,52 @@ export default function SourcesDataPage() {
     });
   }, [sources, search, typeFilter]);
 
+  const sumCitations = (c: SourceRecord["_count"]): number => {
+    if (!c) return 0;
+    return CITATION_LABELS.reduce((acc, def) => acc + (c[def.key] ?? 0), 0);
+  };
+
   const totalCitations = useMemo(() => {
-    return sources.reduce((acc, s) => {
-      const c = s._count;
-      return acc + (c?.serviceCitations ?? 0) + (c?.institutionCitations ?? 0) + (c?.opportunityCitations ?? 0) + (c?.requirementCitations ?? 0);
-    }, 0);
+    return sources.reduce((acc, s) => acc + sumCitations(s._count), 0);
   }, [sources]);
+
+  async function ensureLinkedLoaded(id: string) {
+    if (linkedById[id] || linkedLoading.has(id)) return;
+    setLinkedLoading((prev) => new Set(prev).add(id));
+    try {
+      const res = await fetch(`/api/admin/data/sources/${id}/linked`);
+      if (res.ok) {
+        const data = (await res.json()) as LinkedEntities;
+        setLinkedById((prev) => ({ ...prev, [id]: data }));
+      }
+    } catch { /* ignore */ } finally {
+      setLinkedLoading((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
 
   function toggleRow(id: string) {
     setExpandedRows((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        ensureLinkedLoaded(id);
+      }
       return next;
     });
+  }
+
+  function entityLabel(kind: string, entity: Record<string, unknown> | null): string {
+    if (!entity) return "(deleted)";
+    const name = (entity.name as string | undefined) ?? (entity.title as string | undefined) ?? (entity.segment as string | undefined);
+    const country = (entity.countryIso3 as string | undefined) ?? (entity.iso3 as string | undefined) ?? ((entity.country as { iso3?: string } | undefined)?.iso3);
+    const base = name ?? `${kind}:${(entity.id as string | undefined) ?? "?"}`;
+    return country ? `${base} (${country})` : base;
   }
 
   async function handleAddSource() {
@@ -124,8 +210,7 @@ export default function SourcesDataPage() {
   }
 
   function citationTotal(src: SourceRecord) {
-    const c = src._count;
-    return (c?.serviceCitations ?? 0) + (c?.institutionCitations ?? 0) + (c?.opportunityCitations ?? 0) + (c?.requirementCitations ?? 0);
+    return sumCitations(src._count);
   }
 
   return (
@@ -225,18 +310,58 @@ export default function SourcesDataPage() {
                                   <p className="text-xs text-cream/80 leading-relaxed">{src.description}</p>
                                 </div>
                               )}
-                              <div>
+                              <div className="md:col-span-2">
                                 <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Citation Breakdown</p>
                                 <div className="flex flex-wrap gap-2 text-xs">
-                                  <span className="text-cream/70">Services: <span className="font-semibold text-cream">{src._count?.serviceCitations ?? 0}</span></span>
-                                  <span className="text-cream/70">Institutions: <span className="font-semibold text-cream">{src._count?.institutionCitations ?? 0}</span></span>
-                                  <span className="text-cream/70">Opportunities: <span className="font-semibold text-cream">{src._count?.opportunityCitations ?? 0}</span></span>
-                                  <span className="text-cream/70">Requirements: <span className="font-semibold text-cream">{src._count?.requirementCitations ?? 0}</span></span>
+                                  {CITATION_LABELS.map((def) => {
+                                    const count = src._count?.[def.key] ?? 0;
+                                    if (count === 0) return null;
+                                    return (
+                                      <span key={def.key} className="text-cream/70 px-2 py-0.5 rounded-md bg-white/5">
+                                        {def.label}: <span className="font-semibold text-cream">{count}</span>
+                                      </span>
+                                    );
+                                  })}
+                                  {citations === 0 && <span className="text-xs text-gray-muted">No citations yet.</span>}
                                 </div>
                               </div>
                               <div>
                                 <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Added</p>
                                 <p className="text-xs text-cream/70">{new Date(src.createdAt).toLocaleDateString()}</p>
+                              </div>
+                              <div className="md:col-span-2">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Linked Entities</p>
+                                {linkedLoading.has(src.id) && !linkedById[src.id] ? (
+                                  <div className="text-xs text-gray-muted">Loading…</div>
+                                ) : linkedById[src.id] ? (
+                                  <div className="space-y-2">
+                                    {CITATION_LABELS.map((def) => {
+                                      const items = linkedById[src.id][def.bucket];
+                                      if (!items || items.length === 0) return null;
+                                      return (
+                                        <div key={def.bucket}>
+                                          <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">{def.label} <span className="text-cream/40">({items.length})</span></p>
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {items.slice(0, 30).map((item, idx) => (
+                                              <span
+                                                key={`${def.bucket}-${idx}`}
+                                                title={item.evidenceNote ?? item.citation ?? ""}
+                                                className="text-[11px] px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-cream/80"
+                                              >
+                                                {entityLabel(def.bucket, item.entity)}
+                                              </span>
+                                            ))}
+                                            {items.length > 30 && (
+                                              <span className="text-[11px] text-gray-muted">+{items.length - 30} more</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-gray-muted">No linked-entity data available.</div>
+                                )}
                               </div>
                             </div>
                           </td>

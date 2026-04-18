@@ -29,6 +29,7 @@ import {
   dbRowToProfile,
 } from "@/lib/countries/country-data";
 import { CountryFlag } from "@/components/ui/CountryFlag";
+import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 
 export type { CountryProfile };
 
@@ -89,6 +90,16 @@ const NAME_TO_ISO: Record<string, string> = {
   "Viet Nam":"VNM","Yemen":"YEM","Zambia":"ZMB","Zimbabwe":"ZWE",
   "Côte d'Ivoire":"CIV","Ivory Coast":"CIV","W. Sahara":"ESH","Timor-Leste":"TLS",
   "Central African Rep.":"CAF","Central African Republic":"CAF",
+  // UN microstates / island states added with 193-state coverage
+  "Andorra":"AND","Antigua and Barbuda":"ATG","Bahamas":"BHS","The Bahamas":"BHS",
+  "Barbados":"BRB","Belize":"BLZ","Bhutan":"BTN","Brunei":"BRN","Brunei Darussalam":"BRN",
+  "Dominica":"DMA","Grenada":"GRD","Liechtenstein":"LIE","Maldives":"MDV",
+  "Marshall Islands":"MHL","Micronesia":"FSM","Federated States of Micronesia":"FSM",
+  "Monaco":"MCO","Nauru":"NRU","Palau":"PLW","Saint Kitts and Nevis":"KNA","St. Kitts and Nevis":"KNA",
+  "Saint Lucia":"LCA","St. Lucia":"LCA",
+  "Saint Vincent and the Grenadines":"VCT","St. Vin. and Gren.":"VCT","Saint Vincent":"VCT",
+  "Samoa":"WSM","San Marino":"SMR","Solomon Islands":"SLB","Solomon Is.":"SLB",
+  "Suriname":"SUR","Tonga":"TON","Tuvalu":"TUV","Vanuatu":"VUT",
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -305,6 +316,17 @@ export default function GlobalAtlasPage() {
     pollRef.current = setInterval(() => loadCountries(), 30_000);
     return () => clearInterval(pollRef.current);
   }, [loadCountries]);
+
+  useResearchUpdates({
+    targetScreens: [
+      "atlas-system",
+      "atlas-performance",
+      "atlas-insights",
+      "atlas-worldmap",
+      "atlas-benchmarking",
+    ],
+    onComplete: () => loadCountries(),
+  });
 
   const mergedCountries = useMemo<Record<string, CountryProfile>>(() => {
     const result: Record<string, CountryProfile> = { ...dbProfiles };

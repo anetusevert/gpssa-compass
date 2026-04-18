@@ -20,6 +20,7 @@ export async function writeDeliveryChannels(
       capabilities: r.capabilities ? String(r.capabilities) : undefined,
       strengths: Array.isArray(r.strengths) ? JSON.stringify(r.strengths) : undefined,
       gaps: Array.isArray(r.gaps) ? JSON.stringify(r.gaps) : undefined,
+      benchmarkComparison: r.benchmarkComparison ? String(r.benchmarkComparison) : undefined,
       researchStatus: "completed" as const,
       researchSource: agentLabel,
     };
@@ -55,6 +56,7 @@ export async function writeDeliveryPersonas(
     if (!name) continue;
 
     const data = {
+      headline: r.headline ? String(r.headline) : undefined,
       ageRange: r.ageRange ? String(r.ageRange) : undefined,
       city: r.city ? String(r.city) : undefined,
       occupation: r.occupation ? String(r.occupation) : undefined,
@@ -63,6 +65,8 @@ export async function writeDeliveryPersonas(
       needs: Array.isArray(r.needs) ? JSON.stringify(r.needs) : undefined,
       coverageMap: r.coverageMap ? JSON.stringify(r.coverageMap) : undefined,
       segment: r.segment ? String(r.segment) : undefined,
+      journeyHighlights: Array.isArray(r.journeyHighlights) ? JSON.stringify(r.journeyHighlights) : undefined,
+      channelPreference: r.channelPreference ? String(r.channelPreference) : undefined,
       researchStatus: "completed" as const,
       researchSource: agentLabel,
     };
@@ -109,6 +113,8 @@ export async function writeDeliveryModels(
       targetSegments: Array.isArray(r.targetSegments) ? JSON.stringify(r.targetSegments) : undefined,
       maturity: maturityScore,
       enablers: Array.isArray(r.enablers) ? JSON.stringify(r.enablers) : undefined,
+      risks: Array.isArray(r.risks) ? JSON.stringify(r.risks) : undefined,
+      benchmarkExamples: Array.isArray(r.benchmarkExamples) ? JSON.stringify(r.benchmarkExamples) : undefined,
       researchStatus: "completed" as const,
       researchSource: agentLabel,
     };

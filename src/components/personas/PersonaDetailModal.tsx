@@ -6,14 +6,29 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Shield, AlertTriangle, CheckCircle2, XCircle,
   TrendingUp, Users, Briefcase, Clock,
-  FileText, Sparkles, Building2, ChevronRight, Percent, Route,
+  FileText, Sparkles, Building2, ChevronRight, Percent, Route, Lightbulb,
 } from "lucide-react";
 import { type Persona, getCoverageStatus, getCoverageLabel } from "@/data/personas";
 import { PersonaAvatar } from "./PersonaAvatar";
 import { GPSSATimeline } from "./GPSSATimeline";
 import { SourceCitations } from "./SourceCitations";
 
-type TabId = "overview" | "journey" | "coverage" | "research";
+type TabId = "overview" | "journey" | "coverage" | "insights" | "research";
+
+export interface ResearchedPersona {
+  id: string;
+  name: string;
+  headline: string | null;
+  journeyHighlights: string | null;
+  channelPreference: string | null;
+  description: string | null;
+  needs: string[];
+  segment: string | null;
+  occupation: string | null;
+  ageRange: string | null;
+  city: string | null;
+  incomeRange: string | null;
+}
 
 const backdropVariants = {
   initial: { opacity: 0 },
@@ -305,14 +320,106 @@ function ResearchPanel({ persona }: { persona: Persona }) {
   );
 }
 
+function InsightsPanel({
+  researched,
+  colors,
+}: {
+  researched: ResearchedPersona;
+  colors: { accent: string; bg: string; border: string; gradient: string };
+}) {
+  return (
+    <div className="h-full overflow-y-auto pr-1">
+      <div className="space-y-3">
+        {researched.headline && (
+          <div className={`rounded-xl p-3 ${colors.bg} ${colors.border} border`}>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Sparkles className={`w-3.5 h-3.5 ${colors.accent}`} />
+              <span className={`text-[10px] uppercase tracking-wider font-semibold ${colors.accent}`}>
+                Headline
+              </span>
+            </div>
+            <p className="text-xs text-white/90 leading-relaxed">{researched.headline}</p>
+          </div>
+        )}
+
+        {researched.description && (
+          <div className="rounded-xl p-3 bg-white/[0.04] border border-white/[0.08]">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Users className="w-3.5 h-3.5 text-white/60" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-white/60">
+                Researched Profile
+              </span>
+            </div>
+            <p className="text-xs text-white/85 leading-relaxed">{researched.description}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-white/60">
+              {researched.segment && <span className="px-1.5 py-0.5 rounded bg-white/[0.06]">Segment: {researched.segment}</span>}
+              {researched.occupation && <span className="px-1.5 py-0.5 rounded bg-white/[0.06]">Occupation: {researched.occupation}</span>}
+              {researched.ageRange && <span className="px-1.5 py-0.5 rounded bg-white/[0.06]">Age: {researched.ageRange}</span>}
+              {researched.city && <span className="px-1.5 py-0.5 rounded bg-white/[0.06]">{researched.city}</span>}
+              {researched.incomeRange && <span className="px-1.5 py-0.5 rounded bg-white/[0.06]">Income: {researched.incomeRange}</span>}
+            </div>
+          </div>
+        )}
+
+        {researched.journeyHighlights && (
+          <div className="rounded-xl p-3 bg-emerald-500/[0.06] border border-emerald-500/20">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Route className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-400">
+                Journey Highlights
+              </span>
+            </div>
+            <p className="text-xs text-white/85 leading-relaxed whitespace-pre-line">{researched.journeyHighlights}</p>
+          </div>
+        )}
+
+        {researched.channelPreference && (
+          <div className="rounded-xl p-3 bg-blue-500/[0.06] border border-blue-500/20">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Briefcase className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-blue-400">
+                Channel Preference
+              </span>
+            </div>
+            <p className="text-xs text-white/85 leading-relaxed">{researched.channelPreference}</p>
+          </div>
+        )}
+
+        {researched.needs.length > 0 && (
+          <div className="rounded-xl p-3 bg-amber-500/[0.06] border border-amber-500/20">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-amber-400">
+                Researched Needs
+              </span>
+            </div>
+            <ul className="space-y-1.5">
+              {researched.needs.map((n, i) => (
+                <li key={`${n}-${i}`} className="text-xs text-white/85 leading-snug flex gap-1.5">
+                  <span className="text-amber-400 mt-0.5 shrink-0">•</span>
+                  <span>{n}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Modal ─────────────────────────────────────────────────────────────
 
 interface PersonaDetailModalProps {
   persona: Persona;
+  researched?: ResearchedPersona | null;
   onClose: () => void;
 }
 
-export function PersonaDetailModal({ persona, onClose }: PersonaDetailModalProps) {
+export function PersonaDetailModal({ persona, researched, onClose }: PersonaDetailModalProps) {
+  const hasResearched =
+    !!researched &&
+    !!(researched.headline || researched.journeyHighlights || researched.channelPreference || researched.needs.length > 0);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [mounted, setMounted] = useState(false);
   const coverageStatus = getCoverageStatus(persona);
@@ -334,6 +441,7 @@ export function PersonaDetailModal({ persona, onClose }: PersonaDetailModalProps
     { id: "overview", label: "Overview", icon: Users },
     { id: "journey", label: "GPSSA Journey", icon: Route },
     { id: "coverage", label: "Coverage", icon: Shield },
+    ...(hasResearched ? [{ id: "insights" as TabId, label: "Researched Insights", icon: Lightbulb }] : []),
     { id: "research", label: "Sources", icon: FileText },
   ];
 
@@ -419,6 +527,7 @@ export function PersonaDetailModal({ persona, onClose }: PersonaDetailModalProps
                   {activeTab === "overview" && <Users className={`w-3.5 h-3.5 ${colors.accent}`} />}
                   {activeTab === "journey" && <Route className={`w-3.5 h-3.5 ${colors.accent}`} />}
                   {activeTab === "coverage" && <Shield className={`w-3.5 h-3.5 ${colors.accent}`} />}
+                  {activeTab === "insights" && <Lightbulb className={`w-3.5 h-3.5 ${colors.accent}`} />}
                   {activeTab === "research" && <FileText className={`w-3.5 h-3.5 ${colors.accent}`} />}
                 </div>
                 <div>
@@ -426,6 +535,7 @@ export function PersonaDetailModal({ persona, onClose }: PersonaDetailModalProps
                     {activeTab === "overview" && "Demographic Overview"}
                     {activeTab === "journey" && "GPSSA Journey"}
                     {activeTab === "coverage" && "GPSSA Coverage Details"}
+                    {activeTab === "insights" && "Researched Insights"}
                     {activeTab === "research" && "Sources"}
                   </h3>
                   <p className="text-[9px] text-white/40">{persona.name}</p>
@@ -454,6 +564,7 @@ export function PersonaDetailModal({ persona, onClose }: PersonaDetailModalProps
                   {activeTab === "overview" && <OverviewPanel persona={persona} colors={colors} />}
                   {activeTab === "journey" && <JourneyPanel persona={persona} colors={colors} />}
                   {activeTab === "coverage" && <CoveragePanel persona={persona} />}
+                  {activeTab === "insights" && researched && <InsightsPanel researched={researched} colors={colors} />}
                   {activeTab === "research" && <ResearchPanel persona={persona} />}
                 </motion.div>
               </AnimatePresence>

@@ -190,6 +190,42 @@ export const COUNTRIES: CountrySeed[] = [
   { iso3: "COM", iso2: "KM", name: "Comoros", region: "Sub-Saharan Africa", subRegion: "East Africa", flag: flag("KM") },
   { iso3: "SYC", iso2: "SC", name: "Seychelles", region: "Sub-Saharan Africa", subRegion: "East Africa", flag: flag("SC") },
   { iso3: "BDI", iso2: "BI", name: "Burundi", region: "Sub-Saharan Africa", subRegion: "East Africa", flag: flag("BI") },
+  // ── UN member states added to reach 193 (plus non-UN observers PSE, TWN, HKG above) ──
+  // Europe — microstates
+  { iso3: "AND", iso2: "AD", name: "Andorra", region: "Europe", subRegion: "Southern Europe", flag: flag("AD") },
+  { iso3: "MCO", iso2: "MC", name: "Monaco", region: "Europe", subRegion: "Western Europe", flag: flag("MC") },
+  { iso3: "SMR", iso2: "SM", name: "San Marino", region: "Europe", subRegion: "Southern Europe", flag: flag("SM") },
+  { iso3: "LIE", iso2: "LI", name: "Liechtenstein", region: "Europe", subRegion: "Western Europe", flag: flag("LI") },
+  // Caribbean & Latin America
+  { iso3: "ATG", iso2: "AG", name: "Antigua and Barbuda", region: "Latin America", subRegion: "Caribbean", flag: flag("AG") },
+  { iso3: "BHS", iso2: "BS", name: "Bahamas", region: "Latin America", subRegion: "Caribbean", flag: flag("BS") },
+  { iso3: "BRB", iso2: "BB", name: "Barbados", region: "Latin America", subRegion: "Caribbean", flag: flag("BB") },
+  { iso3: "BLZ", iso2: "BZ", name: "Belize", region: "Latin America", subRegion: "Central America", flag: flag("BZ") },
+  { iso3: "DMA", iso2: "DM", name: "Dominica", region: "Latin America", subRegion: "Caribbean", flag: flag("DM") },
+  { iso3: "GRD", iso2: "GD", name: "Grenada", region: "Latin America", subRegion: "Caribbean", flag: flag("GD") },
+  { iso3: "GUY", iso2: "GY", name: "Guyana", region: "Latin America", subRegion: "South America", flag: flag("GY") },
+  { iso3: "HTI", iso2: "HT", name: "Haiti", region: "Latin America", subRegion: "Caribbean", flag: flag("HT") },
+  { iso3: "KNA", iso2: "KN", name: "Saint Kitts and Nevis", region: "Latin America", subRegion: "Caribbean", flag: flag("KN") },
+  { iso3: "LCA", iso2: "LC", name: "Saint Lucia", region: "Latin America", subRegion: "Caribbean", flag: flag("LC") },
+  { iso3: "VCT", iso2: "VC", name: "Saint Vincent and the Grenadines", region: "Latin America", subRegion: "Caribbean", flag: flag("VC") },
+  { iso3: "SUR", iso2: "SR", name: "Suriname", region: "Latin America", subRegion: "South America", flag: flag("SR") },
+  // Asia
+  { iso3: "BTN", iso2: "BT", name: "Bhutan", region: "Asia-Pacific", subRegion: "South Asia", flag: flag("BT") },
+  { iso3: "BRN", iso2: "BN", name: "Brunei", region: "Asia-Pacific", subRegion: "Southeast Asia", flag: flag("BN") },
+  { iso3: "MDV", iso2: "MV", name: "Maldives", region: "Asia-Pacific", subRegion: "South Asia", flag: flag("MV") },
+  { iso3: "PRK", iso2: "KP", name: "North Korea", region: "Asia-Pacific", subRegion: "East Asia", flag: flag("KP") },
+  { iso3: "TLS", iso2: "TL", name: "Timor-Leste", region: "Asia-Pacific", subRegion: "Southeast Asia", flag: flag("TL") },
+  // Pacific
+  { iso3: "KIR", iso2: "KI", name: "Kiribati", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("KI") },
+  { iso3: "MHL", iso2: "MH", name: "Marshall Islands", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("MH") },
+  { iso3: "FSM", iso2: "FM", name: "Micronesia", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("FM") },
+  { iso3: "NRU", iso2: "NR", name: "Nauru", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("NR") },
+  { iso3: "PLW", iso2: "PW", name: "Palau", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("PW") },
+  { iso3: "WSM", iso2: "WS", name: "Samoa", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("WS") },
+  { iso3: "SLB", iso2: "SB", name: "Solomon Islands", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("SB") },
+  { iso3: "TON", iso2: "TO", name: "Tonga", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("TO") },
+  { iso3: "TUV", iso2: "TV", name: "Tuvalu", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("TV") },
+  { iso3: "VUT", iso2: "VU", name: "Vanuatu", region: "Asia-Pacific", subRegion: "Oceania", flag: flag("VU") },
 ];
 
 export const SCORING_DIMENSIONS = [

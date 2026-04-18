@@ -1,10 +1,11 @@
 "use client";
 
-import { Truck, UserCircle } from "lucide-react";
+import { Truck, UserCircle, Network } from "lucide-react";
 import { SectionTabs } from "@/components/ui/SectionTabs";
 
 const deliveryTabs = [
-  { id: "channels", label: "Channels & Delivery Model", href: "/dashboard/delivery/channels", icon: Truck },
+  { id: "channels", label: "Channels", href: "/dashboard/delivery/channels", icon: Truck },
+  { id: "models", label: "Delivery Models", href: "/dashboard/delivery/models", icon: Network },
   { id: "personas", label: "Personas", href: "/dashboard/delivery/personas", icon: UserCircle },
 ];
 

@@ -27,115 +27,136 @@ model AppConfig {
 }
 
 model AgentConfig {
-  id               String   @id @default(cuid())
-  name             String   @unique
-  description      String?
-  systemPrompt     String
+  id                 String           @id @default(cuid())
+  name               String           @unique
+  description        String?
+  systemPrompt       String
   userPromptTemplate String
-  model            String   @default("gpt-4o")
-  provider         String   @default("openai")
-  maxTokens        Int      @default(4096)
-  temperature      Float    @default(0.7)
-  isActive         Boolean  @default(true)
-  targetScreen     String?
-  researchType     String?
-  sortOrder        Int      @default(0)
-  executionCount   Int      @default(0)
-  lastRunAt        DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  executions       AgentExecution[]
-  researchJobs     ResearchJob[]
+  model              String           @default("gpt-4o")
+  provider           String           @default("openai")
+  maxTokens          Int              @default(4096)
+  temperature        Float            @default(0.7)
+  concurrency        Int              @default(5)
+  batchSize          Int              @default(1)
+  isActive           Boolean          @default(true)
+  targetScreen       String?
+  researchType       String?
+  sortOrder          Int              @default(0)
+  executionCount     Int              @default(0)
+  lastRunAt          DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  executions         AgentExecution[]
+  researchJobs       ResearchJob[]
 }
 
 model AgentExecution {
-  id          String   @id @default(cuid())
-  agentId     String
-  agent       AgentConfig @relation(fields: [agentId], references: [id])
-  input       String
-  output      String?
-  model       String
-  tokensUsed  Int?
-  durationMs  Int?
-  status      String   @default("running")
-  error       String?
-  createdAt   DateTime @default(now())
+  id         String      @id @default(cuid())
+  agentId    String
+  agent      AgentConfig @relation(fields: [agentId], references: [id])
+  input      String
+  output     String?
+  model      String
+  tokensUsed Int?
+  durationMs Int?
+  status     String      @default("running")
+  error      String?
+  createdAt  DateTime    @default(now())
 
   @@index([agentId])
 }
 
 model Country {
-  id              String   @id @default(cuid())
-  iso3            String   @unique
-  iso2            String?
-  name            String   @unique
-  flag            String?
-  region          String
-  subRegion       String?
-  institution     String?
-  systemType      String?
-  yearEstablished Int?
-  maturityScore   Float?
-  maturityLabel   String?
-  coverageRate    Float?
-  replacementRate Float?
-  sustainability  Float?
-  digitalLevel    String?
-  keyFeatures     String?
-  challenges      String?
-  insights        String?
-  legislativeFramework String?
-  contributionRates    String?
-  retirementAge        String?
-  benefitTypes         String?
-  fundManagement       String?
-  recentReforms        String?
-  internationalRankings String?
-  iloConventionsRatified String?
-  populationCovered      String?
-  dataSources            String?
+  id                          String                  @id @default(cuid())
+  iso3                        String                  @unique
+  iso2                        String?
+  name                        String                  @unique
+  flag                        String?
+  region                      String
+  subRegion                   String?
+  institution                 String?
+  systemType                  String?
+  yearEstablished             Int?
+  maturityScore               Float?
+  maturityLabel               String?
+  coverageRate                Float?
+  replacementRate             Float?
+  sustainability              Float?
+  digitalLevel                String?
+  keyFeatures                 String?
+  challenges                  String?
+  insights                    String?
+  legislativeFramework        String?
+  contributionRates           String?
+  retirementAge               String?
+  benefitTypes                String?
+  fundManagement              String?
+  recentReforms               String?
+  internationalRankings       String?
+  iloConventionsRatified      String?
+  populationCovered           String?
+  dataSources                 String?
   socialProtectionExpenditure String?
-  dependencyRatio            String?
+  dependencyRatio             String?
   pensionFundAssets           String?
   benefitCalculation          String?
   indexationMechanism         String?
   vestingPeriod               String?
   governanceQuality           String?
-  researchStatus  String   @default("pending")
-  researchedAt    DateTime?
-  researchSource  String?
-  rawResearchData String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  institutions    Institution[]
+  researchStatus              String                  @default("pending")
+  systemStatus                String                  @default("pending")
+  performanceStatus           String                  @default("pending")
+  insightsStatus              String                  @default("pending")
+  researchedAt                DateTime?
+  researchSource              String?
+  rawResearchData             String?
+  createdAt                   DateTime                @default(now())
+  updatedAt                   DateTime                @updatedAt
+  institutions                Institution[]
+  sourceCitations             CountrySourceCitation[]
 
   @@index([region])
   @@index([researchStatus])
 }
 
+model OrchestratorRun {
+  id          String    @id @default(cuid())
+  status      String    @default("pending")
+  pillars     String?
+  results     String?
+  lastError   String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([startedAt])
+}
+
 model ResearchJob {
-  id             String   @id @default(cuid())
-  type           String   @default("country-research")
-  status         String   @default("pending")
-  totalItems     Int      @default(0)
-  completedItems Int      @default(0)
-  failedItems    Int      @default(0)
+  id             String            @id @default(cuid())
+  type           String            @default("country-research")
+  status         String            @default("pending")
+  totalItems     Int               @default(0)
+  completedItems Int               @default(0)
+  failedItems    Int               @default(0)
   currentItem    String?
-  model          String   @default("gpt-4o")
-  batchSize      Int      @default(3)
-  concurrency    Int      @default(5)
-  totalTokens    Int      @default(0)
-  totalCost      Float    @default(0)
+  model          String            @default("gpt-4o")
+  batchSize      Int               @default(3)
+  concurrency    Int               @default(5)
+  totalTokens    Int               @default(0)
+  totalCost      Float             @default(0)
   agentConfigId  String?
-  agentConfig    AgentConfig? @relation(fields: [agentConfigId], references: [id])
+  agentConfig    AgentConfig?      @relation(fields: [agentConfigId], references: [id])
   rawOutput      String?
   startedAt      DateTime?
   completedAt    DateTime?
   pausedAt       DateTime?
   lastError      String?
-  errorCount     Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  errorCount     Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   items          ResearchJobItem[]
 
   @@index([agentConfigId])
@@ -143,73 +164,76 @@ model ResearchJob {
 }
 
 model ResearchJobItem {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   jobId       String
   job         ResearchJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
   countryIso3 String?
   itemKey     String?
   itemLabel   String?
   itemContext String?
-  status      String   @default("pending")
-  tokensUsed  Int      @default(0)
-  durationMs  Int      @default(0)
+  status      String      @default("pending")
+  tokensUsed  Int         @default(0)
+  durationMs  Int         @default(0)
   output      String?
   error       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([jobId])
   @@index([itemKey])
 }
 
 model ScoringMethodology {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String          @id @default(cuid())
+  name        String          @unique
   description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   weights     ScoringWeight[]
 }
 
 model ScoringWeight {
-  id            String   @id @default(cuid())
+  id            String             @id @default(cuid())
   methodologyId String
   methodology   ScoringMethodology @relation(fields: [methodologyId], references: [id], onDelete: Cascade)
   dimension     String
-  weight        Float    @default(1.0)
-  maxScore      Float    @default(100)
+  weight        Float              @default(1.0)
+  maxScore      Float              @default(100)
   description   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
   @@unique([methodologyId, dimension])
   @@index([methodologyId])
 }
 
 model Institution {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  shortName       String?
-  country         String
-  countryCode     String
-  region          String
-  countryId       String?
-  countryRef      Country? @relation(fields: [countryId], references: [id])
-  isBenchmarkTarget Boolean @default(false)
-  description     String?
-  services        String?
-  digitalMaturity String?
-  keyInnovations  String?
-  aiAnalysis      String?
-  websiteUrl      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  benchmarksAs    BenchmarkReport[] @relation("BenchmarkTarget")
-  benchmarksOf    BenchmarkReport[] @relation("BenchmarkComparison")
-  benchmarkDatasets BenchmarkDataset[] @relation("BenchmarkTargetInstitution")
-  benchmarkScores BenchmarkInstitutionScore[]
-  sourceCitations InstitutionSourceCitation[]
+  id                    String                      @id @default(cuid())
+  name                  String                      @unique
+  shortName             String?
+  country               String
+  countryCode           String
+  region                String
+  countryId             String?
+  countryRef            Country?                    @relation(fields: [countryId], references: [id])
+  isBenchmarkTarget     Boolean                     @default(false)
+  description           String?
+  services              String?
+  digitalMaturity       String?
+  keyInnovations        String?
+  aiAnalysis            String?
+  websiteUrl            String?
+  strengths             String?
+  gaps                  String?
+  transferablePractices String?
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  benchmarksAs          BenchmarkReport[]           @relation("BenchmarkTarget")
+  benchmarksOf          BenchmarkReport[]           @relation("BenchmarkComparison")
+  benchmarkDatasets     BenchmarkDataset[]          @relation("BenchmarkTargetInstitution")
+  benchmarkScores       BenchmarkInstitutionScore[]
+  sourceCitations       InstitutionSourceCitation[]
   internationalServices InternationalService[]
   internationalProducts InternationalProduct[]
 
@@ -218,64 +242,64 @@ model Institution {
 }
 
 model BenchmarkDataset {
-  id                String   @id @default(cuid())
-  slug              String   @unique
-  name              String
-  description       String?
-  methodology       String?
-  coverageNote      String?
+  id                  String                      @id @default(cuid())
+  slug                String                      @unique
+  name                String
+  description         String?
+  methodology         String?
+  coverageNote        String?
   targetInstitutionId String?
-  targetInstitution Institution? @relation("BenchmarkTargetInstitution", fields: [targetInstitutionId], references: [id])
-  publishedAt       DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  scores            BenchmarkInstitutionScore[]
-  kpiValues         BenchmarkKpiValue[]
+  targetInstitution   Institution?                @relation("BenchmarkTargetInstitution", fields: [targetInstitutionId], references: [id])
+  publishedAt         DateTime?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  scores              BenchmarkInstitutionScore[]
+  kpiValues           BenchmarkKpiValue[]
 }
 
 model BenchmarkDimension {
-  id          String   @id @default(cuid())
-  slug        String   @unique
+  id          String                      @id @default(cuid())
+  slug        String                      @unique
   name        String
   description String?
   category    String?
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  sortOrder   Int                         @default(0)
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
   scores      BenchmarkInstitutionScore[]
 }
 
 model BenchmarkSource {
-  id            String   @id @default(cuid())
-  slug          String   @unique
-  title         String
-  publisher     String?
-  url           String
-  sourceType    String   @default("website")
-  description   String?
-  region        String?
-  publishedAt   DateTime?
-  accessedAt    DateTime?
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  scoreLinks    BenchmarkInstitutionScoreSource[]
-  kpiLinks      BenchmarkKpiValueSource[]
+  id          String                            @id @default(cuid())
+  slug        String                            @unique
+  title       String
+  publisher   String?
+  url         String
+  sourceType  String                            @default("website")
+  description String?
+  region      String?
+  publishedAt DateTime?
+  accessedAt  DateTime?
+  notes       String?
+  createdAt   DateTime                          @default(now())
+  updatedAt   DateTime                          @updatedAt
+  scoreLinks  BenchmarkInstitutionScoreSource[]
+  kpiLinks    BenchmarkKpiValueSource[]
 }
 
 model BenchmarkInstitutionScore {
-  id            String   @id @default(cuid())
+  id            String                            @id @default(cuid())
   datasetId     String
   institutionId String
   dimensionId   String
   score         Float
   maturityLabel String?
   note          String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  dataset       BenchmarkDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
-  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
-  dimension     BenchmarkDimension @relation(fields: [dimensionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime                          @default(now())
+  updatedAt     DateTime                          @updatedAt
+  dataset       BenchmarkDataset                  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  institution   Institution                       @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  dimension     BenchmarkDimension                @relation(fields: [dimensionId], references: [id], onDelete: Cascade)
   sourceLinks   BenchmarkInstitutionScoreSource[]
 
   @@unique([datasetId, institutionId, dimensionId])
@@ -284,47 +308,47 @@ model BenchmarkInstitutionScore {
 }
 
 model BenchmarkInstitutionScoreSource {
-  id           String   @id @default(cuid())
-  scoreId       String
-  sourceId      String
-  citation      String?
-  evidenceNote  String?
-  sortOrder     Int      @default(0)
-  createdAt     DateTime @default(now())
-  score         BenchmarkInstitutionScore @relation(fields: [scoreId], references: [id], onDelete: Cascade)
-  source        BenchmarkSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  id           String                    @id @default(cuid())
+  scoreId      String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  sortOrder    Int                       @default(0)
+  createdAt    DateTime                  @default(now())
+  score        BenchmarkInstitutionScore @relation(fields: [scoreId], references: [id], onDelete: Cascade)
+  source       BenchmarkSource           @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@unique([scoreId, sourceId])
   @@index([sourceId])
 }
 
 model BenchmarkKpi {
-  id          String   @id @default(cuid())
-  slug        String   @unique
+  id          String              @id @default(cuid())
+  slug        String              @unique
   name        String
   description String?
   category    String?
   unit        String?
-  direction   String   @default("higher-better")
+  direction   String              @default("higher-better")
   ribbonLabel String?
-  ribbonOrder Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  ribbonOrder Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   values      BenchmarkKpiValue[]
 }
 
 model BenchmarkKpiValue {
-  id         String   @id @default(cuid())
+  id          String                    @id @default(cuid())
   datasetId   String
   kpiId       String
   comparator  String
   label       String
   value       Float
   note        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  dataset     BenchmarkDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
-  kpi         BenchmarkKpi @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  dataset     BenchmarkDataset          @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  kpi         BenchmarkKpi              @relation(fields: [kpiId], references: [id], onDelete: Cascade)
   sourceLinks BenchmarkKpiValueSource[]
 
   @@unique([datasetId, kpiId, comparator])
@@ -332,15 +356,15 @@ model BenchmarkKpiValue {
 }
 
 model BenchmarkKpiValueSource {
-  id           String   @id @default(cuid())
+  id           String            @id @default(cuid())
   valueId      String
   sourceId     String
   citation     String?
   evidenceNote String?
-  sortOrder    Int      @default(0)
-  createdAt    DateTime @default(now())
+  sortOrder    Int               @default(0)
+  createdAt    DateTime          @default(now())
   value        BenchmarkKpiValue @relation(fields: [valueId], references: [id], onDelete: Cascade)
-  source       BenchmarkSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source       BenchmarkSource   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@unique([valueId, sourceId])
   @@index([sourceId])
@@ -359,26 +383,26 @@ model BenchmarkReport {
 }
 
 model GPSSAService {
-  id                    String   @id @default(cuid())
-  name                  String
-  category              String
-  description           String?
-  userTypes             String?
-  currentState          String?
-  painPoints            String?
-  opportunities         String?
-  digitalReadiness      Float?
-  maturityLevel         String?
+  id                     String                     @id @default(cuid())
+  name                   String
+  category               String
+  description            String?
+  userTypes              String?
+  currentState           String?
+  painPoints             String?
+  opportunities          String?
+  digitalReadiness       Float?
+  maturityLevel          String?
   bestPracticeComparison String?
-  strengths             String?
-  iloAlignment          String?
-  researchStatus        String   @default("pending")
-  researchSource        String?
-  analyses              ServiceAnalysis[]
-  channelCapabilities   ServiceChannelCapability[]
-  sourceCitations       ServiceSourceCitation[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  strengths              String?
+  iloAlignment           String?
+  researchStatus         String                     @default("pending")
+  researchSource         String?
+  analyses               ServiceAnalysis[]
+  channelCapabilities    ServiceChannelCapability[]
+  sourceCitations        ServiceSourceCitation[]
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
 }
 
 model ServiceAnalysis {
@@ -393,20 +417,20 @@ model ServiceAnalysis {
 }
 
 model Opportunity {
-  id            String   @id @default(cuid())
-  title         String
-  category      String
-  description   String?
-  impact        String   @default("medium")
-  effort        String   @default("medium")
-  strategicFit  Float?
-  feasibility   Float?
-  status        String   @default("identified")
-  sourceSection String?
-  conceptSheet  ConceptSheet?
+  id              String                      @id @default(cuid())
+  title           String
+  category        String
+  description     String?
+  impact          String                      @default("medium")
+  effort          String                      @default("medium")
+  strategicFit    Float?
+  feasibility     Float?
+  status          String                      @default("identified")
+  sourceSection   String?
+  conceptSheet    ConceptSheet?
   sourceCitations OpportunitySourceCitation[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
 }
 
 model ConceptSheet {
@@ -419,44 +443,44 @@ model ConceptSheet {
 }
 
 model Requirement {
-  id          String   @id @default(cuid())
-  category    String
-  title       String
-  description String?
-  details     String?
-  priority    String   @default("medium")
-  status      String   @default("identified")
+  id              String                      @id @default(cuid())
+  category        String
+  title           String
+  description     String?
+  details         String?
+  priority        String                      @default("medium")
+  status          String                      @default("identified")
   sourceCitations RequirementSourceCitation[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
 }
 
 model RoadmapPhase {
-  id          String   @id @default(cuid())
+  id          String              @id @default(cuid())
   name        String
   description String?
   startDate   String?
   endDate     String?
   objectives  String?
-  sortOrder   Int      @default(0)
+  sortOrder   Int                 @default(0)
   initiatives RoadmapInitiative[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 }
 
 model RoadmapInitiative {
-  id            String       @id @default(cuid())
-  phaseId       String
-  phase         RoadmapPhase @relation(fields: [phaseId], references: [id])
-  title         String
-  description   String?
-  status        String       @default("planned")
-  owner         String?
-  dependencies  String?
+  id              String       @id @default(cuid())
+  phaseId         String
+  phase           RoadmapPhase @relation(fields: [phaseId], references: [id])
+  title           String
+  description     String?
+  status          String       @default("planned")
+  owner           String?
+  dependencies    String?
   estimatedImpact String?
-  sortOrder     Int          @default(0)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@index([phaseId])
 }
@@ -501,17 +525,17 @@ model Activity {
 // ── Universal Data Source & Citation Models ──
 
 model DataSource {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   url         String
   publisher   String?
-  sourceType  String   @default("website")
+  sourceType  String    @default("website")
   description String?
   region      String?
   publishedAt DateTime?
   accessedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   serviceCitations       ServiceSourceCitation[]
   institutionCitations   InstitutionSourceCitation[]
@@ -526,6 +550,21 @@ model DataSource {
   intlServiceCitations   IntlServiceCitation[]
   intlProductCitations   IntlProductCitation[]
   intlSegmentCitations   IntlSegmentCitation[]
+  countryCitations       CountrySourceCitation[]
+}
+
+model CountrySourceCitation {
+  id           String     @id @default(cuid())
+  countryId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime   @default(now())
+  country      Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  source       DataSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, sourceId])
+  @@index([sourceId])
 }
 
 model ServiceSourceCitation {
@@ -587,105 +626,114 @@ model RequirementSourceCitation {
 // ── Screen Research Domain Models ──
 
 model Product {
-  id               String   @id @default(cuid())
-  name             String
-  tier             String
-  status           String   @default("active")
-  description      String?
-  targetSegments   String?
-  coverageType     String?
-  keyFeatures      String?
-  researchStatus   String   @default("pending")
-  researchSource   String?
-  sourceCitations  ProductSourceCitation[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                      String                  @id @default(cuid())
+  name                    String
+  tier                    String
+  status                  String                  @default("active")
+  description             String?
+  targetSegments          String?
+  coverageType            String?
+  keyFeatures             String?
+  regulatoryBasis         String?
+  comparableInternational String?
+  researchStatus          String                  @default("pending")
+  researchSource          String?
+  sourceCitations         ProductSourceCitation[]
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
 
   @@index([tier])
 }
 
 model SegmentCoverage {
-  id              String   @id @default(cuid())
+  id              String                  @id @default(cuid())
   segment         String
   coverageType    String
   level           String
   population      String?
   notes           String?
-  researchStatus  String   @default("pending")
+  regulatoryBasis String?
+  researchStatus  String                  @default("pending")
   researchSource  String?
   sourceCitations SegmentSourceCitation[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
 
   @@unique([segment, coverageType])
 }
 
 model ProductInnovation {
-  id                 String   @id @default(cuid())
-  title              String
-  description        String?
-  targetSegment      String?
-  impactScore        Float?
-  feasibilityScore   Float?
-  status             String   @default("identified")
-  innovationType     String?
+  id                  String                     @id @default(cuid())
+  title               String
+  description         String?
+  targetSegment       String?
+  impactScore         Float?
+  feasibilityScore    Float?
+  status              String                     @default("identified")
+  innovationType      String?
   estimatedPopulation String?
-  researchStatus     String   @default("pending")
-  researchSource     String?
-  sourceCitations    InnovationSourceCitation[]
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  researchStatus      String                     @default("pending")
+  researchSource      String?
+  sourceCitations     InnovationSourceCitation[]
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
 }
 
 model DeliveryChannel {
-  id               String   @id @default(cuid())
-  name             String   @unique
-  channelType      String
-  maturity         Float    @default(0)
-  servicesAvailable Int     @default(0)
-  servicesTotal    Int      @default(0)
-  status           String   @default("active")
-  capabilities     String?
-  strengths        String?
-  gaps             String?
-  researchStatus   String   @default("pending")
-  researchSource   String?
-  sourceCitations  ChannelSourceCitation[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                  String                  @id @default(cuid())
+  name                String                  @unique
+  channelType         String
+  maturity            Float                   @default(0)
+  servicesAvailable   Int                     @default(0)
+  servicesTotal       Int                     @default(0)
+  status              String                  @default("active")
+  capabilities        String?
+  strengths           String?
+  gaps                String?
+  benchmarkComparison String?
+  researchStatus      String                  @default("pending")
+  researchSource      String?
+  sourceCitations     ChannelSourceCitation[]
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 }
 
 model CustomerPersona {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  ageRange        String?
-  city            String?
-  occupation      String?
-  incomeRange     String?
-  description     String?
-  needs           String?
-  coverageMap     String?
-  segment         String?
-  researchStatus  String   @default("pending")
-  researchSource  String?
-  sourceCitations PersonaSourceCitation[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String                  @id @default(cuid())
+  name              String                  @unique
+  headline          String?
+  ageRange          String?
+  city              String?
+  occupation        String?
+  incomeRange       String?
+  description       String?
+  needs             String?
+  coverageMap       String?
+  segment           String?
+  journeyHighlights String?
+  channelPreference String?
+  researchStatus    String                  @default("pending")
+  researchSource    String?
+  sourceCitations   PersonaSourceCitation[]
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
 }
 
 model DeliveryModel {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  description     String?
-  channelMix      String?
-  targetSegments  String?
-  maturity        Float    @default(0)
-  enablers        String?
-  researchStatus  String   @default("pending")
-  researchSource  String?
-  sourceCitations DeliveryModelSourceCitation[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String                        @id @default(cuid())
+  name              String                        @unique
+  description       String?
+  channelMix        String?
+  targetSegments    String?
+  maturity          Float                         @default(0)
+  enablers          String?
+  risks             String?
+  benchmarkExamples String?
+  researchStatus    String                        @default("pending")
+  researchSource    String?
+  sourceCitations   DeliveryModelSourceCitation[]
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
 }
 
 model ServiceChannelCapability {
@@ -793,72 +841,77 @@ model DeliveryModelSourceCitation {
 // ── ILO & International Comparison Models ──
 
 model ILOStandard {
-  id              String   @id @default(cuid())
-  code            String   @unique
-  title           String
-  category        String
-  description     String?
-  provisions      String?
-  applicableTo    String?
-  adoptionStatus  String?
-  url             String?
-  researchStatus  String   @default("pending")
-  researchSource  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  code           String   @unique
+  title          String
+  category       String
+  description    String?
+  provisions     String?
+  applicableTo   String?
+  adoptionStatus String?
+  url            String?
+  researchStatus String   @default("pending")
+  researchSource String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model InternationalService {
-  id                  String        @id @default(cuid())
-  institutionId       String?
-  institution         Institution?  @relation(fields: [institutionId], references: [id])
-  countryIso3         String
-  name                String
-  category            String
-  description         String?
-  userTypes           String?
-  digitalReadiness    Float?
-  maturityLevel       String?
-  channelCapabilities String?
-  painPoints          String?
-  strengths           String?
-  iloAlignment        String?
-  researchStatus      String        @default("pending")
-  researchSource      String?
-  sourceCitations     IntlServiceCitation[]
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  id                     String                @id @default(cuid())
+  institutionId          String?
+  institution            Institution?          @relation(fields: [institutionId], references: [id])
+  countryIso3            String
+  name                   String
+  category               String
+  description            String?
+  userTypes              String?
+  digitalReadiness       Float?
+  maturityLevel          String?
+  channelCapabilities    String?
+  painPoints             String?
+  strengths              String?
+  iloAlignment           String?
+  currentState           String?
+  opportunities          String?
+  bestPracticeComparison String?
+  bestChannelPractice    String?
+  gapAnalysis            String?
+  researchStatus         String                @default("pending")
+  researchSource         String?
+  sourceCitations        IntlServiceCitation[]
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 
   @@index([countryIso3])
   @@index([institutionId])
 }
 
 model InternationalProduct {
-  id              String        @id @default(cuid())
+  id              String                @id @default(cuid())
   institutionId   String?
-  institution     Institution?  @relation(fields: [institutionId], references: [id])
+  institution     Institution?          @relation(fields: [institutionId], references: [id])
   countryIso3     String
   name            String
   tier            String
-  status          String        @default("Active")
+  status          String                @default("Active")
   description     String?
   targetSegments  String?
   coverageType    String?
   keyFeatures     String?
   regulatoryBasis String?
   iloAlignment    String?
-  researchStatus  String        @default("pending")
+  researchStatus  String                @default("pending")
   researchSource  String?
   sourceCitations IntlProductCitation[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
   @@index([countryIso3])
   @@index([institutionId])
 }
 
 model InternationalSegmentCoverage {
-  id              String   @id @default(cuid())
+  id              String                @id @default(cuid())
   countryIso3     String
   segment         String
   coverageType    String
@@ -866,11 +919,11 @@ model InternationalSegmentCoverage {
   population      String?
   notes           String?
   regulatoryBasis String?
-  researchStatus  String   @default("pending")
+  researchStatus  String                @default("pending")
   researchSource  String?
   sourceCitations IntlSegmentCitation[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
   @@unique([countryIso3, segment, coverageType])
   @@index([countryIso3])

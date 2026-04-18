@@ -218,6 +218,109 @@ function BenchmarkEvidenceModal({
   );
 }
 
+/* ─── Institution detail modal (qualitative analysis) ─── */
+
+function InstitutionDetailModal({
+  isOpen,
+  onClose,
+  institution,
+  dimensions,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  institution: BenchmarkInstitutionPayload | null;
+  dimensions: BenchmarkDimensionPayload[];
+}) {
+  if (!institution) return null;
+  const overallScore = dimensions.length
+    ? average(dimensions.map((d) => institution.scores[d.slug] ?? 0))
+    : 0;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={institution.name}
+      description={`${institution.country} — ${institution.region}`}
+      size="xl"
+    >
+      <div className="space-y-5">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-[22px] bg-white/[0.04] p-4">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gray-muted">Overall</p>
+            <p className={`mt-2 font-playfair text-3xl ${scoreTone(overallScore)}`}>
+              {Math.round(overallScore)}
+            </p>
+            {institution.digitalMaturity && (
+              <p className="mt-1 text-[11px] text-gray-muted">{institution.digitalMaturity}</p>
+            )}
+          </div>
+          <div className="rounded-[22px] bg-white/[0.04] p-4 sm:col-span-2">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gray-muted">Profile</p>
+            <p className="mt-2 text-sm leading-relaxed text-cream/90">
+              {institution.description ?? "No institutional profile captured yet."}
+            </p>
+          </div>
+        </div>
+
+        {institution.keyInnovations && (
+          <div className="rounded-[22px] bg-white/[0.04] p-4">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-gpssa-green font-semibold">
+              Notable Innovations
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-cream/85">{institution.keyInnovations}</p>
+          </div>
+        )}
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          <DetailList title="Strengths" tone="green" items={institution.strengths} />
+          <DetailList title="Gaps" tone="orange" items={institution.gaps} />
+          <DetailList
+            title="Transferable Practices"
+            tone="blue"
+            items={institution.transferablePractices}
+          />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function DetailList({
+  title,
+  items,
+  tone,
+}: {
+  title: string;
+  items: string[];
+  tone: "green" | "orange" | "blue";
+}) {
+  const accent =
+    tone === "green" ? "text-gpssa-green" : tone === "orange" ? "text-orange-400" : "text-adl-blue";
+  const dot =
+    tone === "green" ? "#2DD4BF" : tone === "orange" ? "#F59E0B" : "#4A9EFF";
+  return (
+    <div className="rounded-[22px] bg-white/[0.04] p-4">
+      <p className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${accent}`}>{title}</p>
+      {items.length === 0 ? (
+        <p className="mt-3 text-xs text-gray-muted italic">No items captured yet.</p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {items.map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-cream/85">
+              <span
+                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: dot }}
+              />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /* ─── Country peer type ─── */
 
 interface CountryPeer {
@@ -281,6 +384,7 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
   const [viewMode, setViewMode] = useState<ViewMode>("radar");
   const [methodologyOpen, setMethodologyOpen] = useState(false);
   const [evidenceTarget, setEvidenceTarget] = useState<EvidenceTarget | null>(null);
+  const [detailInstitution, setDetailInstitution] = useState<BenchmarkInstitutionPayload | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>(
     workspace.peerInstitutions.slice(0, 3).map((i) => i.id)
   );
@@ -610,18 +714,28 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
         {/* ── Selected peers strip ── */}
         <div className="relative z-20 flex shrink-0 flex-wrap items-center gap-1.5 px-4 pb-2">
           {/* GPSSA — always first, white text, no remove */}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-medium text-cream backdrop-blur-sm">
+          <button
+            onClick={() => setDetailInstitution(workspace.targetInstitution)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-medium text-cream backdrop-blur-sm transition-colors hover:bg-white/[0.14]"
+            title="View qualitative analysis"
+          >
             <CountryFlag code={workspace.targetInstitution.countryCode} size="xs" />
             {workspace.targetInstitution.shortName}
-          </span>
+          </button>
 
           {selectedInstitutions.map((inst) => (
             <span
               key={inst.id}
               className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] text-cream backdrop-blur-sm"
             >
-              <CountryFlag code={inst.countryCode} size="xs" />
-              {inst.country}
+              <button
+                onClick={() => setDetailInstitution(inst)}
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-gpssa-green"
+                title="View qualitative analysis"
+              >
+                <CountryFlag code={inst.countryCode} size="xs" />
+                {inst.country}
+              </button>
               <button
                 onClick={() => removeInstitution(inst.id)}
                 className="ml-0.5 rounded-full p-0.5 text-gray-muted transition-colors hover:bg-white/10 hover:text-cream"
@@ -995,6 +1109,14 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
         target={evidenceTarget}
         workspace={workspace}
         selectedInstitutions={selectedInstitutions}
+      />
+
+      {/* Qualitative institution detail modal */}
+      <InstitutionDetailModal
+        isOpen={!!detailInstitution}
+        onClose={() => setDetailInstitution(null)}
+        institution={detailInstitution}
+        dimensions={workspace.dimensions}
       />
     </div>
   );

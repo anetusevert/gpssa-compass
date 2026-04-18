@@ -22,6 +22,8 @@ export async function writeProductsPortfolio(
       targetSegments: Array.isArray(r.targetSegments) ? JSON.stringify(r.targetSegments) : undefined,
       coverageType: r.coverageType ? String(r.coverageType) : undefined,
       keyFeatures: Array.isArray(r.keyFeatures) ? JSON.stringify(r.keyFeatures) : undefined,
+      regulatoryBasis: r.regulatoryBasis ? String(r.regulatoryBasis) : undefined,
+      comparableInternational: r.comparableInternational ? String(r.comparableInternational) : undefined,
       researchStatus: "completed" as const,
       researchSource: agentLabel,
     };
@@ -61,6 +63,7 @@ export async function writeProductsSegments(
       level: String(r.level ?? "Limited"),
       population: r.population ? String(r.population) : undefined,
       notes: r.notes ? String(r.notes) : undefined,
+      regulatoryBasis: r.regulatoryBasis ? String(r.regulatoryBasis) : undefined,
       researchStatus: "completed" as const,
       researchSource: agentLabel,
     };
@@ -82,6 +85,48 @@ export async function writeProductsSegments(
   return written;
 }
 
+export async function writeProductsInnovation(
+  results: Record<string, unknown>[],
+  agentLabel: string
+): Promise<number> {
+  let written = 0;
+  for (const r of results) {
+    const title = String(r.title ?? r.name ?? "");
+    if (!title) continue;
+
+    const existing = await prisma.productInnovation.findFirst({
+      where: { title: { equals: title, mode: "insensitive" } },
+    });
+
+    const data = {
+      description: r.description ? String(r.description) : undefined,
+      targetSegment: r.targetSegment ? String(r.targetSegment) : undefined,
+      impactScore: typeof r.impactScore === "number" ? r.impactScore : undefined,
+      feasibilityScore: typeof r.feasibilityScore === "number" ? r.feasibilityScore : undefined,
+      status: r.status ? String(r.status) : undefined,
+      innovationType: r.innovationType ? String(r.innovationType) : undefined,
+      estimatedPopulation: r.estimatedPopulation ? String(r.estimatedPopulation) : undefined,
+      researchStatus: "completed" as const,
+      researchSource: agentLabel,
+    };
+
+    let innovationId: string;
+    if (existing) {
+      await prisma.productInnovation.update({ where: { id: existing.id }, data });
+      innovationId = existing.id;
+    } else {
+      const created = await prisma.productInnovation.create({ data: { title, ...data } });
+      innovationId = created.id;
+    }
+
+    if (Array.isArray(r.sources)) {
+      await createSourcesAndCitations(r.sources as ResearchSource[], "innovation", innovationId);
+    }
+    written++;
+  }
+  return written;
+}
+
 export async function writeProductsResults(
   screenType: ScreenType,
   results: Record<string, unknown>[],
@@ -92,6 +137,8 @@ export async function writeProductsResults(
       return writeProductsPortfolio(results, agentLabel);
     case "products-segments":
       return writeProductsSegments(results, agentLabel);
+    case "products-innovation":
+      return writeProductsInnovation(results, agentLabel);
     default:
       return 0;
   }

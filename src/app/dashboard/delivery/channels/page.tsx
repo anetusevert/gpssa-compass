@@ -16,6 +16,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { KPIStrip, ChannelTile, DynamicPanel } from "@/components/delivery";
 import type { ChannelData, DeliveryModelData } from "@/components/delivery";
+import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 
 type ChannelStatus = "Active" | "Developing" | "Pilot" | "Planned";
 type MaturityLevel = "High" | "Medium" | "Low";
@@ -168,8 +169,8 @@ export default function DeliveryChannelsPage() {
   const [models, setModels] = useState<DeliveryModelData[]>(STATIC_MODELS);
   const [selectedChannel, setSelectedChannel] = useState<ChannelData | null>(null);
 
-  useEffect(() => {
-    fetch("/api/delivery/channels")
+  const loadChannels = useCallback(() => {
+    fetch("/api/delivery/channels", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -186,13 +187,16 @@ export default function DeliveryChannelsPage() {
               capabilities: String(d.capabilities ?? ""),
               strengths: Array.isArray(d.strengths) ? d.strengths.map(String) : [],
               gaps: Array.isArray(d.gaps) ? d.gaps.map(String) : [],
+              benchmarkComparison: d.benchmarkComparison ? String(d.benchmarkComparison) : null,
             }))
           );
         }
       })
       .catch(() => {});
+  }, []);
 
-    fetch("/api/delivery/models")
+  const loadModels = useCallback(() => {
+    fetch("/api/delivery/models", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -216,6 +220,23 @@ export default function DeliveryChannelsPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    loadChannels();
+    loadModels();
+  }, [loadChannels, loadModels]);
+
+  useResearchUpdates({
+    targetScreens: ["delivery-channels", "intl-services-channels"],
+    onComplete: (job) => {
+      if (job.targetScreen === "delivery-models") loadModels();
+      else loadChannels();
+    },
+  });
+  useResearchUpdates({
+    targetScreens: ["delivery-models"],
+    onComplete: () => loadModels(),
+  });
 
   const handleSelect = useCallback(
     (channel: ChannelData) => {

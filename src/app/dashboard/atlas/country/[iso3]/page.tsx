@@ -24,6 +24,9 @@ import {
   Calculator,
   PiggyBank,
   Scale,
+  Sparkles,
+  CheckCircle2,
+  Circle,
 } from "lucide-react";
 import {
   type CountryProfile,
@@ -40,6 +43,7 @@ import {
 } from "@/lib/countries/country-data";
 import { CountryFlag } from "@/components/ui/CountryFlag";
 import { CountryInsightModal, type InsightCategory } from "@/components/country/CountryInsightModal";
+import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -78,6 +82,10 @@ interface DbCountry {
   vestingPeriod?: string | null;
   governanceQuality?: string | null;
   researchStatus?: string;
+  systemStatus?: string;
+  performanceStatus?: string;
+  insightsStatus?: string;
+  researchedAt?: string | null;
   institutions?: Array<{
     id: string;
     name: string;
@@ -246,6 +254,54 @@ function BulletList({ items, max = 3, color = "#4A9EFF" }: { items: string[]; ma
   );
 }
 
+function SubAgentStatusBanner({
+  systemStatus,
+  performanceStatus,
+  insightsStatus,
+}: {
+  systemStatus?: string;
+  performanceStatus?: string;
+  insightsStatus?: string;
+}) {
+  const items = [
+    { label: "System", status: systemStatus ?? "pending" },
+    { label: "Performance", status: performanceStatus ?? "pending" },
+    { label: "Insights", status: insightsStatus ?? "pending" },
+  ];
+  const completed = items.filter((i) => i.status === "completed").length;
+  if (completed === 3) return null;
+
+  return (
+    <div className="px-5 py-2 border-b border-white/5 bg-amber-500/[0.04] flex items-center gap-4 text-xs">
+      <span className="text-white/50 uppercase tracking-wider text-[10px] font-semibold">
+        Research progress {completed}/3
+      </span>
+      <div className="flex items-center gap-3">
+        {items.map((i) => {
+          const ok = i.status === "completed";
+          return (
+            <span key={i.label} className="flex items-center gap-1.5">
+              {ok ? (
+                <CheckCircle2 size={11} className="text-gpssa-green" />
+              ) : i.status === "failed" ? (
+                <AlertCircle size={11} className="text-red-400" />
+              ) : (
+                <Circle size={11} className="text-white/30" />
+              )}
+              <span className={ok ? "text-white/70" : "text-white/40"}>{i.label}</span>
+            </span>
+          );
+        })}
+      </div>
+      {completed < 3 && (
+        <span className="text-white/30 ml-auto hidden sm:inline">
+          Some tiles will populate as the remaining sub-agents finish researching this country.
+        </span>
+      )}
+    </div>
+  );
+}
+
 function MetricSnippet({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
@@ -268,42 +324,66 @@ export default function CountryDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<InsightCategory | null>(null);
 
-  useEffect(() => {
+  const loadCountry = useCallback(async (silent = false) => {
     if (!iso3) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
 
-    async function load() {
-      try {
-        const res = await fetch(`/api/countries/${iso3}`);
-        if (!res.ok) throw new Error("not found");
-        let data: DbCountry = await res.json();
+    try {
+      const res = await fetch(`/api/countries/${iso3}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("not found");
+      let data: DbCountry = await res.json();
 
-        if (data.maturityScore == null && data.researchStatus !== "completed") {
-          const jobsRes = await fetch("/api/research/screen-jobs?latest=true");
-          if (jobsRes.ok) {
-            const jobs: Array<{ id: string; type: string; status: string; completedItems: number }> =
-              await jobsRes.json();
-            const atlasJob = jobs.find(
-              (j) => j.type === "atlas-worldmap" && j.status === "completed" && j.completedItems > 0
-            );
-            if (atlasJob) {
-              await fetch(`/api/research/screen-jobs/${atlasJob.id}/rewrite`, { method: "POST" });
-              const refreshed = await fetch(`/api/countries/${iso3}`);
-              if (refreshed.ok) data = await refreshed.json();
-            }
+      const needsRewrite =
+        data.maturityScore == null &&
+        (data.systemStatus !== "completed" ||
+          data.performanceStatus !== "completed" ||
+          data.insightsStatus !== "completed");
+      if (needsRewrite) {
+        const jobsRes = await fetch("/api/research/screen-jobs?latest=true");
+        if (jobsRes.ok) {
+          const jobs: Array<{ id: string; type: string; status: string; completedItems: number }> =
+            await jobsRes.json();
+          const candidates = jobs.filter(
+            (j) =>
+              (j.type === "atlas-system" ||
+                j.type === "atlas-performance" ||
+                j.type === "atlas-insights" ||
+                j.type === "atlas-worldmap") &&
+              j.status === "completed" &&
+              j.completedItems > 0
+          );
+          for (const job of candidates) {
+            await fetch(`/api/research/screen-jobs/${job.id}/rewrite`, { method: "POST" });
+          }
+          if (candidates.length > 0) {
+            const refreshed = await fetch(`/api/countries/${iso3}`, { cache: "no-store" });
+            if (refreshed.ok) data = await refreshed.json();
           }
         }
-
-        setDbData(data);
-        setError(null);
-      } catch {
-        setError("not found");
-      } finally {
-        setLoading(false);
       }
+
+      setDbData(data);
+      setError(null);
+    } catch {
+      setError("not found");
+    } finally {
+      if (!silent) setLoading(false);
     }
-    load();
   }, [iso3]);
+
+  useEffect(() => {
+    loadCountry();
+  }, [loadCountry]);
+
+  useResearchUpdates({
+    targetScreens: [
+      "atlas-system",
+      "atlas-performance",
+      "atlas-insights",
+      "atlas-worldmap",
+    ],
+    onComplete: () => loadCountry(true),
+  });
 
   const profile: CountryProfile | null = useMemo(() => {
     const staticProfile = COUNTRIES[iso3] ?? null;
@@ -382,6 +462,12 @@ export default function CountryDetailPage() {
           ))}
         </div>
       </header>
+
+      <SubAgentStatusBanner
+        systemStatus={dbData?.systemStatus}
+        performanceStatus={dbData?.performanceStatus}
+        insightsStatus={dbData?.insightsStatus}
+      />
 
       {/* Main content — 3 rows */}
       <main className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 min-h-0">
@@ -474,14 +560,28 @@ export default function CountryDetailPage() {
           </Tile>
         </div>
 
-        {/* ── ROW 2: Key Features, Latest Reforms, Challenges, Fiscal ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[180px]">
+        {/* ── ROW 2: Key Features, Strategic Insights, Latest Reforms, Challenges, Fiscal ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-h-[180px]">
 
           {/* Key Features */}
           <Tile onClick={() => setSelectedCategory("features")} delay={0.2}>
             <TileHeader icon={Lightbulb} label="Key Features" color="text-gold" />
             <div className="flex-1 p-4 overflow-hidden">
               <BulletList items={profile.keyFeatures} max={3} color="#C5A572" />
+            </div>
+          </Tile>
+
+          {/* Strategic Insights (atlas-insights output) */}
+          <Tile onClick={() => setSelectedCategory("insights")} delay={0.225}>
+            <TileHeader icon={Sparkles} label="Strategic Insights" color="text-purple-400/70" />
+            <div className="flex-1 p-4 overflow-hidden">
+              {profile.insights.length > 0 ? (
+                <BulletList items={profile.insights} max={3} color="#8B5CF6" />
+              ) : dbData?.insightsStatus === "completed" ? (
+                <p className="text-xs text-white/25 italic">No distinctive insights captured yet.</p>
+              ) : (
+                <p className="text-xs text-white/25 italic">Insights agent has not run for this country yet.</p>
+              )}
             </div>
           </Tile>
 
@@ -581,10 +681,18 @@ export default function CountryDetailPage() {
             <div className="flex-1 p-4 overflow-hidden">
               {isGPSSA ? (
                 <div className="space-y-2">
-                  {institutions.length > 0 ? institutions.slice(0, 3).map((inst) => (
-                    <div key={inst.id} className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)" }}>
+                  {institutions.length > 0 ? institutions.slice(0, 2).map((inst) => (
+                    <div key={inst.id} className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
                       <p className="text-xs font-medium text-cream truncate">{inst.name}</p>
                       {inst.shortName && <p className="text-[10px] text-white/30">{inst.shortName}</p>}
+                      {inst.description && (
+                        <p className="text-[10px] text-white/45 mt-1 line-clamp-2 leading-snug">{inst.description}</p>
+                      )}
+                      {inst.keyInnovations && (
+                        <p className="text-[10px] text-purple-300/70 mt-1 line-clamp-2 leading-snug">
+                          <span className="text-white/30">Innovations: </span>{inst.keyInnovations}
+                        </p>
+                      )}
                     </div>
                   )) : (
                     <p className="text-xs text-white/25 italic">Institution data loading...</p>

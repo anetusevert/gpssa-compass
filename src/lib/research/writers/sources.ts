@@ -12,7 +12,8 @@ type CitationTarget =
   | "deliveryModel"
   | "intlService"
   | "intlProduct"
-  | "intlSegment";
+  | "intlSegment"
+  | "country";
 
 export async function createSourcesAndCitations(
   sources: ResearchSource[],
@@ -117,6 +118,13 @@ export async function createSourcesAndCitations(
           await prisma.intlSegmentCitation.upsert({
             where: { segmentId_sourceId: { segmentId: targetId, sourceId: dataSource.id } },
             create: { segmentId: targetId, sourceId: dataSource.id, evidenceNote: src.evidenceNote },
+            update: { evidenceNote: src.evidenceNote },
+          });
+          break;
+        case "country":
+          await prisma.countrySourceCitation.upsert({
+            where: { countryId_sourceId: { countryId: targetId, sourceId: dataSource.id } },
+            create: { countryId: targetId, sourceId: dataSource.id, evidenceNote: src.evidenceNote },
             update: { evidenceNote: src.evidenceNote },
           });
           break;

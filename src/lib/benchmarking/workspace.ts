@@ -31,9 +31,24 @@ export interface BenchmarkInstitutionPayload {
   description: string | null;
   digitalMaturity: string | null;
   websiteUrl: string | null;
+  keyInnovations: string | null;
+  strengths: string[];
+  gaps: string[];
+  transferablePractices: string[];
   isBenchmarkTarget: boolean;
   scores: Record<string, number>;
   scoreEvidence: Record<string, BenchmarkSourceReference[]>;
+}
+
+function parseStringArray(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map((v) => String(v)).filter(Boolean);
+  } catch {
+    // raw may be a plain string fallback
+  }
+  return [];
 }
 
 export interface BenchmarkKpiPayload {
@@ -172,6 +187,10 @@ export async function getBenchmarkWorkspace(
     description: institution.description,
     digitalMaturity: institution.digitalMaturity,
     websiteUrl: institution.websiteUrl,
+    keyInnovations: institution.keyInnovations,
+    strengths: parseStringArray(institution.strengths),
+    gaps: parseStringArray(institution.gaps),
+    transferablePractices: parseStringArray(institution.transferablePractices),
     isBenchmarkTarget: institution.isBenchmarkTarget,
     scores: scoreMap.get(institution.id) ?? {},
     scoreEvidence: evidenceMap.get(institution.id) ?? {},

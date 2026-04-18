@@ -53,6 +53,7 @@ export async function POST(
         model: agent.model,
         maxTokens: agent.maxTokens,
         temperature: agent.temperature,
+        targetScreen: agent.targetScreen,
       },
       variables
     );

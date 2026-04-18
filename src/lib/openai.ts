@@ -1,5 +1,9 @@
 import OpenAI from "openai";
 import { prisma } from "@/lib/db";
+import { withOpenAIRetry } from "@/lib/openai/retry";
+import { calcCostUSD } from "@/lib/openai/pricing";
+import { PROMPT_MODULES } from "@/lib/research/prompts";
+import type { ScreenType } from "@/lib/research/types";
 
 export interface AgentInput {
   name: string;
@@ -8,6 +12,7 @@ export interface AgentInput {
   model: string;
   maxTokens: number;
   temperature: number;
+  targetScreen?: string | null;
 }
 
 export interface AgentExecutionResult {
@@ -16,6 +21,7 @@ export interface AgentExecutionResult {
   tokensUsed: number;
   durationMs: number;
   model: string;
+  costUSD?: number;
   error?: string;
 }
 
@@ -71,6 +77,20 @@ export function substituteVariables(
   });
 }
 
+/**
+ * Resolve "USE_CANONICAL_PROMPT" sentinel to the canonical system prompt for the
+ * agent's targetScreen. This prevents the literal sentinel from being sent to OpenAI.
+ */
+export function resolveSystemPrompt(
+  systemPrompt: string,
+  targetScreen?: string | null
+): string {
+  if (systemPrompt && systemPrompt !== "USE_CANONICAL_PROMPT") return systemPrompt;
+  if (!targetScreen) return systemPrompt;
+  const canonical = PROMPT_MODULES[targetScreen as ScreenType];
+  return canonical?.systemPrompt ?? systemPrompt;
+}
+
 export async function runAgent(
   agentConfigId: string,
   agentInput: AgentInput,
@@ -101,20 +121,26 @@ export async function runAgent(
     );
 
     const isReasoningModel = /^(o1|o3|o4)/.test(agentInput.model);
+    const systemPrompt = resolveSystemPrompt(agentInput.systemPrompt, agentInput.targetScreen);
 
-    const completion = await client.chat.completions.create({
-      model: agentInput.model,
-      messages: [
-        { role: "system", content: agentInput.systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      max_completion_tokens: agentInput.maxTokens,
-      ...(!isReasoningModel && { temperature: agentInput.temperature }),
-    });
+    const completion = await withOpenAIRetry(() =>
+      client.chat.completions.create({
+        model: agentInput.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_completion_tokens: agentInput.maxTokens,
+        ...(!isReasoningModel && { temperature: agentInput.temperature }),
+      })
+    );
 
     const durationMs = Date.now() - startTime;
     const output = completion.choices[0]?.message?.content ?? null;
     const tokensUsed = completion.usage?.total_tokens ?? 0;
+    const promptTokens = completion.usage?.prompt_tokens ?? 0;
+    const completionTokens = completion.usage?.completion_tokens ?? 0;
+    const costUSD = calcCostUSD(agentInput.model, promptTokens, completionTokens);
 
     await prisma.agentExecution.update({
       where: { id: execution.id },
@@ -134,7 +160,7 @@ export async function runAgent(
       },
     });
 
-    return { success: true, output, tokensUsed, durationMs, model: agentInput.model };
+    return { success: true, output, tokensUsed, durationMs, model: agentInput.model, costUSD };
   } catch (error) {
     const durationMs = Date.now() - startTime;
     const errorMessage =

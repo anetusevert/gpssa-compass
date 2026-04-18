@@ -1,10 +1,14 @@
 export type ScreenType =
   | "atlas-worldmap"
+  | "atlas-system"
+  | "atlas-performance"
+  | "atlas-insights"
   | "atlas-benchmarking"
   | "services-catalog"
   | "services-channels"
   | "products-portfolio"
   | "products-segments"
+  | "products-innovation"
   | "delivery-channels"
   | "delivery-personas"
   | "delivery-models"
@@ -16,11 +20,15 @@ export type ScreenType =
 
 export const ALL_SCREEN_TYPES: ScreenType[] = [
   "atlas-worldmap",
+  "atlas-system",
+  "atlas-performance",
+  "atlas-insights",
   "atlas-benchmarking",
   "services-catalog",
   "services-channels",
   "products-portfolio",
   "products-segments",
+  "products-innovation",
   "delivery-channels",
   "delivery-personas",
   "delivery-models",
@@ -32,12 +40,16 @@ export const ALL_SCREEN_TYPES: ScreenType[] = [
 ];
 
 export const SCREEN_LABELS: Record<ScreenType, string> = {
-  "atlas-worldmap": "Global Atlas — World Map",
+  "atlas-worldmap": "Global Atlas — World Map (legacy monolith)",
+  "atlas-system": "Global Atlas — System Architecture",
+  "atlas-performance": "Global Atlas — Performance Metrics",
+  "atlas-insights": "Global Atlas — Narrative Insights",
   "atlas-benchmarking": "Global Atlas — Benchmarking",
   "services-catalog": "Services — Catalog",
   "services-channels": "Services — Channel Capabilities",
   "products-portfolio": "Products — Portfolio",
   "products-segments": "Products — Segment Coverage",
+  "products-innovation": "Products — Innovation Pipeline",
   "delivery-channels": "Delivery — Channels",
   "delivery-personas": "Delivery — Personas",
   "delivery-models": "Delivery — Models",
@@ -50,11 +62,15 @@ export const SCREEN_LABELS: Record<ScreenType, string> = {
 
 export const SCREEN_PILLAR: Record<ScreenType, string> = {
   "atlas-worldmap": "atlas",
+  "atlas-system": "atlas",
+  "atlas-performance": "atlas",
+  "atlas-insights": "atlas",
   "atlas-benchmarking": "atlas",
   "services-catalog": "services",
   "services-channels": "services",
   "products-portfolio": "products",
   "products-segments": "products",
+  "products-innovation": "products",
   "delivery-channels": "delivery",
   "delivery-personas": "delivery",
   "delivery-models": "delivery",

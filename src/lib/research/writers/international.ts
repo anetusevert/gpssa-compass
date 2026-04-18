@@ -41,6 +41,9 @@ export async function writeIntlServicesCatalog(
       painPoints: Array.isArray(r.painPoints) ? JSON.stringify(r.painPoints) : undefined,
       strengths: Array.isArray(r.strengths) ? JSON.stringify(r.strengths) : undefined,
       iloAlignment: r.iloAlignment ? String(r.iloAlignment) : undefined,
+      currentState: r.currentState ? String(r.currentState) : undefined,
+      opportunities: Array.isArray(r.opportunities) ? JSON.stringify(r.opportunities) : undefined,
+      bestPracticeComparison: r.bestPracticeComparison ? String(r.bestPracticeComparison) : undefined,
       researchStatus: "completed" as const,
       researchSource: agentLabel,
     };
@@ -68,7 +71,47 @@ export async function writeIntlServicesChannels(
   results: Record<string, unknown>[],
   agentLabel: string
 ): Promise<number> {
-  return writeIntlServicesCatalog(results, agentLabel);
+  let written = 0;
+  for (const r of results) {
+    const name = String(r.serviceName ?? r.name ?? "");
+    const countryIso3 = String(r.countryIso3 ?? "");
+    if (!name || !countryIso3) continue;
+
+    const existing = await prisma.internationalService.findFirst({
+      where: {
+        name: { equals: name, mode: "insensitive" },
+        countryIso3,
+      },
+    });
+
+    const channels = r.channelCapabilities as Record<string, string> | undefined;
+    const data = {
+      category: existing?.category ?? String(r.category ?? "General"),
+      channelCapabilities: channels ? JSON.stringify(channels) : undefined,
+      digitalReadiness: typeof r.digitalReadiness === "number" ? r.digitalReadiness : undefined,
+      bestChannelPractice: r.bestChannelPractice ? String(r.bestChannelPractice) : undefined,
+      gapAnalysis: r.gapAnalysis ? String(r.gapAnalysis) : undefined,
+      researchStatus: "completed" as const,
+      researchSource: agentLabel,
+    };
+
+    let serviceId: string;
+    if (existing) {
+      await prisma.internationalService.update({ where: { id: existing.id }, data });
+      serviceId = existing.id;
+    } else {
+      const created = await prisma.internationalService.create({
+        data: { name, countryIso3, ...data },
+      });
+      serviceId = created.id;
+    }
+
+    if (Array.isArray(r.sources)) {
+      await createSourcesAndCitations(r.sources as ResearchSource[], "intlService", serviceId);
+    }
+    written++;
+  }
+  return written;
 }
 
 export async function writeIntlProductsPortfolio(

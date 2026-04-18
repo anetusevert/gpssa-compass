@@ -12,13 +12,207 @@ export class DataService {
             institutionCitations: true,
             opportunityCitations: true,
             requirementCitations: true,
+            productCitations: true,
+            segmentCitations: true,
+            innovationCitations: true,
+            channelCitations: true,
+            personaCitations: true,
+            deliveryModelCitations: true,
             intlServiceCitations: true,
             intlProductCitations: true,
             intlSegmentCitations: true,
+            countryCitations: true,
           },
         },
       },
     });
+  }
+
+  /**
+   * Drill-down: return every entity (across all citation tables) that links to a
+   * given DataSource. Used by the Sources tab "linked entities" view.
+   */
+  async listLinkedEntities(sourceId: string) {
+    const [
+      services,
+      institutions,
+      opportunities,
+      requirements,
+      products,
+      segments,
+      innovations,
+      channels,
+      personas,
+      deliveryModels,
+      intlServices,
+      intlProducts,
+      intlSegments,
+      countries,
+    ] = await Promise.all([
+      prisma.serviceSourceCitation.findMany({
+        where: { sourceId },
+        include: { service: { select: { id: true, name: true, category: true } } },
+      }),
+      prisma.institutionSourceCitation.findMany({
+        where: { sourceId },
+        include: {
+          institution: {
+            select: { id: true, name: true, shortName: true, country: true },
+          },
+        },
+      }),
+      prisma.opportunitySourceCitation.findMany({
+        where: { sourceId },
+        include: { opportunity: { select: { id: true, title: true, category: true } } },
+      }),
+      prisma.requirementSourceCitation.findMany({
+        where: { sourceId },
+        include: { requirement: { select: { id: true, title: true, category: true } } },
+      }),
+      prisma.productSourceCitation.findMany({
+        where: { sourceId },
+        include: { product: { select: { id: true, name: true, tier: true } } },
+      }),
+      prisma.segmentSourceCitation.findMany({
+        where: { sourceId },
+        include: {
+          segment: { select: { id: true, segment: true, coverageType: true } },
+        },
+      }),
+      prisma.innovationSourceCitation.findMany({
+        where: { sourceId },
+        include: {
+          innovation: { select: { id: true, title: true, innovationType: true } },
+        },
+      }),
+      prisma.channelSourceCitation.findMany({
+        where: { sourceId },
+        include: { channel: { select: { id: true, name: true, channelType: true } } },
+      }),
+      prisma.personaSourceCitation.findMany({
+        where: { sourceId },
+        include: { persona: { select: { id: true, name: true, segment: true } } },
+      }),
+      prisma.deliveryModelSourceCitation.findMany({
+        where: { sourceId },
+        include: { deliveryModel: { select: { id: true, name: true } } },
+      }),
+      prisma.intlServiceCitation.findMany({
+        where: { sourceId },
+        include: {
+          service: {
+            select: { id: true, name: true, countryIso3: true, category: true },
+          },
+        },
+      }),
+      prisma.intlProductCitation.findMany({
+        where: { sourceId },
+        include: {
+          product: {
+            select: { id: true, name: true, countryIso3: true, tier: true },
+          },
+        },
+      }),
+      prisma.intlSegmentCitation.findMany({
+        where: { sourceId },
+        include: {
+          segment: { select: { id: true, segment: true, countryIso3: true } },
+        },
+      }),
+      prisma.countrySourceCitation.findMany({
+        where: { sourceId },
+        include: {
+          country: { select: { id: true, name: true, iso3: true, region: true } },
+        },
+      }),
+    ]);
+
+    return {
+      services: services.map((c) => ({
+        kind: "service" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.service,
+      })),
+      institutions: institutions.map((c) => ({
+        kind: "institution" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.institution,
+      })),
+      opportunities: opportunities.map((c) => ({
+        kind: "opportunity" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.opportunity,
+      })),
+      requirements: requirements.map((c) => ({
+        kind: "requirement" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.requirement,
+      })),
+      products: products.map((c) => ({
+        kind: "product" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.product,
+      })),
+      segments: segments.map((c) => ({
+        kind: "segment" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.segment,
+      })),
+      innovations: innovations.map((c) => ({
+        kind: "innovation" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.innovation,
+      })),
+      channels: channels.map((c) => ({
+        kind: "channel" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.channel,
+      })),
+      personas: personas.map((c) => ({
+        kind: "persona" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.persona,
+      })),
+      deliveryModels: deliveryModels.map((c) => ({
+        kind: "deliveryModel" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.deliveryModel,
+      })),
+      intlServices: intlServices.map((c) => ({
+        kind: "intlService" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.service,
+      })),
+      intlProducts: intlProducts.map((c) => ({
+        kind: "intlProduct" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.product,
+      })),
+      intlSegments: intlSegments.map((c) => ({
+        kind: "intlSegment" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.segment,
+      })),
+      countries: countries.map((c) => ({
+        kind: "country" as const,
+        citation: c.citation,
+        evidenceNote: c.evidenceNote,
+        entity: c.country,
+      })),
+    };
   }
 
   async createSource(data: {

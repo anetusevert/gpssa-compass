@@ -28,6 +28,7 @@ export interface ChannelData {
   capabilities: string;
   strengths: string[];
   gaps: string[];
+  benchmarkComparison?: string | null;
   extra?: string;
 }
 

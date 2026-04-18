@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, TrendingUp, AlertTriangle, Info } from "lucide-react";
+import { ArrowLeft, TrendingUp, AlertTriangle, Info, Globe2 } from "lucide-react";
 import type { ChannelData } from "./ChannelTile";
 import type { DeliveryModelData } from "./DeliveryModelCard";
 import { MaturityGauge } from "./MaturityGauge";
@@ -154,11 +154,32 @@ export function ChannelDetail({ channel, models, onBack }: ChannelDetailProps) {
           </div>
         </motion.div>
 
+        {/* Benchmark commentary (researched) */}
+        {channel.benchmarkComparison && (
+          <motion.div
+            variants={itemVariants}
+            className="rounded-xl bg-adl-blue/[0.04] border border-adl-blue/15 p-3"
+          >
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Globe2 size={11} className="text-adl-blue" />
+              <span className="text-[10px] uppercase tracking-wider text-adl-blue font-semibold">
+                International Benchmark
+              </span>
+            </div>
+            <p className="text-[11px] text-cream/80 leading-relaxed">{channel.benchmarkComparison}</p>
+          </motion.div>
+        )}
+
         {/* Country Comparison */}
         <motion.div variants={itemVariants} className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3">
-          <h4 className="text-[10px] uppercase tracking-wider text-gray-muted font-semibold mb-3">
-            GPSSA vs Peers — {channel.name}
-          </h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-[10px] uppercase tracking-wider text-gray-muted font-semibold">
+              GPSSA vs Peers — {channel.name}
+            </h4>
+            <span className="text-[8px] uppercase tracking-wider text-gray-muted/60 px-1.5 py-0.5 rounded bg-white/[0.04]">
+              Illustrative
+            </span>
+          </div>
 
           <div className="space-y-2">
             {/* GPSSA bar */}

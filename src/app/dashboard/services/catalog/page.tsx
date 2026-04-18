@@ -29,6 +29,7 @@ import { CountrySelector } from "@/components/comparison/CountrySelector";
 import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { COUNTRIES } from "@/lib/countries/catalog";
 import { CountryFlag } from "@/components/ui/CountryFlag";
+import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Types
@@ -47,6 +48,13 @@ interface GPSSAService {
   bestPracticeComparison: string | null;
   strengths: string[] | null;
   iloAlignment: string | null;
+}
+
+interface ServiceAnalysisRecord {
+  id: string;
+  analysis: string;
+  model: string | null;
+  createdAt: string;
 }
 
 interface IntlService {
@@ -487,48 +495,81 @@ export default function ServiceCatalogPage() {
   const [comparisonCountries, setComparisonCountries] = useState<string[]>(["SGP", "GBR", "EST", "SAU", "AUS"]);
   const [vizMode, setVizMode] = useState<VizMode>("list");
   const [detailModal, setDetailModal] = useState<GPSSAService | null>(null);
+  const [detailAnalyses, setDetailAnalyses] = useState<ServiceAnalysisRecord[]>([]);
+  const [analysesLoading, setAnalysesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const isComparing = comparisonCountries.length > 0;
 
   /* ── Data loading ── */
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/services");
-        if (res.ok) {
-          const data: Record<string, unknown>[] = await res.json();
-          if (data.length > 0) {
-            const enriched = STATIC_SERVICES.map((staticSvc) => {
-              const apiMatch = data.find((d) => d.id === staticSvc.id || (d.name as string)?.toLowerCase() === staticSvc.name.toLowerCase());
-              if (!apiMatch) return staticSvc;
-              const parsed = {
-                userTypes: parseJsonField<string[]>(apiMatch.userTypes),
-                painPoints: parseJsonField<string[]>(apiMatch.painPoints),
-                opportunities: parseJsonField<string[]>(apiMatch.opportunities),
-                strengths: parseJsonField<string[]>(apiMatch.strengths),
-              };
-              return {
-                ...staticSvc,
-                painPoints: parsed.painPoints?.length ? parsed.painPoints : staticSvc.painPoints,
-                opportunities: parsed.opportunities?.length ? parsed.opportunities : staticSvc.opportunities,
-                userTypes: parsed.userTypes?.length ? parsed.userTypes : staticSvc.userTypes,
-                description: (apiMatch.description as string) || staticSvc.description,
-                currentState: (apiMatch.currentState as string) || staticSvc.currentState,
-                digitalReadiness: typeof apiMatch.digitalReadiness === "number" ? apiMatch.digitalReadiness : null,
-                maturityLevel: apiMatch.maturityLevel ? String(apiMatch.maturityLevel) : null,
-                bestPracticeComparison: apiMatch.bestPracticeComparison ? String(apiMatch.bestPracticeComparison) : null,
-                strengths: parsed.strengths?.length ? parsed.strengths : null,
-                iloAlignment: apiMatch.iloAlignment ? String(apiMatch.iloAlignment) : null,
-              };
-            });
-            setServices(enriched);
-          } else { setServices(STATIC_SERVICES); }
+  const loadServices = useCallback(async () => {
+    try {
+      const res = await fetch("/api/services", { cache: "no-store" });
+      if (res.ok) {
+        const data: Record<string, unknown>[] = await res.json();
+        if (data.length > 0) {
+          const enriched = STATIC_SERVICES.map((staticSvc) => {
+            const apiMatch = data.find((d) => d.id === staticSvc.id || (d.name as string)?.toLowerCase() === staticSvc.name.toLowerCase());
+            if (!apiMatch) return staticSvc;
+            const parsed = {
+              userTypes: parseJsonField<string[]>(apiMatch.userTypes),
+              painPoints: parseJsonField<string[]>(apiMatch.painPoints),
+              opportunities: parseJsonField<string[]>(apiMatch.opportunities),
+              strengths: parseJsonField<string[]>(apiMatch.strengths),
+            };
+            return {
+              ...staticSvc,
+              painPoints: parsed.painPoints?.length ? parsed.painPoints : staticSvc.painPoints,
+              opportunities: parsed.opportunities?.length ? parsed.opportunities : staticSvc.opportunities,
+              userTypes: parsed.userTypes?.length ? parsed.userTypes : staticSvc.userTypes,
+              description: (apiMatch.description as string) || staticSvc.description,
+              currentState: (apiMatch.currentState as string) || staticSvc.currentState,
+              digitalReadiness: typeof apiMatch.digitalReadiness === "number" ? apiMatch.digitalReadiness : null,
+              maturityLevel: apiMatch.maturityLevel ? String(apiMatch.maturityLevel) : null,
+              bestPracticeComparison: apiMatch.bestPracticeComparison ? String(apiMatch.bestPracticeComparison) : null,
+              strengths: parsed.strengths?.length ? parsed.strengths : null,
+              iloAlignment: apiMatch.iloAlignment ? String(apiMatch.iloAlignment) : null,
+            };
+          });
+          setServices(enriched);
         } else { setServices(STATIC_SERVICES); }
-      } catch { setServices(STATIC_SERVICES); } finally { setLoading(false); }
-    }
-    load();
+      } else { setServices(STATIC_SERVICES); }
+    } catch { setServices(STATIC_SERVICES); } finally { setLoading(false); }
   }, []);
+
+  useEffect(() => {
+    loadServices();
+  }, [loadServices]);
+
+  useResearchUpdates({
+    targetScreens: ["services-catalog", "services-channels", "intl-services-catalog", "intl-services-channels"],
+    onComplete: () => loadServices(),
+  });
+
+  useEffect(() => {
+    if (!detailModal) {
+      setDetailAnalyses([]);
+      return;
+    }
+    let cancelled = false;
+    setAnalysesLoading(true);
+    fetch(`/api/services/${detailModal.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const analyses = Array.isArray(data.analyses) ? (data.analyses as ServiceAnalysisRecord[]) : [];
+        setDetailAnalyses(analyses);
+      })
+      .catch(() => {
+        if (!cancelled) setDetailAnalyses([]);
+      })
+      .finally(() => {
+        if (!cancelled) setAnalysesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailModal]);
 
   useEffect(() => {
     if (comparisonCountries.length === 0) { setIntlServices([]); return; }
@@ -894,6 +935,37 @@ export default function ServiceCatalogPage() {
                 </div>
               </div>
             )}
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-cream">Senior-Analyst Briefings</span>
+                {analysesLoading && <span className="text-[10px] text-gray-muted">Loading…</span>}
+              </div>
+              {detailAnalyses.length === 0 && !analysesLoading ? (
+                <p className="text-[11px] text-gray-muted/70 italic glass rounded-lg p-3">
+                  No analyses generated yet. Run the services research agent to populate consultant-grade briefings for this service.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {detailAnalyses.slice(0, 3).map((a) => (
+                    <div key={a.id} className="glass rounded-lg p-3 border border-white/[0.05]">
+                      <div className="flex items-center justify-between text-[10px] text-gray-muted mb-1.5">
+                        <span>{new Date(a.createdAt).toLocaleDateString()}</span>
+                        {a.model && <span className="font-mono">{a.model}</span>}
+                      </div>
+                      <p className="text-[11px] text-cream/85 leading-relaxed whitespace-pre-wrap">
+                        {a.analysis}
+                      </p>
+                    </div>
+                  ))}
+                  {detailAnalyses.length > 3 && (
+                    <p className="text-[10px] text-gray-muted text-center">
+                      +{detailAnalyses.length - 3} earlier analyses
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Modal>

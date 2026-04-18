@@ -36,6 +36,9 @@ export async function writeServicesCatalog(
       painPoints: Array.isArray(r.painPoints) ? JSON.stringify(r.painPoints) : undefined,
       strengths: Array.isArray(r.strengths) ? JSON.stringify(r.strengths) : undefined,
       iloAlignment: r.iloAlignment ? String(r.iloAlignment) : undefined,
+      currentState: r.currentState ? String(r.currentState) : undefined,
+      opportunities: Array.isArray(r.opportunities) ? JSON.stringify(r.opportunities) : undefined,
+      bestPracticeComparison: r.bestPracticeComparison ? String(r.bestPracticeComparison) : undefined,
       researchStatus: "completed" as const,
       researchSource: agentLabel,
     };
@@ -60,7 +63,10 @@ export async function writeServicesCatalog(
     }
 
     if (countryIso3 === UAE_ISO3) {
-      await upsertGPSSAService(r, name, agentLabel);
+      const gpssa = await upsertGPSSAService(r, name, agentLabel);
+      if (gpssa && Array.isArray(r.sources)) {
+        await createSourcesAndCitations(r.sources as ResearchSource[], "service", gpssa.id);
+      }
     }
 
     written++;
@@ -95,6 +101,8 @@ export async function writeServicesChannels(
       channelCapabilities: channels ? JSON.stringify(channels) : undefined,
       digitalReadiness: typeof r.channelMaturityScore === "number" ? r.channelMaturityScore : undefined,
       maturityLevel: r.digitalTransformationStage ? String(r.digitalTransformationStage) : undefined,
+      bestChannelPractice: r.bestChannelPractice ? String(r.bestChannelPractice) : undefined,
+      gapAnalysis: r.gapAnalysis ? String(r.gapAnalysis) : undefined,
       researchStatus: "completed" as const,
       researchSource: agentLabel,
     };
@@ -103,12 +111,19 @@ export async function writeServicesChannels(
       where: { name: { equals: name, mode: "insensitive" }, countryIso3 },
     });
 
+    let intlServiceId: string;
     if (existing) {
       await prisma.internationalService.update({ where: { id: existing.id }, data: intlData });
+      intlServiceId = existing.id;
     } else {
-      await prisma.internationalService.create({
+      const created = await prisma.internationalService.create({
         data: { name, countryIso3, ...intlData },
       });
+      intlServiceId = created.id;
+    }
+
+    if (Array.isArray(r.sources)) {
+      await createSourcesAndCitations(r.sources as ResearchSource[], "intlService", intlServiceId);
     }
 
     if (countryIso3 === UAE_ISO3 && channels) {
@@ -143,7 +158,7 @@ async function upsertGPSSAService(
   r: Record<string, unknown>,
   name: string,
   agentLabel: string
-): Promise<void> {
+) {
   const data = {
     category: String(r.category ?? "General"),
     description: r.description ? String(r.description) : undefined,
@@ -165,10 +180,9 @@ async function upsertGPSSAService(
   });
 
   if (existing) {
-    await prisma.gPSSAService.update({ where: { id: existing.id }, data });
-  } else {
-    await prisma.gPSSAService.create({ data: { name, ...data } });
+    return prisma.gPSSAService.update({ where: { id: existing.id }, data });
   }
+  return prisma.gPSSAService.create({ data: { name, ...data } });
 }
 
 async function findOrCreateGPSSAService(

@@ -202,6 +202,8 @@ export default function AgentsPage() {
   const [confirmClear, setConfirmClear] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
 
+  const [runAllBusy, setRunAllBusy] = useState(false);
+
   const fetchAgents = useCallback(async () => {
     setLoadingAgents(true);
     try {
@@ -345,6 +347,25 @@ export default function AgentsPage() {
     } catch { /* ignore */ } finally {
       setClearing(false);
       setConfirmClear(null);
+    }
+  }
+
+  async function handleRunAllPillars() {
+    if (runAllBusy) return;
+    setRunAllBusy(true);
+    try {
+      const res = await fetch("/api/research/run-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ background: true }),
+      });
+      if (res.ok) {
+        await fetchJobs();
+      }
+    } catch {
+      // ignore — surface via job stream
+    } finally {
+      setRunAllBusy(false);
     }
   }
 
@@ -551,15 +572,25 @@ export default function AgentsPage() {
           <div className="p-1.5 rounded-lg bg-adl-blue/10 shrink-0 mt-0.5">
             <Zap size={14} className="text-adl-blue" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-medium text-cream mb-1">Recommended Execution Order</p>
             <p className="text-xs text-gray-muted leading-relaxed">
               Agents are numbered 1–11 in their optimal run sequence. Each agent&apos;s research builds on the previous one&apos;s output.
-              Run them <strong className="text-cream">in order within each pillar</strong>: Global Atlas first (foundation data),
-              then Services, Products, and finally Delivery. Use <strong className="text-cream">Run All</strong> per pillar to
-              execute them in the correct sequence automatically.
+              The <strong className="text-cream">Run All Pillars</strong> button below orchestrates everything server-side: Atlas
+              sub-agents (system / performance / insights) run in parallel, then Atlas Benchmarking, then Services → Products →
+              Delivery → International → ILO sequentially.
             </p>
           </div>
+          <Button
+            size="sm"
+            onClick={handleRunAllPillars}
+            loading={runAllBusy}
+            disabled={runAllBusy}
+            className="shrink-0"
+          >
+            <PlayCircle size={14} />
+            Run All Pillars
+          </Button>
         </div>
       </div>
 
