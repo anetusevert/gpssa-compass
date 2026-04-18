@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { seedBenchmarkDataset } from "../src/lib/benchmarking/seed";
 import { COUNTRIES, SCORING_DIMENSIONS } from "../src/lib/countries/catalog";
 import { DEFAULT_AGENTS } from "../src/lib/agents";
+import { agentService } from "../src/lib/services/agent.service";
 
 const prisma = new PrismaClient();
 
@@ -219,31 +220,18 @@ async function main() {
   });
   console.log("  App config seeded");
 
-  // Seed default AI research agents
-  await prisma.$transaction(
-    DEFAULT_AGENTS.map((agent) =>
-      prisma.agentConfig.upsert({
-        where: { name: agent.name },
-        update: {
-          targetScreen: agent.targetScreen ?? null,
-          researchType: agent.researchType ?? null,
-        },
-        create: {
-          id: agent.id,
-          name: agent.name,
-          description: agent.description,
-          systemPrompt: agent.systemPrompt,
-          userPromptTemplate: agent.userPromptTemplate,
-          model: agent.model,
-          maxTokens: agent.maxTokens,
-          temperature: agent.temperature,
-          targetScreen: agent.targetScreen ?? null,
-          researchType: agent.researchType ?? null,
-        },
-      })
-    )
+  // Seed default AI research agents via the resilient, id-first upserter so a single
+  // bad row (e.g. legacy rename) never rolls back the whole transaction.
+  const seedResult = await agentService.seedDefaults();
+  console.log(
+    `  ${DEFAULT_AGENTS.length} research agents seeded ` +
+      `(created=${seedResult.created}, updated=${seedResult.updated}, failed=${seedResult.failed.length})`
   );
-  console.log(`  ${DEFAULT_AGENTS.length} research agents seeded`);
+  if (seedResult.failed.length > 0) {
+    for (const f of seedResult.failed) {
+      console.warn(`    ! ${f.id} (${f.name}): ${f.error}`);
+    }
+  }
 
   console.log("Seeding complete!");
 }
