@@ -10,6 +10,8 @@ import { CountryFlag } from "@/components/ui/CountryFlag";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Modal } from "@/components/ui/Modal";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
+import { StandardChips } from "@/components/comparator/StandardChips";
+import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Types
@@ -304,6 +306,11 @@ export default function SegmentCoveragePage() {
           variant="inline"
           maxSelections={1}
         />
+        <div className="hidden lg:flex items-center gap-2 pl-2 ml-1 border-l border-white/[0.06]">
+          <span className="text-[9px] uppercase tracking-[0.18em] text-gray-muted">Grounded in</span>
+          <StandardChips slugs={["ilo-c102", "ilo-r202"]} size="xs" max={2} />
+        </div>
+        <MandateBasisChip screenPath="/dashboard/products/segments" className="ml-2" />
         {comparisonCountry && gapHighlightSet.size > 0 && (
           <div className="ml-auto flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-gpssa-green/40 ring-1 ring-gpssa-green/40 shadow-sm shadow-gpssa-green/20" />

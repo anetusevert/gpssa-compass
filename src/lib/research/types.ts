@@ -1,4 +1,5 @@
 export type ScreenType =
+  | "mandate-corpus"
   | "atlas-worldmap"
   | "atlas-system"
   | "atlas-performance"
@@ -16,9 +17,11 @@ export type ScreenType =
   | "intl-services-channels"
   | "intl-products-portfolio"
   | "intl-products-segments"
-  | "ilo-standards";
+  | "ilo-standards"
+  | "standards-auditor";
 
 export const ALL_SCREEN_TYPES: ScreenType[] = [
+  "mandate-corpus",
   "atlas-worldmap",
   "atlas-system",
   "atlas-performance",
@@ -37,9 +40,11 @@ export const ALL_SCREEN_TYPES: ScreenType[] = [
   "intl-products-portfolio",
   "intl-products-segments",
   "ilo-standards",
+  "standards-auditor",
 ];
 
 export const SCREEN_LABELS: Record<ScreenType, string> = {
+  "mandate-corpus": "Mandate — Corpus & Legal Foundation",
   "atlas-worldmap": "Global Atlas — World Map (legacy monolith)",
   "atlas-system": "Global Atlas — System Architecture",
   "atlas-performance": "Global Atlas — Performance Metrics",
@@ -58,9 +63,11 @@ export const SCREEN_LABELS: Record<ScreenType, string> = {
   "intl-products-portfolio": "International — Product Portfolios",
   "intl-products-segments": "International — Segment Coverage",
   "ilo-standards": "ILO & Global Standards",
+  "standards-auditor": "Standards Auditor (GPSSA × Standards Library)",
 };
 
 export const SCREEN_PILLAR: Record<ScreenType, string> = {
+  "mandate-corpus": "mandate",
   "atlas-worldmap": "atlas",
   "atlas-system": "atlas",
   "atlas-performance": "atlas",
@@ -79,6 +86,7 @@ export const SCREEN_PILLAR: Record<ScreenType, string> = {
   "intl-products-portfolio": "international",
   "intl-products-segments": "international",
   "ilo-standards": "international",
+  "standards-auditor": "standards",
 };
 
 export interface ResearchSource {

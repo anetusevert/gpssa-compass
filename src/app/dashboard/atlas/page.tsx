@@ -110,6 +110,24 @@ const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+/** Pretty short-label for a standard slug used in chips/legend. */
+const STANDARD_SLUG_LABEL: Record<string, string> = {
+  "ilo-c102":                "ILO C102",
+  "ilo-c128":                "ILO C128",
+  "ilo-r202":                "ILO R202",
+  "issa-service-quality":    "ISSA SQ",
+  "issa-ict":                "ISSA ICT",
+  "issa-good-governance":    "ISSA Gov",
+  "wb-govtech-maturity":     "WB GTMI",
+  "oecd-pensions-at-a-glance": "OECD PaaG",
+  "mercer-cfa-gpi":          "Mercer GPI",
+  "un-egov-survey":          "UN E-Gov",
+};
+
+function standardChipLabel(slug: string): string {
+  return STANDARD_SLUG_LABEL[slug] ?? slug;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════════════════════ */
@@ -232,6 +250,19 @@ const GPSSAWorldMap = memo(function GPSSAWorldMap({
                   </span>
                   <span className="text-[10px] text-gray-muted ml-auto">Click to explore →</span>
                 </div>
+                {METRICS[metric].standardSlugs.length > 0 && (
+                  <div className="mt-1.5 pt-1.5 border-t border-white/5 flex flex-wrap gap-0.5">
+                    {METRICS[metric].standardSlugs.slice(0, 3).map((slug) => (
+                      <span
+                        key={slug}
+                        className="rounded px-1 py-0.5 text-[8px] font-medium uppercase tracking-wider"
+                        style={{ background: "rgba(14,165,233,0.12)", color: "#7DD3FC" }}
+                      >
+                        {standardChipLabel(slug)}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </>
             ) : (
               <p className="text-[10px] text-gray-muted mt-1">No pension data available</p>
@@ -482,7 +513,7 @@ export default function GlobalAtlasPage() {
 
         {/* ── OVERLAY: Legend — bottom left (above stats bar) ── */}
         <div
-          className="absolute bottom-14 left-4 z-30 rounded-xl border p-3"
+          className="absolute bottom-14 left-4 z-30 rounded-xl border p-3 max-w-[260px]"
           style={{ background: "rgba(8,18,38,0.9)", borderColor: "rgba(255,255,255,0.08)", backdropFilter: "blur(14px)" }}
         >
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-muted mb-2">
@@ -501,6 +532,29 @@ export default function GlobalAtlasPage() {
               <span className="text-[10px] text-gray-muted/60">No data</span>
             </div>
           </div>
+          {/* Standards alignment — Phase 4 grounding */}
+          {currentMetricCfg.standardSlugs.length > 0 && (
+            <div className="mt-2.5 pt-2.5 border-t border-white/5">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gpssa-green/80 mb-1.5">Grounded in</p>
+              <div className="flex flex-wrap gap-1">
+                {currentMetricCfg.standardSlugs.map((slug) => (
+                  <span
+                    key={slug}
+                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider"
+                    style={{
+                      background: "rgba(14,165,233,0.12)",
+                      border: "1px solid rgba(14,165,233,0.3)",
+                      color: "#7DD3FC",
+                    }}
+                    title={currentMetricCfg.description}
+                  >
+                    {standardChipLabel(slug)}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[9px] text-gray-muted/70 leading-snug">{currentMetricCfg.description}</p>
+            </div>
+          )}
         </div>
 
         {/* ── FLOATING RIGHT PANEL: Country list ── */}

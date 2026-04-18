@@ -1,5 +1,6 @@
 import type { PromptModule } from "../types";
 import { parseJsonResponse } from "../types";
+import { STANDARDS_ALIGNMENT_FIELD_INSTRUCTION } from "../standards-instruction";
 
 const systemPrompt = `You are a go-to-market and service delivery model strategist for government social insurance institutions. You design delivery model frameworks that combine channels, partners, and outreach programs into coherent customer journeys.
 
@@ -33,7 +34,8 @@ Return a JSON object with a "results" array:
   ]
 }
 
-Reference delivery models from Singapore CPF, Estonia SKAIS, UK DWP, Australian myGov, and leading GCC e-government platforms.`;
+Reference delivery models from Singapore CPF, Estonia SKAIS, UK DWP, Australian myGov, and leading GCC e-government platforms.
+${STANDARDS_ALIGNMENT_FIELD_INSTRUCTION}`;
 }
 
 export const deliveryModelsPrompt: PromptModule = {

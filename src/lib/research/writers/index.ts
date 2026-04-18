@@ -4,7 +4,10 @@ import { writeServicesResults } from "./services";
 import { writeProductsResults } from "./products";
 import { writeDeliveryResults } from "./delivery";
 import { writeInternationalResults } from "./international";
+import { writeMandateResults } from "./mandate";
 import { SCREEN_PILLAR } from "../types";
+import { writeComplianceForScreen } from "./standards-bridge";
+import { writeStandardsAuditorResults } from "./standards-auditor";
 
 export async function writeScreenResults(
   screenType: ScreenType,
@@ -13,20 +16,41 @@ export async function writeScreenResults(
 ): Promise<number> {
   const pillar = SCREEN_PILLAR[screenType];
 
+  let written = 0;
   switch (pillar) {
+    case "mandate":
+      written = await writeMandateResults(screenType, results, agentLabel);
+      break;
     case "atlas":
-      return writeAtlasResults(screenType, results, agentLabel);
+      written = await writeAtlasResults(screenType, results, agentLabel);
+      break;
     case "services":
-      return writeServicesResults(screenType, results, agentLabel);
+      written = await writeServicesResults(screenType, results, agentLabel);
+      break;
     case "products":
-      return writeProductsResults(screenType, results, agentLabel);
+      written = await writeProductsResults(screenType, results, agentLabel);
+      break;
     case "delivery":
-      return writeDeliveryResults(screenType, results, agentLabel);
+      written = await writeDeliveryResults(screenType, results, agentLabel);
+      break;
     case "international":
-      return writeInternationalResults(screenType, results, agentLabel);
+      written = await writeInternationalResults(screenType, results, agentLabel);
+      break;
+    case "standards":
+      written = await writeStandardsAuditorResults(screenType, results, agentLabel);
+      break;
     default:
       return 0;
   }
+
+  // Post-process: persist standardsAlignment → StandardCompliance rows
+  try {
+    await writeComplianceForScreen(screenType, results, agentLabel);
+  } catch (err) {
+    console.error(`[standards-bridge] Failed to persist compliance for ${screenType}:`, err);
+  }
+
+  return written;
 }
 
 export { createSourcesAndCitations } from "./sources";

@@ -1,9 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import * as fs from "fs/promises";
+import * as path from "path";
 import { seedBenchmarkDataset } from "../src/lib/benchmarking/seed";
 import { COUNTRIES, SCORING_DIMENSIONS } from "../src/lib/countries/catalog";
 import { DEFAULT_AGENTS } from "../src/lib/agents";
 import { agentService } from "../src/lib/services/agent.service";
+import { seedStandardsLibrary } from "../src/lib/standards/seed";
 
 const prisma = new PrismaClient();
 
@@ -219,6 +222,72 @@ async function main() {
     create: { key: "platform_name", value: "GPSSA Compass" },
   });
   console.log("  App config seeded");
+
+  // Hydrate GPSSA mandate corpus from baked snapshot when present.
+  // The snapshot is produced by `npx tsx scripts/scrape-gpssa.ts` and lets the
+  // demo run with no live dependency on gpssa.gov.ae. We only hydrate when the
+  // GpssaPage table is empty so subsequent live scrapes are not overwritten.
+  try {
+    const existing = await prisma.gpssaPage.count();
+    if (existing === 0) {
+      const snapshotPath = path.join(process.cwd(), "prisma", "seeds", "gpssa-corpus.json");
+      const buf = await fs.readFile(snapshotPath, "utf8").catch(() => null);
+      if (buf) {
+        const snap = JSON.parse(buf) as { pages?: Array<Record<string, unknown>> };
+        const pages = snap.pages || [];
+        let hydrated = 0;
+        for (const p of pages) {
+          const url = String(p.url || "");
+          if (!url) continue;
+          await prisma.gpssaPage.upsert({
+            where: { url },
+            update: {},
+            create: {
+              slug: String(p.slug),
+              url,
+              lang: String(p.lang || "en"),
+              title: String(p.title || p.slug),
+              section: (p.section as string | null) ?? null,
+              contentType: String(p.contentType || "html"),
+              htmlSnapshot: (p.htmlSnapshot as string | null) ?? null,
+              markdown: String(p.markdown || ""),
+              etag: (p.etag as string | null) ?? null,
+              lastModified: (p.lastModified as string | null) ?? null,
+              pdfPath: (p.pdfPath as string | null) ?? null,
+              hash: String(p.hash || ""),
+            },
+          });
+          await prisma.dataSource.upsert({
+            where: { id: `gpssa-${p.slug}` },
+            update: {},
+            create: {
+              id: `gpssa-${p.slug}`,
+              title: String(p.title || p.slug),
+              url,
+              publisher: "General Pension and Social Security Authority",
+              sourceType: p.contentType === "pdf" ? "regulation" : "website",
+              region: "AE",
+              accessedAt: new Date(),
+            },
+          });
+          hydrated += 1;
+        }
+        console.log(`  ${hydrated} GPSSA corpus pages hydrated from snapshot`);
+      } else {
+        console.log("  No GPSSA corpus snapshot found (run `npx tsx scripts/scrape-gpssa.ts` to create one)");
+      }
+    } else {
+      console.log(`  GPSSA corpus already populated (${existing} pages) -- skipping snapshot hydrate`);
+    }
+  } catch (e) {
+    console.warn("  GPSSA corpus hydrate skipped:", e instanceof Error ? e.message : String(e));
+  }
+
+  // Seed canonical Standards Library (ILO / ISSA / WB / OECD / Mercer / UN)
+  const standardsResult = await seedStandardsLibrary(prisma);
+  console.log(
+    `  Standards library seeded (${standardsResult.standardsUpserted} standards, ${standardsResult.requirementsUpserted} requirements, ${standardsResult.sourcesUpserted} reference sources)`
+  );
 
   // Seed default AI research agents via the resilient, id-first upserter so a single
   // bad row (e.g. legacy rename) never rolls back the whole transaction.

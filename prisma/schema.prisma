@@ -74,6 +74,8 @@ model Country {
   flag                        String?
   region                      String
   subRegion                   String?
+  peerGroup                   String?
+  incomeGroup                 String?
   institution                 String?
   systemType                  String?
   yearEstablished             Int?
@@ -551,6 +553,8 @@ model DataSource {
   intlProductCitations   IntlProductCitation[]
   intlSegmentCitations   IntlSegmentCitation[]
   countryCitations       CountrySourceCitation[]
+  standardCitations      StandardSourceCitation[]
+  complianceCitations    StandardComplianceSourceCitation[]
 }
 
 model CountrySourceCitation {
@@ -971,4 +975,196 @@ model IntlSegmentCitation {
 
   @@unique([segmentId, sourceId])
   @@index([sourceId])
+}
+
+// ── Canonical Standards Library ──
+//
+// A `Standard` represents a globally accepted reference (ILO Convention,
+// ISSA Guideline, World Bank framework, OECD index, UN survey, etc.).
+// Each standard has a list of `StandardRequirement`s — concrete, verifiable
+// criteria that an entity (institution / service / product / channel / country)
+// can be scored against. Per-entity scores are stored in `StandardCompliance`,
+// with citations into the existing DataSource library.
+
+model Standard {
+  id           String                   @id @default(cuid())
+  slug         String                   @unique
+  code         String?
+  title        String
+  body         String
+  bodyShort    String?
+  category     String
+  scope        String                   @default("global")
+  region       String?
+  description  String?
+  rationale    String?
+  url          String?
+  publishedAt  DateTime?
+  isActive     Boolean                  @default(true)
+  sortOrder    Int                      @default(0)
+  metadata     String?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  requirements StandardRequirement[]
+  compliances  StandardCompliance[]
+  sourceLinks  StandardSourceCitation[]
+
+  @@index([category])
+  @@index([body])
+}
+
+model StandardRequirement {
+  id          String                   @id @default(cuid())
+  standardId  String
+  standard    Standard                 @relation(fields: [standardId], references: [id], onDelete: Cascade)
+  slug        String
+  code        String?
+  title       String
+  description String?
+  weight      Float                    @default(1.0)
+  pillar      String?
+  sortOrder   Int                      @default(0)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  scores      StandardComplianceItem[]
+
+  @@unique([standardId, slug])
+  @@index([standardId])
+}
+
+model StandardCompliance {
+  id          String                             @id @default(cuid())
+  standardId  String
+  standard    Standard                           @relation(fields: [standardId], references: [id], onDelete: Cascade)
+  entityType  String
+  entityId    String
+  entityLabel String?
+  countryIso3 String?
+  score       Float
+  band        String?
+  rationale   String?
+  computedBy  String                             @default("agent")
+  asOfDate    DateTime?
+  metadata    String?
+  itemScores  StandardComplianceItem[]
+  sourceLinks StandardComplianceSourceCitation[]
+  createdAt   DateTime                           @default(now())
+  updatedAt   DateTime                           @updatedAt
+
+  @@unique([standardId, entityType, entityId])
+  @@index([entityType, entityId])
+  @@index([countryIso3])
+}
+
+model StandardComplianceItem {
+  id            String              @id @default(cuid())
+  complianceId  String
+  compliance    StandardCompliance  @relation(fields: [complianceId], references: [id], onDelete: Cascade)
+  requirementId String
+  requirement   StandardRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  score         Float
+  status        String              @default("partial")
+  evidence      String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([complianceId, requirementId])
+  @@index([requirementId])
+}
+
+model StandardSourceCitation {
+  id           String     @id @default(cuid())
+  standardId   String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime   @default(now())
+  standard     Standard   @relation(fields: [standardId], references: [id], onDelete: Cascade)
+  source       DataSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([standardId, sourceId])
+  @@index([sourceId])
+}
+
+model StandardComplianceSourceCitation {
+  id           String             @id @default(cuid())
+  complianceId String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime           @default(now())
+  compliance   StandardCompliance @relation(fields: [complianceId], references: [id], onDelete: Cascade)
+  source       DataSource         @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([complianceId, sourceId])
+  @@index([sourceId])
+}
+
+// ── Computed References (Global / Regional / Peer averages & best-practice) ──
+//
+// Materialized aggregate values derived deterministically from existing
+// international data (Country, InternationalService, BenchmarkInstitutionScore, …).
+// Refreshed by a periodic job and on-demand. They are first-class comparators
+// in the UI alongside Standards and individual Countries.
+
+model ComputedReference {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  shortName   String?
+  kind        String
+  scope       String
+  description String?
+  formula     String?
+  asOfDate    DateTime?
+  cohortSize  Int       @default(0)
+  payload     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([kind])
+  @@index([scope])
+}
+
+// ── GPSSA Mandate Corpus ──
+//
+// Net-new tables backing the MANDATE pillar. The legal/regulatory content
+// itself is stored as Standard / StandardRequirement rows (re-using the
+// existing Standards machinery), with citations through DataSource. These
+// two models hold the editorial substrate the agent ingests + the human
+// timeline used by the History view.
+
+model GpssaPage {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  url          String   @unique
+  lang         String   @default("en")
+  title        String
+  section      String?
+  contentType  String   @default("html")
+  htmlSnapshot String?
+  markdown     String
+  etag         String?
+  lastModified String?
+  pdfPath      String?
+  scrapedAt    DateTime @default(now())
+  hash         String
+
+  @@index([section])
+}
+
+model GpssaMilestone {
+  id          String   @id @default(cuid())
+  year        Int
+  date        String?
+  title       String
+  description String
+  kind        String   @default("milestone")
+  sourceUrl   String?
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([year])
 }

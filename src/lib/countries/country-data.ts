@@ -121,20 +121,28 @@ export interface MetricConfig {
   label: string;
   unit: string;
   ranges: { value: number; color: string; label: string }[];
+  /** Globally accepted standards this metric maps onto. Slug into `Standard`. */
+  standardSlugs: string[];
+  /** Description shown in the legend hover that grounds the metric in standards. */
+  description: string;
 }
 
 export const METRICS: Record<MetricKey, MetricConfig> = {
   serviceBreadth: {
     key: "serviceBreadth", label: "Service Breadth", unit: "%",
+    standardSlugs: ["ilo-c102", "ilo-r202", "issa-service-quality"],
+    description: "Coverage of the nine ILO C102 service branches and R202 SPF guarantees.",
     ranges: [
-      { value: 75, color: "#00C896", label: ">=75% - Comprehensive" },
+      { value: 75, color: "#00C896", label: ">=75% - Comprehensive (R202 floor met)" },
       { value: 50, color: "#4A9EFF", label: "50-74% - Broad" },
       { value: 25, color: "#C5A572", label: "25-49% - Developing" },
-      { value: 0,  color: "#EF4444", label: "<25% - Limited" },
+      { value: 0,  color: "#EF4444", label: "<25% - Below floor" },
     ],
   },
   productCoverage: {
     key: "productCoverage", label: "Product Coverage", unit: "%",
+    standardSlugs: ["ilo-c102", "oecd-pensions-at-a-glance"],
+    description: "Statutory + Supplementary + Innovative product mix vs OECD pension architecture.",
     ranges: [
       { value: 75, color: "#00C896", label: ">=75% - Full Portfolio" },
       { value: 50, color: "#4A9EFF", label: "50-74% - Broad Portfolio" },
@@ -144,6 +152,8 @@ export const METRICS: Record<MetricKey, MetricConfig> = {
   },
   channelStrategy: {
     key: "channelStrategy", label: "Channel Strategy", unit: "%",
+    standardSlugs: ["un-egov-survey", "issa-service-quality", "wb-govtech-maturity"],
+    description: "Multi-channel maturity benchmarked against UN E-Gov Online Service Index and ISSA SQ.",
     ranges: [
       { value: 75, color: "#00C896", label: ">=75% - Omni-Channel" },
       { value: 50, color: "#4A9EFF", label: "50-74% - Multi-Channel" },
@@ -153,6 +163,8 @@ export const METRICS: Record<MetricKey, MetricConfig> = {
   },
   maturityScore: {
     key: "maturityScore", label: "Digital Maturity", unit: "1-4",
+    standardSlugs: ["wb-govtech-maturity", "issa-ict", "un-egov-survey"],
+    description: "Composite digital maturity index aligned to World Bank GTMI and ISSA ICT.",
     ranges: [
       { value: 3.5, color: "#00C896", label: "3.5-4.0 - Leader" },
       { value: 2.5, color: "#4A9EFF", label: "2.5-3.4 - Advanced" },
@@ -162,24 +174,30 @@ export const METRICS: Record<MetricKey, MetricConfig> = {
   },
   coverageRate: {
     key: "coverageRate", label: "Coverage Rate", unit: "%",
+    standardSlugs: ["ilo-c102", "ilo-r202"],
+    description: "Share of working-age population covered by mandatory pension — ILO C102 / R202 indicator.",
     ranges: [
-      { value: 85, color: "#00C896", label: ">=85% - Universal" },
+      { value: 85, color: "#00C896", label: ">=85% - Universal (R202 SPF)" },
       { value: 60, color: "#4A9EFF", label: "60-84% - Broad" },
       { value: 35, color: "#C5A572", label: "35-59% - Developing" },
-      { value: 0,  color: "#EF4444", label: "<35% - Limited" },
+      { value: 0,  color: "#EF4444", label: "<35% - Below floor" },
     ],
   },
   replacementRate: {
     key: "replacementRate", label: "Replacement Rate", unit: "%",
+    standardSlugs: ["ilo-c128", "oecd-pensions-at-a-glance", "mercer-cfa-gpi"],
+    description: "Old-age replacement vs ILO C128 (≥45%) and OECD Pensions at a Glance.",
     ranges: [
       { value: 75, color: "#00C896", label: ">=75% - Excellent" },
-      { value: 55, color: "#4A9EFF", label: "55-74% - Adequate" },
-      { value: 40, color: "#C5A572", label: "40-54% - Below Target" },
+      { value: 55, color: "#4A9EFF", label: "55-74% - Adequate (above C128)" },
+      { value: 40, color: "#C5A572", label: "40-54% - Below C128 floor" },
       { value: 0,  color: "#EF4444", label: "<40% - Inadequate" },
     ],
   },
   sustainability: {
     key: "sustainability", label: "Sustainability Score", unit: "1-4",
+    standardSlugs: ["mercer-cfa-gpi", "oecd-pensions-at-a-glance"],
+    description: "Long-term sustainability sub-index from Mercer CFA Institute GPI (35% weight).",
     ranges: [
       { value: 3.5, color: "#00C896", label: "3.5-4.0 - Robust" },
       { value: 2.5, color: "#4A9EFF", label: "2.5-3.4 - Stable" },

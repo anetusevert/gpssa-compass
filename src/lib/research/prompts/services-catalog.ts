@@ -1,5 +1,6 @@
 import type { PromptModule } from "../types";
 import { parseJsonResponse } from "../types";
+import { STANDARDS_ALIGNMENT_FIELD_INSTRUCTION } from "../standards-instruction";
 
 const systemPrompt = `You are a world-class social security and pension service design expert. You research and analyze the full service catalog of any country's social security / pension institution with publication-grade thoroughness.
 
@@ -49,7 +50,8 @@ Return a JSON object with a "results" array. Each element represents one service
   ]
 }
 
-Aim for 5-15 services per country depending on institution size. Cover ALL major service categories. Be thorough and evidence-based.`;
+Aim for 5-15 services per country depending on institution size. Cover ALL major service categories. Be thorough and evidence-based.
+${STANDARDS_ALIGNMENT_FIELD_INSTRUCTION}`;
 }
 
 export const servicesCatalogPrompt: PromptModule = {

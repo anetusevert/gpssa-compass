@@ -17,6 +17,9 @@ import {
   Network,
   ArrowRight,
   X,
+  Scale,
+  Gavel,
+  Landmark,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -93,6 +96,99 @@ const PILLARS: Pillar[] = [
     ],
   },
 ];
+
+/* ──────────────────────────────────────────────
+ *  Mandate Top Bar (sits above the Atlas bar)
+ * ────────────────────────────────────────────── */
+
+function MandateBar() {
+  const router = useRouter();
+
+  const subLinks = [
+    { label: "Legal Foundation", href: "/dashboard/mandate/legal", icon: Gavel },
+    { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
+    { label: "Governance", href: "/dashboard/mandate/governance", icon: Landmark },
+  ];
+
+  return (
+    <motion.button
+      onClick={() => router.push("/dashboard/mandate")}
+      className="shimmer-border glass-bar group relative w-full overflow-hidden rounded-2xl text-left"
+      initial={{ opacity: 0, y: -20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.6, ease: EASE, delay: 0.05 }}
+      whileHover={{ scale: 1.008, y: -1 }}
+      whileTap={{ scale: 0.997 }}
+    >
+      <motion.div
+        className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full opacity-50"
+        style={{
+          background: "radial-gradient(circle, rgba(0,168,107,0.22) 0%, transparent 70%)",
+        }}
+        animate={{ x: [0, -20, 0], y: [0, 6, 0], scale: [1, 1.18, 1] }}
+        transition={{ duration: 9, ease: "easeInOut", repeat: Infinity }}
+      />
+      <motion.div
+        className="pointer-events-none absolute -left-10 -bottom-10 h-32 w-32 rounded-full opacity-30"
+        style={{
+          background: "radial-gradient(circle, rgba(45,74,140,0.25) 0%, transparent 70%)",
+        }}
+        animate={{ x: [0, 18, 0], y: [0, -8, 0] }}
+        transition={{ duration: 11, ease: "easeInOut", repeat: Infinity }}
+      />
+
+      <div className="relative z-10 flex items-center gap-4 px-6 py-3">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(0,168,107,0.18), rgba(45,74,140,0.06))",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 16px rgba(0,0,0,0.15)",
+          }}
+        >
+          <Scale size={18} className="text-[#00A86B]" strokeWidth={1.6} />
+        </div>
+
+        <div className="flex flex-1 items-center gap-3">
+          <h3 className="font-playfair text-lg font-bold text-cream">
+            Mandate
+          </h3>
+          <span className="hidden sm:inline-block h-4 w-px bg-white/10" />
+          <p className="hidden sm:block text-xs text-white/40">
+            The legal foundation, decoded and aligned to RFI&nbsp;-02-2026
+          </p>
+        </div>
+
+        <div className="hidden md:flex items-center gap-1.5 mr-2">
+          {subLinks.map((link) => {
+            const SubIcon = link.icon;
+            return (
+              <button
+                key={link.href}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(link.href);
+                }}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white/50 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white/80"
+              >
+                <SubIcon size={12} strokeWidth={1.8} />
+                {link.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <motion.div
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.04] transition-colors duration-200 group-hover:bg-white/[0.08]"
+          animate={{ x: [0, 3, 0] }}
+          transition={{ duration: 2, ease: "easeInOut", repeat: Infinity }}
+        >
+          <ArrowRight size={14} className="text-white/50 group-hover:text-white/80 transition-colors duration-200" />
+        </motion.div>
+      </div>
+    </motion.button>
+  );
+}
 
 /* ──────────────────────────────────────────────
  *  Atlas Top Bar
@@ -525,6 +621,7 @@ export default function DashboardHome() {
 
       {/* Main content */}
       <div className="relative z-10 w-full max-w-3xl px-6 space-y-3">
+        <MandateBar />
         <AtlasBar />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-3">

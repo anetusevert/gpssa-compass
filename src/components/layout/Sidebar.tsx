@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserMenu } from "./UserMenu";
+import { BriefingTrigger } from "@/components/briefing/BriefingTrigger";
 import {
   Globe,
   GitCompare,
@@ -22,6 +23,13 @@ import {
   Cpu,
   PanelLeftClose,
   PanelLeftOpen,
+  Scale,
+  Landmark,
+  Gavel,
+  ShieldCheck,
+  ListChecks,
+  History,
+  Network,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { create } from "zustand";
@@ -52,6 +60,21 @@ interface NavSection {
 }
 
 const NAV_SECTIONS: NavSection[] = [
+  {
+    title: "MANDATE",
+    prefix: "/dashboard/mandate",
+    color: "var(--gpssa-green)",
+    glow: "rgba(0,168,107,0.14)",
+    items: [
+      { label: "Overview", href: "/dashboard/mandate", icon: Scale },
+      { label: "Legal Foundation", href: "/dashboard/mandate/legal", icon: Gavel },
+      { label: "Scope", href: "/dashboard/mandate/scope", icon: ShieldCheck },
+      { label: "Obligations", href: "/dashboard/mandate/obligations", icon: ListChecks },
+      { label: "Governance", href: "/dashboard/mandate/governance", icon: Landmark },
+      { label: "History", href: "/dashboard/mandate/history", icon: History },
+      { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
+    ],
+  },
   {
     title: "GLOBAL ATLAS",
     prefix: "/dashboard/atlas",
@@ -180,6 +203,8 @@ export function Sidebar() {
           )}
         </AnimatePresence>
       </Link>
+
+      <BriefingTrigger collapsed={collapsed} />
 
       <div className="mx-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 

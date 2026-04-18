@@ -10,6 +10,35 @@ interface DispatchItem {
 
 async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]> {
   switch (screenType) {
+    case "mandate-corpus": {
+      // Pull every GpssaPage and pack the page's markdown into the item context.
+      // The mandate-corpus prompt extracts section/url/lang from the [section:...]
+      // [url:...] [lang:...] markers prepended below.
+      const pages = await prisma.gpssaPage.findMany({
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          section: true,
+          url: true,
+          lang: true,
+          markdown: true,
+        },
+        orderBy: { scrapedAt: "desc" },
+      });
+      if (pages.length === 0) return [];
+      const MAX_CONTEXT_CHARS = 60_000;
+      return pages.map((p) => {
+        const header = `[section:${p.section ?? "unknown"}] [url:${p.url}] [lang:${p.lang}]\n`;
+        const md = (p.markdown ?? "").slice(0, MAX_CONTEXT_CHARS - header.length);
+        return {
+          key: p.slug,
+          label: p.title,
+          context: `${header}${md}`,
+        };
+      });
+    }
+
     case "atlas-worldmap":
     case "atlas-system":
     case "atlas-performance":
@@ -169,6 +198,21 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
       return DEFAULT_ILO_STANDARDS.map((s) => ({ key: s.code, label: s.title, context: s.category }));
     }
 
+    case "standards-auditor": {
+      // Audit GPSSA against every active canonical Standard from the library.
+      const standards = await prisma.standard.findMany({
+        where: { isActive: true },
+        select: { slug: true, title: true, body: true, code: true, scope: true },
+        orderBy: { sortOrder: "asc" },
+      });
+      if (standards.length === 0) return [];
+      return standards.map((s) => ({
+        key: s.slug,
+        label: s.title,
+        context: `${s.body}${s.code ? ` ${s.code}` : ""} · ${s.scope}`,
+      }));
+    }
+
     default:
       return [];
   }
@@ -196,7 +240,7 @@ export async function createScreenResearchJob(
       status: "running",
       totalItems: items.length,
       model: model ?? agent.model,
-      batchSize: (screenType === "atlas-worldmap" || screenType === "services-catalog" || screenType === "services-channels") ? 1 : Math.min(5, items.length),
+      batchSize: (screenType === "atlas-worldmap" || screenType === "services-catalog" || screenType === "services-channels" || screenType === "mandate-corpus") ? 1 : Math.min(5, items.length),
       concurrency: 5,
       agentConfigId,
       startedAt: new Date(),

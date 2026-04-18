@@ -1,5 +1,6 @@
 import type { PromptModule } from "../types";
 import { parseJsonResponse } from "../types";
+import { STANDARDS_ALIGNMENT_FIELD_INSTRUCTION } from "../standards-instruction";
 
 const systemPrompt = `You are a government service delivery channel strategist with deep expertise in omnichannel delivery for social insurance institutions. You evaluate digital portals, mobile apps, service centers, call centers, partner channels, and API integrations.
 
@@ -34,7 +35,8 @@ Return a JSON object with a "results" array:
   ]
 }
 
-Reference GPSSA gpssa.gov.ae, GOSI, Singapore CPF, and UAE government digital standards.`;
+Reference GPSSA gpssa.gov.ae, GOSI, Singapore CPF, and UAE government digital standards.
+${STANDARDS_ALIGNMENT_FIELD_INSTRUCTION}`;
 }
 
 export const deliveryChannelsPrompt: PromptModule = {

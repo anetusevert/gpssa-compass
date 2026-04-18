@@ -25,6 +25,9 @@ import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { COUNTRIES } from "@/lib/countries/catalog";
 import { CountryFlag } from "@/components/ui/CountryFlag";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
+import { StandardChips } from "@/components/comparator/StandardChips";
+import { resolveProductTier } from "@/lib/taxonomy/products";
+import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Types
@@ -113,6 +116,7 @@ const COUNTRY_COLORS = ["#22C55E", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
 function TierTile({ tier, count, isActive, onClick }: { tier: ProductTier; count: number; isActive: boolean; onClick: () => void }) {
   const cfg = tierConfig[tier];
   const Icon = cfg.icon;
+  const canonical = resolveProductTier(tier);
   return (
     <motion.button
       onClick={onClick}
@@ -130,6 +134,14 @@ function TierTile({ tier, count, isActive, onClick }: { tier: ProductTier; count
       <span className={`text-xs font-semibold leading-tight ${isActive ? "text-cream" : "text-cream/80"}`}>{tier}</span>
       <span className="text-[10px] text-gray-muted mt-0.5">{cfg.subtitle}</span>
       <span className="text-[10px] text-gray-muted mt-1">{count} product{count !== 1 ? "s" : ""}</span>
+      {canonical && (
+        <>
+          <p className="text-[9px] text-gray-muted/70 mt-1.5 leading-tight italic line-clamp-1">{canonical.iloPillar}</p>
+          <div className="mt-1.5">
+            <StandardChips slugs={canonical.standardSlugs} size="xs" max={3} />
+          </div>
+        </>
+      )}
       {isActive && (
         <motion.div
           layoutId="tierIndicator"
@@ -192,6 +204,7 @@ function ComparisonTierRow({
 
 function ProductCard({ product, onClick }: { product: Product; onClick: () => void }) {
   const sb = statusBadge[product.status];
+  const canonical = resolveProductTier(product.tier);
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -214,10 +227,15 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
         {product.targetSegments.slice(0, 2).map((seg) => <Badge key={seg} variant="blue" size="sm">{seg}</Badge>)}
         {product.targetSegments.length > 2 && <Badge variant="blue" size="sm">+{product.targetSegments.length - 2}</Badge>}
       </div>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1 mb-2">
         {product.keyFeatures.slice(0, 2).map((f, i) => <Badge key={i} variant="green" size="sm">{f}</Badge>)}
         {product.keyFeatures.length > 2 && <Badge variant="green" size="sm">+{product.keyFeatures.length - 2}</Badge>}
       </div>
+      {canonical && canonical.standardSlugs.length > 0 && (
+        <div className="pt-2 border-t border-white/[0.05]">
+          <StandardChips slugs={canonical.standardSlugs} size="xs" max={4} />
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -550,6 +568,11 @@ export default function ProductPortfolioPage() {
         <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Product Portfolio</h1>
         <div className="h-4 w-px bg-white/10" />
         <CountrySelector selected={comparisonCountries} onChange={setComparisonCountries} pillar="products" variant="inline" />
+        <MandateBasisChip
+          screenPath="/dashboard/products/portfolio"
+          entityIds={products.map((p) => p.id)}
+          className="ml-2"
+        />
         {activeTier && (
           <div className="ml-auto relative">
             <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-muted" />

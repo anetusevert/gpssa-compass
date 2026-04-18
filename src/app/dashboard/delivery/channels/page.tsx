@@ -17,6 +17,8 @@ import type { LucideIcon } from "lucide-react";
 import { KPIStrip, ChannelTile, DynamicPanel } from "@/components/delivery";
 import type { ChannelData, DeliveryModelData } from "@/components/delivery";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
+import { StandardChips } from "@/components/comparator/StandardChips";
+import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
 
 type ChannelStatus = "Active" | "Developing" | "Pilot" | "Planned";
 type MaturityLevel = "High" | "Medium" | "Low";
@@ -265,6 +267,17 @@ export default function DeliveryChannelsPage() {
         <div className="min-w-0">
           <h1 className="font-playfair text-lg font-bold text-cream">Channel Framework</h1>
           <p className="text-[11px] text-gray-muted mt-0.5">Delivery landscape — channels, models & benchmarks</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <StandardChips
+              slugs={["un-egov-survey", "issa-service-quality", "wb-govtech-maturity"]}
+              size="xs"
+              showPrefix
+            />
+            <MandateBasisChip
+              screenPath="/dashboard/delivery/channels"
+              entityIds={channels.map((c) => c.id)}
+            />
+          </div>
         </div>
         <KPIStrip
           totalChannels={totalChannels}

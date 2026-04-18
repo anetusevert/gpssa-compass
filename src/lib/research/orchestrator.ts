@@ -20,6 +20,7 @@ import { runScreenResearchJob } from "./engine";
 type ScreenName = string;
 
 export const PILLAR_ORDER = [
+  "mandate",
   "atlas",
   "services",
   "products",
@@ -31,6 +32,7 @@ export const PILLAR_ORDER = [
 export type PillarKey = (typeof PILLAR_ORDER)[number];
 
 export const PILLAR_SCREENS: Record<PillarKey, ScreenName[]> = {
+  mandate: ["mandate-corpus"],
   atlas: ["atlas-system", "atlas-performance", "atlas-insights", "atlas-benchmarking", "atlas-worldmap"],
   services: ["services-catalog", "services-channels", "services-analysis"],
   products: ["products-portfolio", "products-segments", "products-innovation"],

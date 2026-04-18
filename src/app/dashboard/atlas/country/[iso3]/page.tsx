@@ -396,6 +396,12 @@ export default function CountryDetailPage() {
   const institutions = dbData?.institutions ?? [];
   const accentColor = profile ? maturityBadgeColor(profile.maturityLabel) : "#4A9EFF";
   const isGPSSA = iso3 === "ARE";
+  const summaryMetrics = [
+    { label: "Maturity", value: profile.maturityScore.toFixed(1), sub: "/4", color: maturityBadgeColor(profile.maturityLabel) },
+    { label: "Coverage", value: `${profile.coverageRate}%`, sub: "", color: scoreColor(profile.coverageRate, 100) },
+    { label: "Replacement", value: `${profile.replacementRate}%`, sub: "", color: scoreColor(profile.replacementRate, 100) },
+    { label: "Sustainability", value: profile.sustainability.toFixed(1), sub: "/4", color: scoreColor(profile.sustainability, 4) },
+  ];
 
   const handleBack = useCallback(() => {
     router.push("/dashboard/atlas");
@@ -430,33 +436,38 @@ export default function CountryDetailPage() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-white/10 bg-[var(--bg-primary)]/50 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <button onClick={handleBack} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors group" title="Back to Global Atlas">
-            <ArrowLeft className="w-4 h-4 text-white/60 group-hover:text-cream transition-colors" />
-          </button>
-          <div className="flex items-center gap-3">
-            <CountryFlag code={profile.iso3} size="xl" />
-            <div>
-              <h1 className="font-playfair text-lg font-bold text-cream leading-tight">{profile.name}</h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-white/50">{profile.region}</span>
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
-                <span className="text-xs font-semibold" style={{ color: accentColor }}>{profile.maturityLabel}</span>
-                {isGPSSA && <span className="rounded-full bg-gpssa-green/15 px-2 py-0.5 text-[10px] font-bold text-gpssa-green">GPSSA</span>}
+      <header className="flex-shrink-0 border-b border-white/10 bg-[var(--bg-primary)]/50 px-4 py-2.5 backdrop-blur-sm xl:px-5 xl:py-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={handleBack} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors group" title="Back to Global Atlas">
+              <ArrowLeft className="w-4 h-4 text-white/60 group-hover:text-cream transition-colors" />
+            </button>
+            <div className="flex items-center gap-3 min-w-0">
+              <CountryFlag code={profile.iso3} size="xl" />
+              <div className="min-w-0">
+                <h1 className="font-playfair text-lg font-bold text-cream leading-tight truncate">{profile.name}</h1>
+                <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-white/50">{profile.region}</span>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
+                  <span className="text-xs font-semibold" style={{ color: accentColor }}>{profile.maturityLabel}</span>
+                  {isGPSSA && <span className="rounded-full bg-gpssa-green/15 px-2 py-0.5 text-[10px] font-bold text-gpssa-green">GPSSA</span>}
+                </div>
               </div>
             </div>
           </div>
+          <div className="hidden lg:flex items-center gap-2.5">
+            {summaryMetrics.map(({ label, value, sub, color }) => (
+              <div key={label} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <span className="text-[10px] uppercase tracking-wider text-white/40">{label}</span>
+                <span className="font-mono text-sm font-bold" style={{ color }}>{value}<span className="text-white/30 text-[10px]">{sub}</span></span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="hidden md:flex items-center gap-3">
-          {[
-            { label: "Maturity", value: profile.maturityScore.toFixed(1), sub: "/4", color: maturityBadgeColor(profile.maturityLabel) },
-            { label: "Coverage", value: `${profile.coverageRate}%`, sub: "", color: scoreColor(profile.coverageRate, 100) },
-            { label: "Replacement", value: `${profile.replacementRate}%`, sub: "", color: scoreColor(profile.replacementRate, 100) },
-            { label: "Sustainability", value: profile.sustainability.toFixed(1), sub: "/4", color: scoreColor(profile.sustainability, 4) },
-          ].map(({ label, value, sub, color }) => (
-            <div key={label} className="flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <span className="text-[10px] uppercase tracking-wider text-white/40">{label}</span>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:hidden">
+          {summaryMetrics.map(({ label, value, sub, color }) => (
+            <div key={label} className="rounded-lg px-2.5 py-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <span className="block text-[10px] uppercase tracking-wider text-white/40">{label}</span>
               <span className="font-mono text-sm font-bold" style={{ color }}>{value}<span className="text-white/30 text-[10px]">{sub}</span></span>
             </div>
           ))}
@@ -470,21 +481,22 @@ export default function CountryDetailPage() {
       />
 
       {/* Main content — 3 rows */}
-      <main className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 min-h-0">
+      <main className="flex-1 min-h-0 overflow-y-auto p-3 lg:overflow-hidden lg:p-3 xl:p-4">
+        <div className="flex h-full min-h-0 flex-col gap-3 xl:gap-4">
 
         {/* ── ROW 1: System Overview + Performance Metrics ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[260px]">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:flex-[1.25] xl:min-h-0 xl:gap-4">
 
           {/* System Overview */}
           <Tile onClick={() => setSelectedCategory("system")} delay={0.1}>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
+            <div className="flex items-center justify-between px-4 py-2.5 xl:px-5 xl:py-3 border-b border-white/5">
               <div className="flex items-center gap-2">
                 <Building2 size={14} className="text-adl-blue" />
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-white/50">System Overview</h2>
               </div>
               <span className="text-[10px] text-white/30">Click to explore</span>
             </div>
-            <div className="flex-1 p-5 overflow-y-auto space-y-3" style={{ scrollbarWidth: "thin" }}>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5 xl:p-5 xl:space-y-3" style={{ scrollbarWidth: "thin" }}>
               <div>
                 <p className="text-sm font-semibold text-cream">{profile.institution}</p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -493,7 +505,7 @@ export default function CountryDetailPage() {
                   <span className="text-xs text-white/50">{profile.systemType}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div className="flex items-center gap-2 rounded-lg p-2" style={{ background: "rgba(255,255,255,0.03)" }}>
                   <Zap size={11} style={{ color: accentColor }} />
                   <span className="text-xs text-cream">{profile.digitalLevel}</span>
@@ -508,7 +520,7 @@ export default function CountryDetailPage() {
               {profile.contributionRates && (
                 <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.03)" }}>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-1">Contributions</p>
-                  <div className="grid grid-cols-3 gap-2 text-[11px]">
+                  <div className="grid grid-cols-3 gap-2 text-[10px] xl:text-[11px]">
                     <div><span className="text-white/40">Employee</span><p className="text-cream font-medium mt-0.5">{profile.contributionRates.employee}</p></div>
                     <div><span className="text-white/40">Employer</span><p className="text-cream font-medium mt-0.5">{profile.contributionRates.employer}</p></div>
                     <div><span className="text-white/40">Govt</span><p className="text-cream font-medium mt-0.5">{profile.contributionRates.government}</p></div>
@@ -521,27 +533,27 @@ export default function CountryDetailPage() {
 
           {/* Performance Metrics */}
           <Tile onClick={() => setSelectedCategory("metrics")} delay={0.15}>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
+            <div className="flex items-center justify-between px-4 py-2.5 xl:px-5 xl:py-3 border-b border-white/5">
               <div className="flex items-center gap-2">
                 <TrendingUp size={14} className="text-gpssa-green" />
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-white/50">Performance Metrics</h2>
               </div>
               <span className="text-[10px] text-white/30">Click for detail</span>
             </div>
-            <div className="flex-1 p-5 overflow-y-auto space-y-3" style={{ scrollbarWidth: "thin" }}>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5 xl:p-5 xl:space-y-3" style={{ scrollbarWidth: "thin" }}>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:gap-3">
                 {[
                   { label: "Digital Maturity", value: profile.maturityScore, max: 4, fmt: (v: number) => v.toFixed(1), sub: maturityContext(profile.maturityScore), icon: Shield },
                   { label: "Coverage Rate", value: profile.coverageRate, max: 100, fmt: (v: number) => `${v}%`, sub: "ILO effective coverage", icon: Users },
                   { label: "Replacement Rate", value: profile.replacementRate, max: 100, fmt: (v: number) => `${v}%`, sub: "OECD net, median earner", icon: TrendingUp },
                   { label: "Sustainability", value: profile.sustainability, max: 4, fmt: (v: number) => v.toFixed(1), sub: "ILO actuarial balance", icon: Shield },
                 ].map(({ label, value, max, fmt, sub, icon: MetricIcon }) => (
-                  <div key={label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)" }}>
+                  <div key={label} className="rounded-xl p-2.5 xl:p-3" style={{ background: "rgba(255,255,255,0.04)" }}>
                     <div className="flex items-center gap-1.5 mb-1">
                       <MetricIcon size={10} className="text-white/30" />
                       <p className="text-[10px] text-white/40">{label}</p>
                     </div>
-                    <p className="font-playfair text-xl font-bold" style={{ color: scoreColor(value, max) }}>{fmt(value)}</p>
+                    <p className="font-playfair text-lg xl:text-xl font-bold" style={{ color: scoreColor(value, max) }}>{fmt(value)}</p>
                     <p className="text-[10px] text-white/25 mt-0.5 leading-tight">{sub}</p>
                     <div className="mt-2 h-1 rounded-full bg-white/5">
                       <div className="h-full rounded-full" style={{ width: `${(value / max) * 100}%`, backgroundColor: scoreColor(value, max) }} />
@@ -561,12 +573,12 @@ export default function CountryDetailPage() {
         </div>
 
         {/* ── ROW 2: Key Features, Strategic Insights, Latest Reforms, Challenges, Fiscal ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-h-[180px]">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5 xl:flex-1 xl:min-h-0 xl:gap-4">
 
           {/* Key Features */}
           <Tile onClick={() => setSelectedCategory("features")} delay={0.2}>
             <TileHeader icon={Lightbulb} label="Key Features" color="text-gold" />
-            <div className="flex-1 p-4 overflow-hidden">
+            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
               <BulletList items={profile.keyFeatures} max={3} color="#C5A572" />
             </div>
           </Tile>
@@ -574,7 +586,7 @@ export default function CountryDetailPage() {
           {/* Strategic Insights (atlas-insights output) */}
           <Tile onClick={() => setSelectedCategory("insights")} delay={0.225}>
             <TileHeader icon={Sparkles} label="Strategic Insights" color="text-purple-400/70" />
-            <div className="flex-1 p-4 overflow-hidden">
+            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
               {profile.insights.length > 0 ? (
                 <BulletList items={profile.insights} max={3} color="#8B5CF6" />
               ) : dbData?.insightsStatus === "completed" ? (
@@ -588,7 +600,7 @@ export default function CountryDetailPage() {
           {/* Latest Reforms */}
           <Tile onClick={() => setSelectedCategory("reforms")} delay={0.25}>
             <TileHeader icon={RefreshCw} label="Latest Reforms" color="text-adl-blue/70" />
-            <div className="flex-1 p-4 overflow-hidden">
+            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
               {profile.legislativeFramework && (
                 <p className="text-[10px] text-white/30 mb-2 line-clamp-1">{profile.legislativeFramework}</p>
               )}
@@ -599,7 +611,7 @@ export default function CountryDetailPage() {
           {/* Challenges & Risks */}
           <Tile onClick={() => setSelectedCategory("challenges")} delay={0.3}>
             <TileHeader icon={AlertTriangle} label="Challenges & Risks" color="text-amber-400/70" />
-            <div className="flex-1 p-4 overflow-hidden">
+            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
               <BulletList items={profile.challenges} max={3} color="#F59E0B" />
             </div>
           </Tile>
@@ -607,7 +619,7 @@ export default function CountryDetailPage() {
           {/* Fiscal & Demographics */}
           <Tile onClick={() => setSelectedCategory("fiscal")} delay={0.35}>
             <TileHeader icon={BarChart3} label="Fiscal & Demographics" color="text-teal-400/70" />
-            <div className="flex-1 p-4 overflow-hidden space-y-2">
+            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden space-y-2">
               <MetricSnippet label="Social Protection Expenditure" value={profile.socialProtectionExpenditure} />
               <MetricSnippet label="Dependency Ratio" value={profile.dependencyRatio} />
               <MetricSnippet label="Pension Fund Assets" value={profile.pensionFundAssets} />
@@ -616,12 +628,12 @@ export default function CountryDetailPage() {
         </div>
 
         {/* ── ROW 3: Benefit Design, Fund Management, Rankings, Compare ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[180px]">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 xl:flex-1 xl:min-h-0 xl:gap-4">
 
           {/* Benefit Design */}
           <Tile onClick={() => setSelectedCategory("benefit")} delay={0.4}>
             <TileHeader icon={Calculator} label="Benefit Design" color="text-purple-400/70" />
-            <div className="flex-1 p-4 overflow-hidden space-y-2">
+            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden space-y-2">
               <MetricSnippet label="Benefit Formula" value={profile.benefitCalculation} />
               <MetricSnippet label="Vesting Period" value={profile.vestingPeriod} />
               <MetricSnippet label="Indexation" value={profile.indexationMechanism} />
@@ -631,7 +643,7 @@ export default function CountryDetailPage() {
           {/* Fund Management */}
           <Tile onClick={() => setSelectedCategory("fund")} delay={0.45}>
             <TileHeader icon={PiggyBank} label="Fund Management" color="text-emerald-400/70" />
-            <div className="flex-1 p-4 overflow-hidden">
+            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
               {profile.fundManagement ? (
                 <p className="text-xs text-white/55 line-clamp-6 leading-relaxed">{profile.fundManagement}</p>
               ) : (
@@ -643,7 +655,7 @@ export default function CountryDetailPage() {
           {/* International Rankings */}
           <Tile onClick={() => setSelectedCategory("rankings")} delay={0.5}>
             <TileHeader icon={Award} label="International Rankings" color="text-gold/70" />
-            <div className="flex-1 p-4 overflow-hidden space-y-2">
+            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden space-y-2">
               {profile.internationalRankings ? (
                 <>
                   {profile.internationalRankings.mercerIndex && (
@@ -678,7 +690,7 @@ export default function CountryDetailPage() {
               label={isGPSSA ? "Institutions" : "vs. GPSSA (UAE)"}
               color={isGPSSA ? "text-purple-400/70" : "text-gpssa-green/70"}
             />
-            <div className="flex-1 p-4 overflow-hidden">
+            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
               {isGPSSA ? (
                 <div className="space-y-2">
                   {institutions.length > 0 ? institutions.slice(0, 2).map((inst) => (
@@ -723,6 +735,7 @@ export default function CountryDetailPage() {
               )}
             </div>
           </Tile>
+        </div>
         </div>
       </main>
 

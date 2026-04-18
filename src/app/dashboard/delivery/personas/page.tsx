@@ -14,6 +14,8 @@ import { personas, getCoverageStatus, getCoverageLabel, type Persona } from "@/d
 import { PersonaCard, PersonaDetailModal } from "@/components/personas";
 import type { ResearchedPersona } from "@/components/personas/PersonaDetailModal";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
+import { StandardChips } from "@/components/comparator/StandardChips";
+import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
 
 const pageVariants = {
   initial: { opacity: 0 },
@@ -113,8 +115,15 @@ export default function CustomerPersonasPage() {
                 GPSSA Social Insurance Personas
               </h1>
               <p className="text-[9px] sm:text-[10px] text-gray-muted truncate">
-                Ten segments. Ten realities — from full GPSSA pension to zero coverage.
+                Ten segments aligned to ILO labor taxonomy — from full GPSSA pension to zero coverage.
               </p>
+              <div className="mt-1 hidden sm:flex sm:items-center sm:gap-2">
+                <StandardChips slugs={["ilo-c102", "ilo-r202"]} size="xs" max={2} />
+                <MandateBasisChip
+                  screenPath="/dashboard/delivery/personas"
+                  entityIds={personas.map((p) => p.id)}
+                />
+              </div>
             </div>
           </div>
 

@@ -37,6 +37,9 @@ import {
 import { Modal } from "@/components/ui/Modal";
 import { CountryFlag } from "@/components/ui/CountryFlag";
 import { iso3ToIso2 } from "@/lib/countries/country-data";
+import { ComparatorPicker } from "@/components/comparator/ComparatorPicker";
+import { useComparators } from "@/lib/comparator/hooks";
+import type { ComparatorOption } from "@/lib/comparator/types";
 import type {
   BenchmarkDimensionPayload,
   BenchmarkInstitutionPayload,
@@ -403,6 +406,69 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
   const [xDimSlug, setXDimSlug] = useState(workspace.dimensions[0]?.slug ?? "");
   const [yDimSlug, setYDimSlug] = useState(workspace.dimensions[1]?.slug ?? "");
 
+  // Comparator overlay (Phase 4 — Standards / Computed References / Country grounded)
+  const { allOptions: comparatorOptions, loading: comparatorsLoading } = useComparators();
+  const [comparator, setComparator] = useState<ComparatorOption | null>(null);
+  const [comparatorScores, setComparatorScores] = useState<Record<string, number>>({});
+
+  // When a comparator is picked, derive a per-dimension synthetic score so it
+  // can be drawn alongside real institutions on radar/bars/heatmap. Mapping
+  // is deterministic — Standards → expected-threshold (80); Computed Refs →
+  // their overall maturity (and per-pillar where available); Countries →
+  // resolved from peerInstitutions when available.
+  useEffect(() => {
+    if (!comparator) {
+      setComparatorScores({});
+      return;
+    }
+    let cancelled = false;
+    async function resolve() {
+      const scores: Record<string, number> = {};
+      try {
+        if (comparator?.kind === "standard") {
+          // Standards represent expected/target compliance. Use their floor (80)
+          // unless a /api/standards/[slug] payload tells us otherwise per pillar.
+          for (const dim of workspace.dimensions) scores[dim.slug] = 80;
+        } else if (comparator?.kind === "computed") {
+          const r = await fetch(`/api/references/computed/${comparator.id}`);
+          if (r.ok) {
+            const payload = await r.json();
+            const metrics = payload?.payload?.metrics ?? {};
+            // Map common metric keys onto dimensions by name match (best-effort).
+            for (const dim of workspace.dimensions) {
+              const key = Object.keys(metrics).find(
+                (k) => k.toLowerCase().includes(dim.slug.toLowerCase().split("-")[0]) ||
+                       dim.name.toLowerCase().includes(k.toLowerCase())
+              );
+              const v = key ? Number(metrics[key]) : NaN;
+              scores[dim.slug] = Number.isFinite(v) ? Math.round(v) : Math.round(payload?.payload?.overall ?? 70);
+            }
+          } else {
+            for (const dim of workspace.dimensions) scores[dim.slug] = 70;
+          }
+        } else if (comparator?.kind === "country") {
+          const peer = workspace.peerInstitutions.find(
+            (i) => i.countryCode.toLowerCase() === comparator.id.toLowerCase()
+          );
+          if (peer) {
+            for (const dim of workspace.dimensions) scores[dim.slug] = peer.scores[dim.slug] ?? 0;
+          } else {
+            // No workspace data yet for this country — neutral 60.
+            for (const dim of workspace.dimensions) scores[dim.slug] = 60;
+          }
+        }
+      } catch {
+        for (const dim of workspace.dimensions) scores[dim.slug] = 70;
+      }
+      if (!cancelled) setComparatorScores(scores);
+    }
+    resolve();
+    return () => { cancelled = true; };
+  }, [comparator, workspace.dimensions, workspace.peerInstitutions]);
+
+  /** A short label used as the data-key on the radar/bars for the comparator. */
+  const comparatorSeriesName = useMemo(() => comparator?.shortLabel ?? "", [comparator]);
+
   // Fetch all countries on mount
   const fetchCountryPeers = useCallback(async () => {
     try {
@@ -522,20 +588,30 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
     : workspace.dimensions.find((d) => d.slug === barDimSlug)?.name ?? barDimSlug;
 
   const overallBars = useMemo(() => {
-    return comparisonInstitutions
-      .map((inst, idx) => {
-        const score = barDimSlug === "overall"
-          ? average(workspace.dimensions.map((d) => inst.scores[d.slug] ?? 0))
-          : (inst.scores[barDimSlug] ?? 0);
-        return {
-          name: inst.shortName,
-          countryCode: inst.countryCode,
-          score: Math.round(score),
-          fill: BAR_COLORS[idx % BAR_COLORS.length],
-        };
-      })
-      .sort((a, b) => b.score - a.score);
-  }, [comparisonInstitutions, workspace.dimensions, barDimSlug]);
+    const fromInstitutions = comparisonInstitutions.map((inst, idx) => {
+      const score = barDimSlug === "overall"
+        ? average(workspace.dimensions.map((d) => inst.scores[d.slug] ?? 0))
+        : (inst.scores[barDimSlug] ?? 0);
+      return {
+        name: inst.shortName,
+        countryCode: inst.countryCode,
+        score: Math.round(score),
+        fill: BAR_COLORS[idx % BAR_COLORS.length],
+      };
+    });
+    if (comparator && comparatorSeriesName) {
+      const refScore = barDimSlug === "overall"
+        ? average(workspace.dimensions.map((d) => comparatorScores[d.slug] ?? 0))
+        : (comparatorScores[barDimSlug] ?? 0);
+      fromInstitutions.push({
+        name: comparatorSeriesName,
+        countryCode: comparator.iso3 ?? comparator.id.substring(0, 2).toUpperCase(),
+        score: Math.round(refScore),
+        fill: comparator.color,
+      });
+    }
+    return fromInstitutions.sort((a, b) => b.score - a.score);
+  }, [comparisonInstitutions, workspace.dimensions, barDimSlug, comparator, comparatorScores, comparatorSeriesName]);
 
   const radarData = useMemo(() => {
     return workspace.dimensions.map((dim) => {
@@ -547,9 +623,12 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
       selectedInstitutions.forEach((inst) => {
         point[inst.shortName] = inst.scores[dim.slug] ?? 0;
       });
+      if (comparator && comparatorSeriesName) {
+        point[comparatorSeriesName] = comparatorScores[dim.slug] ?? 0;
+      }
       return point;
     });
-  }, [selectedInstitutions, workspace.dimensions, workspace.targetInstitution]);
+  }, [selectedInstitutions, workspace.dimensions, workspace.targetInstitution, comparator, comparatorScores, comparatorSeriesName]);
 
   // Quadrant: each dot = one institution, axes = two selectable dimensions
   const xDimName = workspace.dimensions.find((d) => d.slug === xDimSlug)?.name ?? xDimSlug;
@@ -677,6 +756,18 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
             </AnimatePresence>
           </div>
 
+          {/* Comparator overlay (Standards / Computed Refs / Countries) */}
+          <div className="hidden md:block">
+            <ComparatorPicker
+              options={comparatorOptions}
+              selected={comparator}
+              onChange={setComparator}
+              loading={comparatorsLoading}
+              variant="inline"
+              placeholder="+ Reference"
+            />
+          </div>
+
           {/* Spacer */}
           <div className="flex-1" />
 
@@ -745,8 +836,29 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
             </span>
           ))}
 
-          {selectedInstitutions.length === 0 && (
-            <span className="text-[11px] text-gray-muted">Click &ldquo;Add Country&rdquo; to select peers</span>
+          {comparator && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm"
+              style={{
+                background: `${comparator.color}1f`,
+                border: `1px solid ${comparator.color}55`,
+                color: comparator.color,
+              }}
+            >
+              <span aria-hidden>◇</span>
+              {comparator.shortLabel}
+              <button
+                onClick={() => setComparator(null)}
+                className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-white/10"
+                title="Remove reference overlay"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          )}
+
+          {selectedInstitutions.length === 0 && !comparator && (
+            <span className="text-[11px] text-gray-muted">Click &ldquo;Add Country&rdquo; or &ldquo;+ Reference&rdquo; to compare</span>
           )}
         </div>
 
@@ -789,6 +901,18 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
                         strokeWidth={2}
                       />
                     ))}
+                    {comparator && comparatorSeriesName && (
+                      <RechartsRadar
+                        key="comparator-overlay"
+                        name={`◇ ${comparatorSeriesName}`}
+                        dataKey={comparatorSeriesName}
+                        stroke={comparator.color}
+                        fill={comparator.color}
+                        fillOpacity={0.05}
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                      />
+                    )}
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
@@ -931,7 +1055,7 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
               <div
                 className="grid h-full w-full min-h-0 auto-rows-min overflow-auto rounded-[22px]"
                 style={{
-                  gridTemplateColumns: `minmax(120px,1fr) repeat(${comparisonInstitutions.length},minmax(0,1fr))`,
+                  gridTemplateColumns: `minmax(120px,1fr) repeat(${comparisonInstitutions.length + (comparator ? 1 : 0)},minmax(0,1fr))`,
                   background: "rgba(0,0,0,0.15)",
                 }}
               >
@@ -944,6 +1068,17 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
                     <p className="text-[10px] text-gray-muted">{idx === 0 ? "Target" : inst.region}</p>
                   </div>
                 ))}
+                {comparator && comparatorSeriesName && (
+                  <div
+                    className="sticky top-0 z-10 p-2.5 text-center backdrop-blur-xl border-b border-white/[0.06]"
+                    style={{ background: `${comparator.color}22` }}
+                  >
+                    <p className="text-xs font-semibold" style={{ color: comparator.color }}>
+                      ◇ {comparatorSeriesName}
+                    </p>
+                    <p className="text-[10px] text-gray-muted">Reference</p>
+                  </div>
+                )}
                 {workspace.dimensions.map((dim, dimIdx) => (
                   <div key={dim.slug} className="contents">
                     <button
@@ -973,6 +1108,17 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
                         </button>
                       );
                     })}
+                    {comparator && comparatorSeriesName && (
+                      <div
+                        key={`${dim.slug}-comparator`}
+                        className={`relative m-[2px] rounded-xl p-2.5 text-center border-b border-white/[0.03] ${dimIdx % 2 === 0 ? "bg-white/[0.01]" : ""}`}
+                        style={{ background: `${comparator.color}1a`, border: `1px dashed ${comparator.color}66` }}
+                      >
+                        <p className="font-playfair text-lg font-semibold" style={{ color: comparator.color }}>
+                          {Math.round(comparatorScores[dim.slug] ?? 0)}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { Sidebar, useSidebarStore } from "@/components/layout/Sidebar";
 import { PageTransitionLoader } from "@/components/ui/PageTransitionLoader";
+import { BriefingDeck } from "@/components/briefing/BriefingDeck";
 
 const SIDEBAR_EXPANDED = 260;
 const SIDEBAR_COLLAPSED = 56;
@@ -15,13 +16,17 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const collapsed = useSidebarStore((s) => s.collapsed);
+  const isAtlasCountryPage = pathname.startsWith("/dashboard/atlas/country/");
   const isFullViewport = pathname === "/dashboard/atlas/benchmarking"
     || pathname === "/dashboard/services/catalog"
     || pathname === "/dashboard/services/channels"
     || pathname === "/dashboard/delivery/channels"
     || pathname === "/dashboard/delivery/personas"
     || pathname === "/dashboard/products/portfolio"
-    || pathname === "/dashboard/products/segments";
+    || pathname === "/dashboard/products/segments"
+    || pathname === "/dashboard/mandate"
+    || pathname === "/dashboard/mandate/rfi-alignment"
+    || isAtlasCountryPage;
   const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
 
   return (
@@ -46,6 +51,7 @@ export default function DashboardLayout({
         </motion.div>
       </motion.main>
       <PageTransitionLoader />
+      <BriefingDeck />
     </div>
   );
 }

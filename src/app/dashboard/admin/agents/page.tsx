@@ -30,6 +30,9 @@ import {
   RefreshCw,
   PlayCircle,
   AlertTriangle,
+  Scale,
+  Globe,
+  FileDown,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -86,6 +89,13 @@ interface ResearchJob {
 type AgentState = "idle" | "running" | "paused" | "completed" | "failed" | "cancelled";
 
 const PILLAR_META: Record<string, { label: string; icon: typeof Globe2; color: string; bgColor: string; screens: string[] }> = {
+  mandate: {
+    label: "Mandate",
+    icon: Scale,
+    color: "text-gpssa-green",
+    bgColor: "bg-gpssa-green",
+    screens: ["mandate-corpus"],
+  },
   atlas: {
     label: "Global Atlas",
     icon: Globe2,
@@ -117,6 +127,7 @@ const PILLAR_META: Record<string, { label: string; icon: typeof Globe2; color: s
 };
 
 const SCREEN_LABELS: Record<string, string> = {
+  "mandate-corpus": "Mandate — Corpus & Legal Foundation",
   "atlas-worldmap": "World Map",
   "atlas-benchmarking": "Benchmarking",
   "services-catalog": "Service Catalog",
@@ -191,7 +202,7 @@ export default function AgentsPage() {
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [researchJobs, setResearchJobs] = useState<ResearchJob[]>([]);
-  const [expandedPillars, setExpandedPillars] = useState<Set<string>>(new Set(["atlas", "services", "products", "delivery"]));
+  const [expandedPillars, setExpandedPillars] = useState<Set<string>>(new Set(["mandate", "atlas", "services", "products", "delivery"]));
 
   const [editAgent, setEditAgent] = useState<AgentConfig | null>(null);
   const [editForm, setEditForm] = useState({ ...EMPTY_AGENT_FORM });
@@ -203,6 +214,41 @@ export default function AgentsPage() {
   const [clearing, setClearing] = useState(false);
 
   const [runAllBusy, setRunAllBusy] = useState(false);
+
+  // GPSSA web scrape state
+  const [scrapeBusy, setScrapeBusy] = useState(false);
+  const [scrapeFollowPdfs, setScrapeFollowPdfs] = useState(true);
+  const [scrapeForce, setScrapeForce] = useState(false);
+  const [scrapeStatus, setScrapeStatus] = useState<string | null>(null);
+  const [lastScrapeResult, setLastScrapeResult] = useState<{ pages: number; updated: number; ts: string } | null>(null);
+
+  async function handleScrapeGpssa() {
+    if (scrapeBusy) return;
+    setScrapeBusy(true);
+    setScrapeStatus("Hitting gpssa.gov.ae politely…");
+    try {
+      const res = await fetch("/api/mandate/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ followPdfs: scrapeFollowPdfs, force: scrapeForce }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        setLastScrapeResult({
+          pages: data.totalPages ?? data.pages ?? 0,
+          updated: data.updated ?? data.upserted ?? 0,
+          ts: new Date().toISOString(),
+        });
+        setScrapeStatus(`Scrape complete · ${data.totalPages ?? data.pages ?? 0} pages indexed`);
+      } else {
+        setScrapeStatus(`Scrape failed: ${data?.error ?? res.status}`);
+      }
+    } catch (err) {
+      setScrapeStatus(`Scrape error: ${(err as Error).message}`);
+    } finally {
+      setScrapeBusy(false);
+    }
+  }
 
   const fetchAgents = useCallback(async () => {
     setLoadingAgents(true);
@@ -590,6 +636,66 @@ export default function AgentsPage() {
           >
             <PlayCircle size={14} />
             Run All Pillars
+          </Button>
+        </div>
+      </div>
+
+      {/* GPSSA Mandate Corpus Scraper */}
+      <div className="rounded-xl border border-gpssa-green/15 bg-gradient-to-br from-gpssa-green/[0.06] to-transparent p-4">
+        <div className="flex items-start gap-3">
+          <div className="p-1.5 rounded-lg bg-gpssa-green/15 shrink-0 mt-0.5">
+            <Globe size={14} className="text-gpssa-green" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-cream">GPSSA Mandate Corpus Scraper</p>
+              <Badge variant="green" size="sm" dot>gpssa.gov.ae</Badge>
+            </div>
+            <p className="mt-1 text-xs text-gray-muted leading-relaxed max-w-3xl">
+              Polite-scrapes <strong className="text-cream">gpssa.gov.ae/laws-and-regulations</strong> and the connected
+              About / News / Governance pages, normalises HTML &amp; PDF content into Markdown,
+              and persists it to the <code className="text-cream">GpssaPage</code> table. The
+              <strong className="text-cream"> Mandate Corpus </strong> agent then structures it
+              into Standards, Articles, Milestones and obligation links.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-gray-muted">
+              <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={scrapeFollowPdfs}
+                  onChange={(e) => setScrapeFollowPdfs(e.target.checked)}
+                  className="accent-gpssa-green"
+                />
+                Follow PDFs
+              </label>
+              <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={scrapeForce}
+                  onChange={(e) => setScrapeForce(e.target.checked)}
+                  className="accent-gpssa-green"
+                />
+                Ignore ETag cache (force refetch)
+              </label>
+              {lastScrapeResult && (
+                <span className="inline-flex items-center gap-1.5 text-cream/60">
+                  <FileDown size={11} className="text-gpssa-green" />
+                  Last run · {lastScrapeResult.pages} pages · {new Date(lastScrapeResult.ts).toLocaleString()}
+                </span>
+              )}
+              {scrapeStatus && !lastScrapeResult && <span>{scrapeStatus}</span>}
+              {scrapeStatus && lastScrapeResult && <span className="text-cream/60">{scrapeStatus}</span>}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleScrapeGpssa}
+            loading={scrapeBusy}
+            disabled={scrapeBusy}
+            className="shrink-0"
+          >
+            <Globe size={14} />
+            Scrape now
           </Button>
         </div>
       </div>

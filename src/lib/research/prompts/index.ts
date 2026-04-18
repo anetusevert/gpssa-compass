@@ -1,4 +1,5 @@
 import type { PromptModule, ScreenType } from "../types";
+import { mandateCorpusPrompt } from "./mandate-corpus";
 import { atlasWorldmapPrompt } from "./atlas-worldmap";
 import { atlasSystemPrompt } from "./atlas-system";
 import { atlasPerformancePrompt } from "./atlas-performance";
@@ -16,8 +17,10 @@ import { intlServicesChannelsPrompt } from "./intl-services-channels";
 import { intlProductsPortfolioPrompt } from "./intl-products-portfolio";
 import { intlProductsSegmentsPrompt } from "./intl-products-segments";
 import { iloStandardsPrompt } from "./ilo-standards";
+import { standardsAuditorPrompt } from "./standards-auditor";
 
 export const PROMPT_MODULES: Partial<Record<ScreenType, PromptModule>> = {
+  "mandate-corpus": mandateCorpusPrompt,
   "atlas-worldmap": atlasWorldmapPrompt,
   "atlas-system": atlasSystemPrompt,
   "atlas-performance": atlasPerformancePrompt,
@@ -35,4 +38,5 @@ export const PROMPT_MODULES: Partial<Record<ScreenType, PromptModule>> = {
   "intl-products-portfolio": intlProductsPortfolioPrompt,
   "intl-products-segments": intlProductsSegmentsPrompt,
   "ilo-standards": iloStandardsPrompt,
+  "standards-auditor": standardsAuditorPrompt,
 };

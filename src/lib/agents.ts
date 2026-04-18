@@ -14,6 +14,24 @@ export interface DefaultAgent {
 }
 
 export const DEFAULT_AGENTS: DefaultAgent[] = [
+  // ── Mandate Pillar ──
+
+  {
+    id: "mandate-corpus",
+    name: "GPSSA Mandate Corpus Agent",
+    description:
+      "Reads scraped GPSSA pages (laws, regulations, circulars, policies, governance, news) and extracts a structured legal corpus: Standards, Requirements (with plain-English explainers), historical Milestones, and the obligation links that bridge each statutory article to existing GPSSA services / products / channels / segments / personas.",
+    targetScreen: "mandate-corpus",
+    researchType: "mandate-corpus",
+    systemPrompt: "USE_CANONICAL_PROMPT",
+    userPromptTemplate: "Structure the following GPSSA source page: {ITEMS}",
+    model: "gpt-4o",
+    maxTokens: 16384,
+    temperature: 0.1,
+    sortOrder: 0,
+    isActive: true,
+  },
+
   // ── Atlas Pillar ──
 
   {

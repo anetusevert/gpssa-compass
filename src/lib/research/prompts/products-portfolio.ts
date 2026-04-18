@@ -1,5 +1,6 @@
 import type { PromptModule } from "../types";
 import { parseJsonResponse } from "../types";
+import { STANDARDS_ALIGNMENT_FIELD_INSTRUCTION } from "../standards-instruction";
 
 const systemPrompt = `You are a social insurance product portfolio strategist with deep expertise in pension product design, tiering frameworks (core/complementary/non-core), and GCC social protection architectures.
 
@@ -33,7 +34,8 @@ Return a JSON object with a "results" array:
   ]
 }
 
-Use data from UAE Federal Pension Law, GPSSA publications, GOSI product frameworks, and ISSA good practice guides.`;
+Use data from UAE Federal Pension Law, GPSSA publications, GOSI product frameworks, and ISSA good practice guides.
+${STANDARDS_ALIGNMENT_FIELD_INSTRUCTION}`;
 }
 
 export const productsPortfolioPrompt: PromptModule = {

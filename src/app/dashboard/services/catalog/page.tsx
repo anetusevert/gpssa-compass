@@ -1,39 +1,62 @@
 "use client";
 
+/**
+ * Service Catalog — 3-Act Cinematic Redesign
+ *
+ *   ACT I  — Constellation : a visually striking entry screen showing every
+ *            ILO-aligned service function as a glowing tile, animated in.
+ *            User picks a function (or audience) to drill into.
+ *
+ *   ACT II — Spine          : the chosen function's GPSSA services rendered
+ *            as a vertical "spine" with rich detail cards. Click a card →
+ *            full modal with the existing analysis library.
+ *
+ *   ACT III— Benchmark      : overlay a Comparator (Standard / Computed
+ *            Reference / Country) and watch the radar + dial morph in.
+ */
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
-  Layers,
   AlertTriangle,
   Lightbulb,
   Sparkles,
-  FolderOpen,
-  Users,
-  Briefcase,
-  Shield,
-  UserCheck,
+  Layers,
   Globe2,
-  Sword,
-  FileText,
   Scale,
-  List,
-  BarChart3,
-  Radar,
-  ArrowLeftRight,
+  ArrowRight,
+  ArrowLeft,
+  ChevronRight,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { CountrySelector } from "@/components/comparison/CountrySelector";
-import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
-import { COUNTRIES } from "@/lib/countries/catalog";
 import { CountryFlag } from "@/components/ui/CountryFlag";
+import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
+import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
+
+import {
+  SERVICE_FUNCTIONS,
+  SERVICE_AUDIENCES,
+  resolveCategory,
+  type ServiceFunction,
+  type ServiceAudience,
+} from "@/lib/taxonomy";
+
+import { ComparatorPicker } from "@/components/comparator/ComparatorPicker";
+import { ComplianceDial } from "@/components/comparator/ComplianceDial";
+import { RangeBandRadar } from "@/components/comparator/RangeBandRadar";
+import { useComparators } from "@/lib/comparator/hooks";
+import type { ComparatorOption, ComparatorMetric } from "@/lib/comparator/types";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Types
    ═══════════════════════════════════════════════════════════════════════════ */
+
 interface GPSSAService {
   id: string;
   name: string;
@@ -73,85 +96,12 @@ interface IntlService {
   institution: { id: string; name: string; shortName: string | null; country: string } | null;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Constants
-   ═══════════════════════════════════════════════════════════════════════════ */
-const CATEGORIES = [
-  "Employer", "Insured", "Beneficiary", "Agent/Guardian", "GCC", "Military", "General",
-  "Registration", "Contributions", "Pensions", "Benefits", "Digital", "Complaints", "Certificates",
-] as const;
-type Category = (typeof CATEGORIES)[number];
-
-const categoryConfig: Record<string, { icon: typeof Layers; color: "green" | "blue" | "gold" | "gray" | "red"; accent: string; bg: string }> = {
-  Employer:        { icon: Briefcase, color: "blue",  accent: "border-adl-blue/40",       bg: "bg-adl-blue/[0.08]" },
-  Insured:         { icon: Shield,    color: "green", accent: "border-gpssa-green/40",     bg: "bg-gpssa-green/[0.08]" },
-  Beneficiary:     { icon: UserCheck, color: "gold",  accent: "border-gold/40",            bg: "bg-gold/[0.08]" },
-  "Agent/Guardian": { icon: Users,    color: "gray",  accent: "border-gray-muted/40",      bg: "bg-gray-muted/[0.08]" },
-  GCC:             { icon: Globe2,    color: "blue",  accent: "border-adl-blue/40",        bg: "bg-adl-blue/[0.08]" },
-  Military:        { icon: Sword,     color: "red",   accent: "border-red-400/40",         bg: "bg-red-400/[0.08]" },
-  General:         { icon: FileText,  color: "green", accent: "border-gpssa-green/40",     bg: "bg-gpssa-green/[0.08]" },
-  Registration:    { icon: Users,     color: "blue",  accent: "border-adl-blue/40",        bg: "bg-adl-blue/[0.08]" },
-  Contributions:   { icon: Briefcase, color: "gold",  accent: "border-gold/40",            bg: "bg-gold/[0.08]" },
-  Pensions:        { icon: Shield,    color: "green", accent: "border-gpssa-green/40",     bg: "bg-gpssa-green/[0.08]" },
-  Benefits:        { icon: UserCheck, color: "gold",  accent: "border-gold/40",            bg: "bg-gold/[0.08]" },
-  Digital:         { icon: Sparkles,  color: "blue",  accent: "border-adl-blue/40",        bg: "bg-adl-blue/[0.08]" },
-  Complaints:      { icon: AlertTriangle, color: "red", accent: "border-red-400/40",       bg: "bg-red-400/[0.08]" },
-  Certificates:    { icon: FileText,  color: "green", accent: "border-gpssa-green/40",     bg: "bg-gpssa-green/[0.08]" },
-};
-
-const CAT_GLOW: Record<string, string> = {
-  Employer:         "shadow-adl-blue/20",
-  Insured:          "shadow-gpssa-green/20",
-  Beneficiary:      "shadow-gold/20",
-  "Agent/Guardian":  "shadow-gray-muted/20",
-  GCC:              "shadow-adl-blue/20",
-  Military:         "shadow-red-400/20",
-  General:          "shadow-gpssa-green/20",
-};
-
-const COUNTRY_COLORS = ["#22C55E", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
-
-const STATIC_EXTRA: Pick<GPSSAService, "digitalReadiness" | "maturityLevel" | "bestPracticeComparison" | "strengths" | "iloAlignment"> = { digitalReadiness: null, maturityLevel: null, bestPracticeComparison: null, strengths: null, iloAlignment: null };
-
-const STATIC_SERVICES: GPSSAService[] = [
-  { id: "s-01", name: "Registration of an Insured", category: "Employer", description: "Register new insured individuals under an employer's account with GPSSA.", userTypes: ["Employer", "HR"], currentState: "Semi-digital process with paper-based document submission.", painPoints: ["Manual document verification", "Long processing times", "Duplicate entry risks"], opportunities: ["Digital onboarding portal", "AI document verification", "Real-time validation"], ...STATIC_EXTRA },
-  { id: "s-02", name: "Employers Registration", category: "Employer", description: "Register new employers with GPSSA for pension and social security contributions.", userTypes: ["Employer"], currentState: "Partially online with in-person verification required.", painPoints: ["Complex registration forms", "Multiple visits required", "Inconsistent processing"], opportunities: ["End-to-end digital registration", "eKYC integration", "Automated compliance checks"] },
-  { id: "s-03", name: "Apply for End Of Service - Civil", category: "Employer", description: "Process end-of-service benefits for civil sector employees.", userTypes: ["Employer", "HR"], currentState: "Manual calculation with multi-step approval workflow.", painPoints: ["Complex benefit calculations", "Delayed payments", "Paper-heavy process"], opportunities: ["Automated benefit calculator", "Digital approval workflow", "Direct bank transfers"] },
-  { id: "s-04", name: "Benefit Exchange - Inward", category: "Employer", description: "Handle incoming benefit transfers from other pension authorities.", userTypes: ["Employer", "Insured"], currentState: "Manual inter-authority coordination.", painPoints: ["Slow inter-authority communication", "Data reconciliation issues", "Lack of transparency"], opportunities: ["API integration with GCC authorities", "Blockchain-based verification", "Real-time tracking"] },
-  { id: "s-05", name: "Benefit Exchange - Outward", category: "Employer", description: "Process outgoing benefit transfers to other pension authorities.", userTypes: ["Employer", "Insured"], currentState: "Paper-based with manual tracking.", painPoints: ["Long transfer timelines", "Documentation overhead", "Status uncertainty"], opportunities: ["Digital transfer protocols", "Automated documentation", "Cross-border digital identity"] },
-  { id: "s-06", name: "Service Awareness Request", category: "Employer", description: "Handle employer requests for information about GPSSA services and obligations.", userTypes: ["Employer", "HR"], currentState: "Call center and email-based inquiries.", painPoints: ["High call volumes", "Inconsistent information", "No self-service"], opportunities: ["AI chatbot", "Knowledge base portal", "Personalized employer dashboards"] },
-  { id: "s-07", name: "Work Fitness Assessment", category: "Employer", description: "Assess work fitness for insured individuals returning from medical leave.", userTypes: ["Employer", "Medical"], currentState: "Manual assessment with physical report submission.", painPoints: ["Scheduling delays", "Paper medical reports", "Subjective assessments"], opportunities: ["Digital health record integration", "Telemedicine options", "Standardized assessment tools"] },
-  { id: "s-08", name: "Employer DeRegistration", category: "Employer", description: "Process the deregistration of employers from GPSSA.", userTypes: ["Employer"], currentState: "Multi-step manual process requiring clearance.", painPoints: ["Complex clearance requirements", "Outstanding balance issues", "Long processing time"], opportunities: ["Digital clearance workflow", "Automated balance reconciliation", "Exit process automation"] },
-  { id: "s-09", name: "Workplace Injury Compensation", category: "Employer", description: "Process compensation claims for workplace injuries.", userTypes: ["Employer", "Insured"], currentState: "Paper-based claims with manual medical review.", painPoints: ["Slow claims processing", "Fragmented medical records", "Dispute resolution delays"], opportunities: ["Digital claims portal", "Integrated medical records", "AI-assisted assessment"] },
-  { id: "s-10", name: "Merge Service Period - Civil", category: "Insured", description: "Merge service periods from multiple employers for civil sector workers.", userTypes: ["Insured"], currentState: "Complex manual process requiring documentation from multiple employers.", painPoints: ["Multiple employer coordination", "Document gathering burden", "Calculation complexity"], opportunities: ["Automated service period reconciliation", "Digital employer verification", "Self-service portal"] },
-  { id: "s-11", name: "Purchase of Service Years", category: "Insured", description: "Allow insured individuals to purchase additional service years for pension benefits.", userTypes: ["Insured"], currentState: "In-person application with manual actuarial calculations.", painPoints: ["Complex cost calculations", "Limited payment options", "Lengthy approval process"], opportunities: ["Online purchase portal", "Instant cost calculator", "Flexible payment plans"] },
-  { id: "s-12", name: "Cancel Merge/Purchase Payments", category: "Insured", description: "Process cancellation of previously arranged merge or purchase payment plans.", userTypes: ["Insured"], currentState: "Manual cancellation requiring multiple approvals.", painPoints: ["Refund delays", "Complex reversal calculations", "Lack of self-service"], opportunities: ["Self-service cancellation", "Automated refund processing", "Real-time balance updates"] },
-  { id: "s-13", name: "Pension Advisory Service", category: "Insured", description: "Provide personalized pension planning advice to insured individuals.", userTypes: ["Insured"], currentState: "Limited in-person advisory with long wait times.", painPoints: ["Limited advisor availability", "Generic advice", "No digital tools"], opportunities: ["AI-powered pension simulator", "Digital advisory platform", "Personalized recommendations"] },
-  { id: "s-14", name: "Update Payment Schedule", category: "Insured", description: "Modify existing payment schedules for service purchases or contributions.", userTypes: ["Insured"], currentState: "Requires in-person visit for schedule changes.", painPoints: ["No online modification", "Rigid schedule options", "Processing delays"], opportunities: ["Self-service schedule management", "Flexible payment options", "Automated reminders"] },
-  { id: "s-15", name: "Change Payment Method", category: "Insured", description: "Allow insured individuals to change their payment method for contributions.", userTypes: ["Insured"], currentState: "Paper form submission with bank verification.", painPoints: ["Manual bank verification", "Form processing delays", "Limited payment methods"], opportunities: ["Digital payment integration", "Multiple payment gateways", "Instant verification"] },
-  { id: "s-16", name: "Shourak Payment", category: "Insured", description: "Process Shourak (voluntary contribution) payments for pension enhancement.", userTypes: ["Insured"], currentState: "Semi-digital with manual reconciliation.", painPoints: ["Limited awareness", "Manual tracking", "Reconciliation errors"], opportunities: ["Integrated digital payments", "Automated reconciliation", "Contribution tracking dashboard"] },
-  { id: "s-17", name: "Beneficiary Registration", category: "Beneficiary", description: "Register beneficiaries to receive pension benefits from a deceased or retired insured person.", userTypes: ["Beneficiary", "Family"], currentState: "Paper-based registration with extensive documentation.", painPoints: ["Emotional process burden", "Extensive documentation", "Long verification times"], opportunities: ["Compassionate digital process", "Pre-registration options", "Simplified verification"] },
-  { id: "s-18", name: "Pension Entitlement Update", category: "Beneficiary", description: "Update pension entitlement details for registered beneficiaries.", userTypes: ["Beneficiary"], currentState: "Manual update process requiring supporting documents.", painPoints: ["Repeated document submission", "Slow updates", "Unclear eligibility rules"], opportunities: ["Self-service updates", "Document reuse", "Clear eligibility calculator"] },
-  { id: "s-19", name: "Report a Death", category: "Beneficiary", description: "Report the death of an insured person or beneficiary to initiate benefit transfers.", userTypes: ["Beneficiary", "Family"], currentState: "In-person reporting with death certificate submission.", painPoints: ["Sensitive timing", "Multiple office visits", "Delayed benefit activation"], opportunities: ["Digital reporting with gov integration", "Automated benefit activation", "Proactive family support"] },
-  { id: "s-20", name: "Agent Enrollment", category: "Agent/Guardian", description: "Enroll authorized agents to act on behalf of insured individuals or employers.", userTypes: ["Agent"], currentState: "Paper-based authorization with notarization.", painPoints: ["Notarization requirements", "Limited agent portal", "Authorization verification delays"], opportunities: ["Digital power of attorney", "Agent self-service portal", "Real-time authorization"] },
-  { id: "s-21", name: "Guardian Enrollment", category: "Agent/Guardian", description: "Enroll legal guardians to manage pension affairs for minors or incapacitated beneficiaries.", userTypes: ["Guardian", "Family"], currentState: "Court document-based enrollment.", painPoints: ["Court document processing", "Complex eligibility verification", "Limited digital access"], opportunities: ["Digital court integration", "Simplified guardian portal", "Automated eligibility checks"] },
-  { id: "s-22", name: "Caretaker Enrollment", category: "Agent/Guardian", description: "Enroll caretakers for beneficiaries requiring assisted management.", userTypes: ["Caretaker", "Family"], currentState: "Manual enrollment with medical certification.", painPoints: ["Medical certification overhead", "Renewal complexity", "Lack of tracking"], opportunities: ["Digital medical integration", "Automated renewals", "Caretaker dashboard"] },
-  { id: "s-23", name: "Registration of GCC Nationals", category: "GCC", description: "Register GCC nationals working in the UAE for pension benefits.", userTypes: ["Employer", "GCC National"], currentState: "Inter-country coordination with manual data exchange.", painPoints: ["Cross-border data exchange", "Inconsistent processes", "Long registration times"], opportunities: ["GCC-wide digital identity", "API-based data exchange", "Unified registration portal"] },
-  { id: "s-24", name: "Registration of UAE Nationals in GCC", category: "GCC", description: "Register UAE nationals working in GCC countries for benefit coordination.", userTypes: ["UAE National", "Employer"], currentState: "Manual coordination with GCC pension authorities.", painPoints: ["Multiple authority coordination", "Documentation burden", "Status tracking difficulty"], opportunities: ["Bilateral digital agreements", "Automated status sync", "Cross-border portal"] },
-  { id: "s-25", name: "End of Service of GCC Nationals", category: "GCC", description: "Process end-of-service benefits for GCC nationals in the UAE.", userTypes: ["GCC National", "Employer"], currentState: "Complex cross-border settlement process.", painPoints: ["Multi-currency settlements", "Lengthy processing", "Regulatory complexity"], opportunities: ["Automated settlement engine", "Real-time currency conversion", "Digital compliance checks"] },
-  { id: "s-26", name: "End of Service for UAE Nationals in GCC", category: "GCC", description: "Process end-of-service benefits for UAE nationals working in GCC countries.", userTypes: ["UAE National"], currentState: "Manual benefit calculation with inter-country coordination.", painPoints: ["Benefit portability issues", "Calculation discrepancies", "Communication gaps"], opportunities: ["Portable benefit framework", "Unified calculation engine", "Digital liaison platform"] },
-  { id: "s-27", name: "Apply for End Of Service - Military", category: "Military", description: "Process end-of-service benefits for military sector personnel.", userTypes: ["Military Personnel", "MOD"], currentState: "Classified process with specialized handling.", painPoints: ["Security clearance requirements", "Specialized calculations", "Limited transparency"], opportunities: ["Secure digital processing", "Role-based access controls", "Encrypted benefit calculations"] },
-  { id: "s-28", name: "Merge Service Period - Military", category: "Military", description: "Merge military service periods with civil service for comprehensive benefit calculation.", userTypes: ["Military Personnel"], currentState: "Cross-sector manual coordination.", painPoints: ["Inter-sector data silos", "Complex eligibility rules", "Manual reconciliation"], opportunities: ["Cross-sector data integration", "Automated eligibility engine", "Unified service record"] },
-  { id: "s-29", name: "Generate Certificates", category: "General", description: "Generate various certificates including service certificates, pension certificates, and salary certificates.", userTypes: ["Insured", "Employer", "Beneficiary"], currentState: "Semi-digital with manual approval steps.", painPoints: ["Approval bottlenecks", "Format inconsistencies", "No instant generation"], opportunities: ["Instant digital certificate generation", "QR code verification", "API for third-party verification"] },
-  { id: "s-30", name: "Submit Complaint", category: "General", description: "Submit and track complaints about GPSSA services.", userTypes: ["Insured", "Employer", "Beneficiary"], currentState: "Multi-channel submission with manual routing.", painPoints: ["Inconsistent routing", "Slow resolution", "Poor tracking"], opportunities: ["AI-powered routing", "Sentiment analysis", "SLA tracking dashboard"] },
-  { id: "s-31", name: "Submit Inquiry / Suggestion", category: "General", description: "Submit inquiries or suggestions for GPSSA service improvements.", userTypes: ["Insured", "Employer", "Beneficiary"], currentState: "Email and call-based with limited tracking.", painPoints: ["No structured tracking", "Feedback black hole", "Limited follow-up"], opportunities: ["Feedback management platform", "Idea voting system", "Automated acknowledgment"] },
-].map((s) => ({ ...STATIC_EXTRA, ...s }));
-
-type VizMode = "list" | "bar" | "radar";
+type Act = "constellation" | "spine" | "benchmark";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Helpers
    ═══════════════════════════════════════════════════════════════════════════ */
+
 function parseJsonField<T>(val: unknown): T | null {
   if (val == null) return null;
   if (Array.isArray(val)) return val as T;
@@ -159,326 +109,421 @@ function parseJsonField<T>(val: unknown): T | null {
   return val as T;
 }
 
-function getCfg(cat: string) {
-  return categoryConfig[cat as Category] ?? { icon: Layers, color: "gray" as const, accent: "border-white/10", bg: "bg-white/[0.04]" };
+const MATURITY_TO_SCORE: Record<string, number> = {
+  Leader: 90,
+  Advanced: 80,
+  "AI-Integrated": 95,
+  "Digital-First": 85,
+  Established: 70,
+  "Digital-Enabled": 65,
+  Developing: 55,
+  Partial: 50,
+  "Partially Digital": 50,
+  "Basic Digital": 40,
+  Transitioning: 35,
+  Emerging: 30,
+  Traditional: 25,
+  Manual: 15,
+};
+
+function maturityToScore(level: string | null | undefined): number {
+  if (!level) return 0;
+  return MATURITY_TO_SCORE[level] ?? 50;
+}
+
+function svcScore(svc: GPSSAService): number {
+  if (svc.digitalReadiness != null) return svc.digitalReadiness;
+  return maturityToScore(svc.maturityLevel);
+}
+
+function intlSvcScore(svc: IntlService): number {
+  if (svc.digitalReadiness != null) return svc.digitalReadiness;
+  return maturityToScore(svc.maturityLevel);
+}
+
+function bandFor(score: number): string {
+  if (score >= 85) return "World-class";
+  if (score >= 70) return "Above floor";
+  if (score >= 55) return "At floor";
+  if (score >= 40) return "Approaching";
+  return "Below floor";
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Inline sub-components
+   Static seed (first paint before /api/services lands)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function CategoryTile({ cat, count, isActive, onClick }: { cat: string; count: number; isActive: boolean; onClick: () => void }) {
-  const cfg = getCfg(cat);
-  const Icon = cfg.icon;
+const STATIC_EXTRA: Pick<GPSSAService, "digitalReadiness" | "maturityLevel" | "bestPracticeComparison" | "strengths" | "iloAlignment"> = {
+  digitalReadiness: null, maturityLevel: null, bestPracticeComparison: null, strengths: null, iloAlignment: null,
+};
+
+const STATIC_SERVICES: GPSSAService[] = [
+  { id: "s-01", name: "Registration of an Insured", category: "Employer", description: "Register new insured individuals under an employer's account with GPSSA.", userTypes: ["Employer", "HR"], currentState: "Semi-digital with paper-based document submission.", painPoints: ["Manual document verification", "Long processing times"], opportunities: ["Digital onboarding portal", "AI document verification"], ...STATIC_EXTRA },
+  { id: "s-02", name: "Employers Registration", category: "Employer", description: "Register new employers with GPSSA for pension and social security contributions.", userTypes: ["Employer"], currentState: "Partially online with in-person verification required.", painPoints: ["Complex registration forms", "Multiple visits required"], opportunities: ["End-to-end digital registration", "eKYC integration"], ...STATIC_EXTRA },
+  { id: "s-03", name: "Apply for End Of Service - Civil", category: "Employer", description: "Process end-of-service benefits for civil sector employees.", userTypes: ["Employer", "HR"], currentState: "Manual calculation with multi-step approval workflow.", painPoints: ["Complex benefit calculations", "Delayed payments"], opportunities: ["Automated benefit calculator", "Digital approval workflow"], ...STATIC_EXTRA },
+  { id: "s-09", name: "Workplace Injury Compensation", category: "Employer", description: "Process compensation claims for workplace injuries.", userTypes: ["Employer", "Insured"], currentState: "Paper-based claims with manual medical review.", painPoints: ["Slow claims processing", "Fragmented medical records"], opportunities: ["Digital claims portal", "Integrated medical records"], ...STATIC_EXTRA },
+  { id: "s-13", name: "Pension Advisory Service", category: "Insured", description: "Provide personalized pension planning advice to insured individuals.", userTypes: ["Insured"], currentState: "Limited in-person advisory with long wait times.", painPoints: ["Limited advisor availability", "Generic advice"], opportunities: ["AI-powered pension simulator", "Digital advisory platform"], ...STATIC_EXTRA },
+  { id: "s-17", name: "Beneficiary Registration", category: "Beneficiary", description: "Register beneficiaries to receive pension benefits.", userTypes: ["Beneficiary", "Family"], currentState: "Paper-based registration with extensive documentation.", painPoints: ["Emotional process burden", "Extensive documentation"], opportunities: ["Compassionate digital process", "Pre-registration options"], ...STATIC_EXTRA },
+  { id: "s-19", name: "Report a Death", category: "Beneficiary", description: "Report the death of an insured person or beneficiary.", userTypes: ["Beneficiary", "Family"], currentState: "In-person reporting with death certificate submission.", painPoints: ["Sensitive timing", "Multiple office visits"], opportunities: ["Digital reporting with gov integration", "Automated benefit activation"], ...STATIC_EXTRA },
+  { id: "s-23", name: "Registration of GCC Nationals", category: "GCC", description: "Register GCC nationals working in the UAE for pension benefits.", userTypes: ["Employer", "GCC National"], currentState: "Inter-country coordination with manual data exchange.", painPoints: ["Cross-border data exchange", "Inconsistent processes"], opportunities: ["GCC-wide digital identity", "API-based data exchange"], ...STATIC_EXTRA },
+  { id: "s-27", name: "Apply for End Of Service - Military", category: "Military", description: "Process end-of-service benefits for military sector personnel.", userTypes: ["Military Personnel", "MOD"], currentState: "Classified process with specialized handling.", painPoints: ["Security clearance requirements", "Specialized calculations"], opportunities: ["Secure digital processing", "Role-based access controls"], ...STATIC_EXTRA },
+  { id: "s-29", name: "Generate Certificates", category: "General", description: "Generate various certificates including service, pension, and salary.", userTypes: ["Insured", "Employer", "Beneficiary"], currentState: "Semi-digital with manual approval steps.", painPoints: ["Approval bottlenecks", "Format inconsistencies"], opportunities: ["Instant digital certificate generation", "QR code verification"], ...STATIC_EXTRA },
+  { id: "s-30", name: "Submit Complaint", category: "General", description: "Submit and track complaints about GPSSA services.", userTypes: ["Insured", "Employer", "Beneficiary"], currentState: "Multi-channel submission with manual routing.", painPoints: ["Inconsistent routing", "Slow resolution"], opportunities: ["AI-powered routing", "Sentiment analysis"], ...STATIC_EXTRA },
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACT I — Constellation
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+interface FunctionStats {
+  fn: ServiceFunction;
+  count: number;
+  avgScore: number;
+  pains: number;
+  opps: number;
+}
+
+function ConstellationCard({ stat, onPick, index }: { stat: FunctionStats; onPick: () => void; index: number }) {
+  const score = stat.avgScore;
   return (
     <motion.button
-      onClick={onClick}
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-      className={`relative flex flex-col items-start p-3.5 rounded-xl border backdrop-blur-sm transition-all text-left ${
-        isActive
-          ? `${cfg.bg} ${cfg.accent} border-2 shadow-lg ${CAT_GLOW[cat] ?? ""}`
-          : "bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.14]"
-      }`}
+      onClick={onPick}
+      initial={{ opacity: 0, y: 18, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.45, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.2 } }}
+      whileTap={{ scale: 0.98 }}
+      className="group relative text-left rounded-2xl p-4 overflow-hidden transition-shadow"
+      style={{
+        background: `linear-gradient(135deg, ${stat.fn.color}1c 0%, rgba(11,18,32,0.6) 60%)`,
+        border: `1px solid ${stat.fn.color}33`,
+        boxShadow: `0 0 0 0 ${stat.fn.color}00`,
+      }}
     >
-      <div className={`p-2 rounded-lg mb-2 ${isActive ? cfg.bg : "bg-white/[0.05]"}`}>
-        <Icon size={16} className={isActive ? "text-cream" : "text-gray-muted"} />
+      {/* glow halo */}
+      <div
+        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-25 group-hover:opacity-50 transition-opacity"
+        style={{ background: `radial-gradient(circle, ${stat.fn.color}cc, transparent 70%)` }}
+      />
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <span
+            className="inline-flex items-center justify-center w-8 h-8 rounded-lg"
+            style={{ backgroundColor: `${stat.fn.color}25` }}
+          >
+            <Layers size={14} style={{ color: stat.fn.color }} />
+          </span>
+          <span className="text-[10px] tabular-nums font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${stat.fn.color}22`, color: stat.fn.color }}>
+            {stat.count}
+          </span>
+        </div>
+        <h3 className="text-sm font-semibold text-cream mb-0.5 leading-tight">{stat.fn.shortLabel}</h3>
+        <p className="text-[10px] text-gray-muted/90 leading-snug line-clamp-2 mb-3">{stat.fn.description}</p>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-12 h-1 rounded-full overflow-hidden bg-white/[0.06]">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ backgroundColor: stat.fn.color }}
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.max(2, score)}%` }}
+                transition={{ duration: 0.8, delay: 0.2 + index * 0.04 }}
+              />
+            </div>
+            <span className="text-[10px] tabular-nums text-cream/80">{Math.round(score)}</span>
+          </div>
+          <ArrowRight size={12} className="text-gray-muted group-hover:text-cream group-hover:translate-x-1 transition-transform" />
+        </div>
+
+        {stat.fn.iloReference && (
+          <div className="mt-2 pt-2 border-t border-white/[0.05] flex items-center gap-1">
+            <Scale size={9} className="text-gold/80" />
+            <span className="text-[9px] text-gold/80 truncate">{stat.fn.iloReference}</span>
+          </div>
+        )}
       </div>
-      <span className={`text-xs font-semibold leading-tight ${isActive ? "text-cream" : "text-cream/80"}`}>{cat}</span>
-      <span className="text-[10px] text-gray-muted mt-0.5">{count} service{count !== 1 ? "s" : ""}</span>
-      {isActive && (
-        <motion.div
-          layoutId="catIndicator"
-          className={`absolute -right-px top-3 bottom-3 w-[3px] rounded-full ${cfg.bg.replace("/[0.08]", "")}`}
-          transition={{ type: "spring", stiffness: 500, damping: 35 }}
-        />
-      )}
     </motion.button>
   );
 }
 
-function ServiceDetailCard({ svc, onOpen }: { svc: GPSSAService; onOpen: () => void }) {
-  const cfg = getCfg(svc.category);
-  const pains = svc.painPoints ?? [];
-  const opps = svc.opportunities ?? [];
+function AudienceChip({ aud, count, active, onClick }: { aud: ServiceAudience; count: number; active: boolean; onClick: () => void }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.2 }}
-      onClick={onOpen}
-      className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 hover:bg-white/[0.05] hover:border-white/[0.12] transition-all cursor-pointer group"
-    >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="text-xs font-semibold text-cream group-hover:text-white leading-snug">{svc.name}</h3>
-        <Badge variant={cfg.color} size="sm">{svc.category}</Badge>
-      </div>
-      {svc.description && <p className="text-[10px] text-gray-muted leading-relaxed mb-2.5 line-clamp-2">{svc.description}</p>}
-      {svc.currentState && (
-        <p className="text-[10px] text-gray-muted/70 italic mb-2.5 line-clamp-1">{svc.currentState}</p>
-      )}
-      <div className="flex flex-wrap gap-1 mb-2">
-        {pains.slice(0, 2).map((p, i) => <Badge key={i} variant="red" size="sm">{p}</Badge>)}
-        {pains.length > 2 && <Badge variant="red" size="sm">+{pains.length - 2}</Badge>}
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {opps.slice(0, 2).map((o, i) => <Badge key={i} variant="green" size="sm">{o}</Badge>)}
-        {opps.length > 2 && <Badge variant="green" size="sm">+{opps.length - 2}</Badge>}
-      </div>
-      {svc.userTypes && svc.userTypes.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t border-white/[0.04]">
-          {svc.userTypes.map((ut) => <span key={ut} className="text-[9px] text-gray-muted bg-white/[0.04] px-1.5 py-0.5 rounded">{ut}</span>)}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-function ComparisonCategoryRow({
-  cat, gpssaCount, intlCounts, maxCount, isActive, onClick,
-}: {
-  cat: string; gpssaCount: number; intlCounts: { iso3: string; count: number; color: string }[];
-  maxCount: number; isActive: boolean; onClick: () => void;
-}) {
-  const cfg = getCfg(cat);
-  const Icon = cfg.icon;
-  return (
-    <button
+    <motion.button
       onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-left ${
-        isActive
-          ? `${cfg.bg} border border-l-2 ${cfg.accent}`
-          : "hover:bg-white/[0.04] border border-transparent"
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[10px] font-medium transition-all ${
+        active
+          ? "bg-gpssa-green/15 border-gpssa-green/40 text-cream"
+          : "bg-white/[0.03] border-white/[0.08] text-cream/80 hover:bg-white/[0.07] hover:text-cream"
       }`}
     >
-      <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? cfg.bg : "bg-white/[0.04]"}`}>
-        <Icon size={13} className={isActive ? "text-cream" : "text-gray-muted"} />
+      {aud.shortLabel}
+      <span className="text-[9px] text-gray-muted tabular-nums">{count}</span>
+    </motion.button>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACT II — Spine card
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function SpineCard({ svc, color, index, onOpen }: { svc: GPSSAService; color: string; index: number; onOpen: () => void }) {
+  const score = svcScore(svc);
+  return (
+    <motion.button
+      onClick={onOpen}
+      initial={{ opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.35, delay: index * 0.03 }}
+      whileHover={{ x: 4 }}
+      className="w-full text-left rounded-xl bg-white/[0.03] border border-white/[0.07] p-3.5 hover:bg-white/[0.06] hover:border-white/[0.14] transition-all group relative overflow-hidden"
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ backgroundColor: color }} />
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <h3 className="text-xs font-semibold text-cream leading-snug pr-2">{svc.name}</h3>
+        <span className="text-[9px] tabular-nums font-semibold px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: `${color}22`, color }}>
+          {Math.round(score)}
+        </span>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className={`text-[11px] font-medium ${isActive ? "text-cream" : "text-cream/70"}`}>{cat}</p>
-        <div className="flex items-center gap-1 mt-1 h-2">
-          <div className="flex-1 flex gap-px h-full rounded-sm overflow-hidden bg-white/[0.04]">
-            <motion.div
-              className="h-full bg-gpssa-green/70 rounded-l-sm"
-              initial={{ width: 0 }}
-              animate={{ width: maxCount > 0 ? `${(gpssaCount / maxCount) * 100}%` : "0%" }}
-              transition={{ duration: 0.4 }}
+      {svc.description && <p className="text-[10px] text-gray-muted leading-relaxed mb-2 line-clamp-2">{svc.description}</p>}
+      <div className="flex flex-wrap gap-1">
+        {(svc.painPoints ?? []).slice(0, 2).map((p, i) => (
+          <Badge key={`p-${i}`} variant="red" size="sm">{p}</Badge>
+        ))}
+        {(svc.opportunities ?? []).slice(0, 2).map((o, i) => (
+          <Badge key={`o-${i}`} variant="green" size="sm">{o}</Badge>
+        ))}
+      </div>
+      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <ChevronRight size={11} className="text-cream" />
+      </div>
+    </motion.button>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACT III — Benchmark
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+interface ReferenceMetricsBundle {
+  /** All metrics keyed by serviceFunction.slug */
+  byFunction: Map<string, { reference: number; min?: number; max?: number; label?: string }>;
+  /** Composite/headline score 0–100. */
+  headline: number;
+  /** Source label e.g. "ILO C102", "GCC Avg", "Singapore". */
+  label: string;
+  /** Color of the reference series. */
+  color: string;
+}
+
+function buildGpssaFunctionMetrics(services: GPSSAService[]): Map<string, { score: number; n: number }> {
+  const out = new Map<string, { score: number; n: number }>();
+  for (const fn of SERVICE_FUNCTIONS) out.set(fn.slug, { score: 0, n: 0 });
+  for (const svc of services) {
+    const cat = resolveCategory(svc.category);
+    if (cat?.kind !== "function") continue;
+    const cur = out.get(cat.entry.slug)!;
+    cur.score += svcScore(svc);
+    cur.n += 1;
+  }
+  return out;
+}
+
+function gpssaHeadline(services: GPSSAService[]): number {
+  const scores = services.map(svcScore).filter((s) => s > 0);
+  if (scores.length === 0) return 0;
+  return Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
+}
+
+interface BenchmarkPanelProps {
+  services: GPSSAService[];
+  intl: IntlService[];
+  comparator: ComparatorOption | null;
+  loading: boolean;
+}
+
+function BenchmarkPanel({ services, intl, comparator, loading }: BenchmarkPanelProps) {
+  const [bundle, setBundle] = useState<ReferenceMetricsBundle | null>(null);
+  const [bundleLoading, setBundleLoading] = useState(false);
+
+  const gpssaByFn = useMemo(() => buildGpssaFunctionMetrics(services), [services]);
+  const gpssaScore = useMemo(() => gpssaHeadline(services), [services]);
+
+  useEffect(() => {
+    if (!comparator) {
+      setBundle(null);
+      return;
+    }
+
+    let cancelled = false;
+    async function load() {
+      if (!comparator) return;
+      setBundleLoading(true);
+      try {
+        if (comparator.kind === "computed") {
+          const res = await fetch(`/api/references/computed/${comparator.id}`);
+          if (!res.ok) throw new Error("ref");
+          const data = await res.json();
+          const byFn = new Map<string, { reference: number; label?: string }>();
+          for (const fn of SERVICE_FUNCTIONS) {
+            const value = data.payload?.serviceMaturity?.[fn.label] ?? data.payload?.serviceMaturity?.[fn.shortLabel] ?? 0;
+            byFn.set(fn.slug, { reference: Number(value) || 0, label: comparator.shortLabel });
+          }
+          if (cancelled) return;
+          setBundle({
+            byFunction: byFn,
+            headline: data.payload?.metrics?.maturityScore ?? 0,
+            label: comparator.shortLabel,
+            color: comparator.color,
+          });
+        } else if (comparator.kind === "country") {
+          const intlForCountry = intl.filter((s) => s.countryIso3 === comparator.id);
+          const byFn = new Map<string, { reference: number; min?: number; max?: number; label?: string }>();
+          for (const fn of SERVICE_FUNCTIONS) {
+            const matches = intlForCountry.filter((s) => {
+              const cat = resolveCategory(s.category);
+              return cat?.kind === "function" && cat.entry.slug === fn.slug;
+            });
+            const scores = matches.map(intlSvcScore).filter((v) => v > 0);
+            const ref = scores.length > 0 ? scores.reduce((s, v) => s + v, 0) / scores.length : 0;
+            byFn.set(fn.slug, {
+              reference: ref,
+              min: scores.length > 0 ? Math.min(...scores) : undefined,
+              max: scores.length > 0 ? Math.max(...scores) : undefined,
+              label: comparator.shortLabel,
+            });
+          }
+          const head = Array.from(byFn.values()).map((v) => v.reference).filter((v) => v > 0);
+          if (cancelled) return;
+          setBundle({
+            byFunction: byFn,
+            headline: head.length === 0 ? 0 : Math.round(head.reduce((s, v) => s + v, 0) / head.length),
+            label: comparator.shortLabel,
+            color: comparator.color,
+          });
+        } else {
+          // standard
+          const res = await fetch(`/api/standards/${comparator.id}`);
+          if (!res.ok) throw new Error("std");
+          const std = await res.json();
+          const byFn = new Map<string, { reference: number; label?: string }>();
+          // For each canonical function, decide whether this standard covers it
+          // (any requirement.pillar containing the function or any function.standardSlugs containing this standard slug).
+          for (const fn of SERVICE_FUNCTIONS) {
+            const isCovered = fn.standardSlugs.includes(comparator.id);
+            const reference = isCovered ? 80 : 30; // Standard expectation: covered → high bar (80); not addressed → low bar (30)
+            byFn.set(fn.slug, { reference, label: comparator.shortLabel });
+          }
+          if (cancelled) return;
+          setBundle({
+            byFunction: byFn,
+            headline: 80,
+            label: comparator.shortLabel,
+            color: comparator.color,
+          });
+        }
+      } finally {
+        if (!cancelled) setBundleLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [comparator, intl]);
+
+  const metrics: ComparatorMetric[] = useMemo(() => {
+    return SERVICE_FUNCTIONS.map((fn) => {
+      const g = gpssaByFn.get(fn.slug);
+      const r = bundle?.byFunction.get(fn.slug);
+      const gAvg = g && g.n > 0 ? g.score / g.n : 0;
+      return {
+        label: fn.shortLabel,
+        key: fn.slug,
+        gpssa: Number(gAvg.toFixed(1)),
+        reference: Number((r?.reference ?? 0).toFixed(1)),
+        band: r?.min != null && r?.max != null ? { min: r.min, max: r.max } : undefined,
+        pillar: fn.iloReference,
+      };
+    });
+  }, [gpssaByFn, bundle]);
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-6 h-full overflow-y-auto pr-1">
+      <div className="space-y-4">
+        <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4">
+          <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-3">Composite</p>
+          <div className="flex justify-center">
+            <ComplianceDial
+              score={gpssaScore}
+              reference={comparator ? bundle?.headline ?? 0 : undefined}
+              label="GPSSA Service Maturity"
+              sublabel={comparator ? `vs ${comparator.shortLabel}` : "Pick a comparator →"}
+              size="md"
+              color="#22C55E"
+              band={bandFor(gpssaScore)}
             />
-            {intlCounts.map((ic) => (
-              <motion.div
-                key={ic.iso3}
-                className="h-full"
-                style={{ backgroundColor: ic.color + "99" }}
-                initial={{ width: 0 }}
-                animate={{ width: maxCount > 0 ? `${(ic.count / maxCount) * 100}%` : "0%" }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-              />
-            ))}
           </div>
-          <span className="text-[9px] text-gray-muted tabular-nums w-4 text-right">{gpssaCount}</span>
         </div>
-      </div>
-    </button>
-  );
-}
 
-function ComparisonListView({ gpssaServices, intlServices, countries }: {
-  gpssaServices: GPSSAService[]; intlServices: IntlService[]; countries: string[];
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-3 overflow-y-auto pr-1">
-      <div>
-        <div className="flex items-center gap-1.5 mb-2 sticky top-0 bg-navy/95 backdrop-blur-sm py-1 z-10">
-          <CountryFlag code="ARE" size="xs" />
-          <span className="text-[10px] font-semibold text-cream uppercase tracking-wider">GPSSA</span>
-          <span className="text-[9px] text-gray-muted ml-auto">{gpssaServices.length}</span>
-        </div>
-        <div className="space-y-1.5">
-          {gpssaServices.map((svc) => (
-            <div key={svc.id} className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5">
-              <p className="text-[11px] font-medium text-cream leading-snug">{svc.name}</p>
-              {svc.description && <p className="text-[9px] text-gray-muted mt-0.5 line-clamp-1">{svc.description}</p>}
-              <div className="flex items-center gap-2 mt-1.5 text-[9px] text-gray-muted">
-                {(svc.painPoints?.length ?? 0) > 0 && <span className="text-red-400"><AlertTriangle size={8} className="inline mr-0.5" />{svc.painPoints!.length}</span>}
-                {(svc.opportunities?.length ?? 0) > 0 && <span className="text-gpssa-green"><Lightbulb size={8} className="inline mr-0.5" />{svc.opportunities!.length}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div>
-        <div className="flex items-center gap-1.5 mb-2 sticky top-0 bg-navy/95 backdrop-blur-sm py-1 z-10">
-          {countries.map((iso3) => <CountryFlag key={iso3} code={iso3} size="xs" />)}
-          <span className="text-[10px] font-semibold text-cream uppercase tracking-wider">International</span>
-          <span className="text-[9px] text-gray-muted ml-auto">{intlServices.length}</span>
-        </div>
-        <div className="space-y-1.5">
-          {intlServices.length > 0 ? intlServices.map((svc) => {
-            const country = COUNTRIES.find((c) => c.iso3 === svc.countryIso3);
-            return (
-              <div key={svc.id} className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5">
-                <div className="flex items-center gap-1 mb-1">
-                  <CountryFlag code={svc.countryIso3} size="xs" />
-                  <span className="text-[8px] text-gray-muted">{country?.name}</span>
-                  {svc.maturityLevel && <Badge variant="blue" size="sm">{svc.maturityLevel}</Badge>}
-                </div>
-                <p className="text-[11px] font-medium text-cream leading-snug">{svc.name}</p>
-                {svc.digitalReadiness != null && (
-                  <div className="flex items-center gap-1 mt-1">
-                    <Sparkles size={8} className="text-gpssa-green" />
-                    <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
-                      <motion.div className="h-full rounded-full bg-gpssa-green/70" initial={{ width: 0 }} animate={{ width: `${svc.digitalReadiness}%` }} transition={{ duration: 0.5 }} />
-                    </div>
-                    <span className="text-[8px] text-gpssa-green tabular-nums">{svc.digitalReadiness}%</span>
-                  </div>
+        {comparator && bundle && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4"
+          >
+            <div className="flex items-start gap-2 mb-2">
+              <span className="inline-block w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: comparator.color }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-cream truncate">{comparator.label}</p>
+                <p className="text-[9px] uppercase tracking-wider text-gray-muted">{comparator.kind}</p>
+                {comparator.description && (
+                  <p className="text-[10px] text-gray-muted/90 mt-2 leading-relaxed line-clamp-4">
+                    {comparator.description}
+                  </p>
                 )}
-                {svc.iloAlignment && <span className="inline-flex items-center gap-0.5 text-[8px] text-gold mt-1"><Scale size={7} />ILO</span>}
               </div>
-            );
-          }) : (
-            <div className="rounded-lg bg-white/[0.02] border border-dashed border-white/[0.08] p-6 text-center">
-              <Globe2 size={18} className="mx-auto text-gray-muted mb-1.5" />
-              <p className="text-[10px] text-gray-muted">No international data yet. Run research agents to populate.</p>
             </div>
-          )}
-        </div>
+            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/[0.05]">
+              {SERVICE_FUNCTIONS.slice(0, 6).map((fn) => {
+                const g = gpssaByFn.get(fn.slug);
+                const gv = g && g.n > 0 ? g.score / g.n : 0;
+                const rv = bundle.byFunction.get(fn.slug)?.reference ?? 0;
+                const gap = gv - rv;
+                return (
+                  <div key={fn.slug} className="text-[9px]">
+                    <p className="text-gray-muted truncate">{fn.shortLabel}</p>
+                    <p className="font-semibold tabular-nums" style={{ color: gap >= 0 ? "#10B981" : "#F59E0B" }}>
+                      {gap >= 0 ? "+" : ""}{Math.round(gap)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
       </div>
-    </div>
-  );
-}
 
-function ComparisonBarChart({ catCounts }: {
-  catCounts: { cat: string; gpssa: number; intl: { iso3: string; count: number; color: string }[] }[];
-}) {
-  const maxVal = Math.max(1, ...catCounts.flatMap((c) => [c.gpssa, ...c.intl.map((i) => i.count)]));
-  return (
-    <div className="space-y-3 overflow-y-auto pr-1">
-      {catCounts.map(({ cat, gpssa, intl }) => (
-        <div key={cat}>
-          <p className="text-[10px] font-medium text-cream mb-1.5">{cat}</p>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <CountryFlag code="ARE" size="xs" />
-              <div className="flex-1 h-4 rounded bg-white/[0.04] overflow-hidden">
-                <motion.div
-                  className="h-full rounded bg-gpssa-green/70 flex items-center justify-end pr-1"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(gpssa / maxVal) * 100}%` }}
-                  transition={{ duration: 0.5 }}
-                >
-                  {gpssa > 0 && <span className="text-[8px] font-bold text-white">{gpssa}</span>}
-                </motion.div>
-              </div>
-            </div>
-            {intl.map((ic) => (
-              <div key={ic.iso3} className="flex items-center gap-2">
-                <CountryFlag code={ic.iso3} size="xs" />
-                <div className="flex-1 h-4 rounded bg-white/[0.04] overflow-hidden">
-                  <motion.div
-                    className="h-full rounded flex items-center justify-end pr-1"
-                    style={{ backgroundColor: ic.color + "99" }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(ic.count / maxVal) * 100}%` }}
-                    transition={{ duration: 0.5, delay: 0.05 }}
-                  >
-                    {ic.count > 0 && <span className="text-[8px] font-bold text-white">{ic.count}</span>}
-                  </motion.div>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 min-h-[420px] flex flex-col">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold text-cream">Service-function radar</h3>
+          {(loading || bundleLoading) && <span className="text-[9px] text-gray-muted animate-pulse">loading</span>}
         </div>
-      ))}
-    </div>
-  );
-}
-
-function ComparisonRadar({ catCounts }: {
-  catCounts: { cat: string; gpssa: number; intl: { iso3: string; count: number; color: string }[] }[];
-}) {
-  const cx = 140, cy = 130, r = 100;
-  const n = catCounts.length;
-  if (n < 3) return <p className="text-xs text-gray-muted text-center py-8">Need at least 3 categories for radar view.</p>;
-
-  const maxVal = Math.max(1, ...catCounts.flatMap((c) => [c.gpssa, ...c.intl.map((i) => i.count)]));
-  const angleStep = (2 * Math.PI) / n;
-
-  function polarToXY(idx: number, val: number) {
-    const angle = idx * angleStep - Math.PI / 2;
-    const norm = (val / maxVal) * r;
-    return { x: cx + norm * Math.cos(angle), y: cy + norm * Math.sin(angle) };
-  }
-
-  function makePolygon(values: number[]) {
-    return values.map((v, i) => { const p = polarToXY(i, v); return `${p.x},${p.y}`; }).join(" ");
-  }
-
-  const gpssaPoints = makePolygon(catCounts.map((c) => c.gpssa));
-
-  const allCountryIso3 = Array.from(new Set(catCounts.flatMap((c) => c.intl.map((i) => i.iso3))));
-  const countryPolygons = allCountryIso3.map((iso3) => {
-    const values = catCounts.map((c) => c.intl.find((i) => i.iso3 === iso3)?.count ?? 0);
-    const color = catCounts[0]?.intl.find((i) => i.iso3 === iso3)?.color ?? "#888";
-    return { iso3, points: makePolygon(values), color };
-  });
-
-  return (
-    <div className="flex flex-col items-center overflow-y-auto pr-1">
-      <svg viewBox="0 0 280 280" className="w-full max-w-[320px]">
-        {[0.25, 0.5, 0.75, 1].map((pct) => (
-          <polygon
-            key={pct}
-            points={Array.from({ length: n }, (_, i) => { const p = polarToXY(i, maxVal * pct); return `${p.x},${p.y}`; }).join(" ")}
-            fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1"
+        <p className="text-[10px] text-gray-muted mb-4">
+          GPSSA's measured maturity across ILO C102 service branches, overlaid against the chosen comparator.
+        </p>
+        <div className="flex-1 flex items-center justify-center">
+          <RangeBandRadar
+            metrics={metrics}
+            referenceColor={comparator?.color ?? "#0EA5E9"}
+            referenceLabel={comparator?.shortLabel ?? "—"}
+            showBand={comparator?.kind === "country"}
           />
-        ))}
-        {catCounts.map((c, i) => {
-          const p = polarToXY(i, maxVal);
-          return (
-            <g key={c.cat}>
-              <line x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-              <text x={p.x} y={p.y} textAnchor="middle" dy={p.y < cy ? -6 : 12} className="text-[8px] fill-gray-muted">{c.cat}</text>
-            </g>
-          );
-        })}
-        {countryPolygons.map((cp) => (
-          <motion.polygon
-            key={cp.iso3}
-            points={cp.points}
-            fill={cp.color + "15"}
-            stroke={cp.color}
-            strokeWidth="1.5"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6 }}
-          />
-        ))}
-        <motion.polygon
-          points={gpssaPoints}
-          fill="rgba(34,197,94,0.12)"
-          stroke="#22C55E"
-          strokeWidth="2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-        />
-        {catCounts.map((c, i) => {
-          const p = polarToXY(i, c.gpssa);
-          return <circle key={c.cat} cx={p.x} cy={p.y} r="3" fill="#22C55E" />;
-        })}
-      </svg>
-      <div className="flex flex-wrap justify-center gap-3 mt-2">
-        <span className="flex items-center gap-1 text-[9px] text-cream"><span className="w-2 h-2 rounded-full bg-gpssa-green" />GPSSA</span>
-        {countryPolygons.map((cp) => {
-          const country = COUNTRIES.find((c) => c.iso3 === cp.iso3);
-          return (
-            <span key={cp.iso3} className="flex items-center gap-1 text-[9px] text-cream">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cp.color }} />
-              <CountryFlag code={cp.iso3} size="xs" />{country?.name?.split(" ")[0]}
-            </span>
-          );
-        })}
+        </div>
       </div>
     </div>
   );
@@ -487,19 +532,23 @@ function ComparisonRadar({ catCounts }: {
 /* ═══════════════════════════════════════════════════════════════════════════
    Page Component
    ═══════════════════════════════════════════════════════════════════════════ */
+
 export default function ServiceCatalogPage() {
-  const [services, setServices] = useState<GPSSAService[]>([]);
+  const [services, setServices] = useState<GPSSAService[]>(STATIC_SERVICES);
   const [intlServices, setIntlServices] = useState<IntlService[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [comparisonCountries, setComparisonCountries] = useState<string[]>(["SGP", "GBR", "EST", "SAU", "AUS"]);
-  const [vizMode, setVizMode] = useState<VizMode>("list");
+
+  const [act, setAct] = useState<Act>("constellation");
+  const [activeFn, setActiveFn] = useState<ServiceFunction | null>(null);
+  const [activeAud, setActiveAud] = useState<ServiceAudience | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [comparator, setComparator] = useState<ComparatorOption | null>(null);
+
   const [detailModal, setDetailModal] = useState<GPSSAService | null>(null);
   const [detailAnalyses, setDetailAnalyses] = useState<ServiceAnalysisRecord[]>([]);
   const [analysesLoading, setAnalysesLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const isComparing = comparisonCountries.length > 0;
+  const { allOptions, loading: comparatorLoading } = useComparators();
 
   /* ── Data loading ── */
   const loadServices = useCallback(async () => {
@@ -531,10 +580,35 @@ export default function ServiceCatalogPage() {
               iloAlignment: apiMatch.iloAlignment ? String(apiMatch.iloAlignment) : null,
             };
           });
+          // Append any API services that aren't in the static seed
+          const staticNames = new Set(STATIC_SERVICES.map((s) => s.name.toLowerCase()));
+          for (const apiRow of data) {
+            const name = String(apiRow.name ?? "");
+            if (!name || staticNames.has(name.toLowerCase())) continue;
+            enriched.push({
+              id: String(apiRow.id ?? name),
+              name,
+              category: String(apiRow.category ?? "General"),
+              description: (apiRow.description as string) || null,
+              userTypes: parseJsonField<string[]>(apiRow.userTypes),
+              currentState: (apiRow.currentState as string) || null,
+              painPoints: parseJsonField<string[]>(apiRow.painPoints),
+              opportunities: parseJsonField<string[]>(apiRow.opportunities),
+              digitalReadiness: typeof apiRow.digitalReadiness === "number" ? apiRow.digitalReadiness : null,
+              maturityLevel: apiRow.maturityLevel ? String(apiRow.maturityLevel) : null,
+              bestPracticeComparison: apiRow.bestPracticeComparison ? String(apiRow.bestPracticeComparison) : null,
+              strengths: parseJsonField<string[]>(apiRow.strengths),
+              iloAlignment: apiRow.iloAlignment ? String(apiRow.iloAlignment) : null,
+            });
+          }
           setServices(enriched);
-        } else { setServices(STATIC_SERVICES); }
-      } else { setServices(STATIC_SERVICES); }
-    } catch { setServices(STATIC_SERVICES); } finally { setLoading(false); }
+        }
+      }
+    } catch {
+      /* keep static seed */
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -546,6 +620,34 @@ export default function ServiceCatalogPage() {
     onComplete: () => loadServices(),
   });
 
+  /* ── Comparator-driven international load (countries + computed-ref aggregates use intl too for context) ── */
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!comparator) {
+        setIntlServices([]);
+        return;
+      }
+      let countries: string[] | null = null;
+      if (comparator.kind === "country") countries = [comparator.id];
+      if (countries) {
+        const params = new URLSearchParams({ countries: countries.join(",") });
+        const res = await fetch(`/api/international/services?${params}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (Array.isArray(data)) setIntlServices(data);
+      } else {
+        // for non-country comparators we don't need country-level intl data
+        setIntlServices([]);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [comparator]);
+
+  /* ── Detail modal analyses ── */
   useEffect(() => {
     if (!detailModal) {
       setDetailAnalyses([]);
@@ -571,99 +673,88 @@ export default function ServiceCatalogPage() {
     };
   }, [detailModal]);
 
-  useEffect(() => {
-    if (comparisonCountries.length === 0) { setIntlServices([]); return; }
-    const params = new URLSearchParams({ countries: comparisonCountries.join(",") });
-    fetch(`/api/international/services?${params}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => { if (Array.isArray(data)) setIntlServices(data); })
-      .catch(() => setIntlServices([]));
-  }, [comparisonCountries]);
+  /* ── Derived ── */
+  const fnStats: FunctionStats[] = useMemo(() => {
+    return SERVICE_FUNCTIONS.map((fn) => {
+      const matched = services.filter((s) => {
+        const r = resolveCategory(s.category);
+        return r?.kind === "function" && r.entry.slug === fn.slug;
+      });
+      const scores = matched.map(svcScore).filter((v) => v > 0);
+      const avg = scores.length > 0 ? scores.reduce((s, v) => s + v, 0) / scores.length : 0;
+      return {
+        fn,
+        count: matched.length,
+        avgScore: Math.round(avg),
+        pains: matched.reduce((acc, s) => acc + (s.painPoints?.length ?? 0), 0),
+        opps: matched.reduce((acc, s) => acc + (s.opportunities?.length ?? 0), 0),
+      };
+    }).sort((a, b) => b.count - a.count);
+  }, [services]);
 
-  /* ── Derived data ── */
-  const activeCats = useMemo(() => {
-    const allCats = new Set<string>();
-    for (const s of services) allCats.add(s.category);
-    for (const s of intlServices) allCats.add(s.category);
-    const ordered = CATEGORIES.filter((c) => allCats.has(c));
-    Array.from(allCats).forEach((c) => { if (!ordered.includes(c as Category)) ordered.push(c as Category); });
-    return ordered;
-  }, [services, intlServices]);
+  const audStats = useMemo(() => {
+    return SERVICE_AUDIENCES.map((aud) => {
+      const matched = services.filter((s) => {
+        const r = resolveCategory(s.category);
+        return r?.kind === "audience" && r.entry.slug === aud.slug;
+      });
+      return { aud, count: matched.length };
+    });
+  }, [services]);
 
-  const catCounts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const s of services) map.set(s.category, (map.get(s.category) ?? 0) + 1);
-    return activeCats.map((cat) => ({ cat, count: map.get(cat) ?? 0 }));
-  }, [services, activeCats]);
-
-  const categoryServices = useMemo(() => {
-    if (!activeCategory) return [];
-    let list = services.filter((s) => s.category === activeCategory);
+  const spineServices = useMemo(() => {
+    let list = services;
+    if (activeFn) {
+      list = list.filter((s) => {
+        const r = resolveCategory(s.category);
+        return r?.kind === "function" && r.entry.slug === activeFn.slug;
+      });
+    }
+    if (activeAud) {
+      list = list.filter((s) => {
+        const r = resolveCategory(s.category);
+        return r?.kind === "audience" && r.entry.slug === activeAud.slug;
+      });
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((s) => s.name.toLowerCase().includes(q) || (s.description?.toLowerCase().includes(q) ?? false));
     }
     return list;
-  }, [services, activeCategory, searchQuery]);
-
-  const categoryIntlServices = useMemo(() => {
-    if (!activeCategory || intlServices.length === 0) return [];
-    return intlServices.filter((s) => s.category === activeCategory);
-  }, [intlServices, activeCategory]);
-
-  const intlByCountry = useMemo(() => {
-    const map = new Map<string, IntlService[]>();
-    for (const s of intlServices) {
-      const list = map.get(s.countryIso3) ?? [];
-      list.push(s);
-      map.set(s.countryIso3, list);
-    }
-    return map;
-  }, [intlServices]);
-
-  const comparisonCatData = useMemo(() => {
-    return activeCats.map((cat) => {
-      const gpssa = services.filter((s) => s.category === cat).length;
-      const intl = comparisonCountries.map((iso3, idx) => {
-        const count = (intlByCountry.get(iso3) ?? []).filter((s) => s.category === cat).length;
-        return { iso3, count, color: COUNTRY_COLORS[idx % COUNTRY_COLORS.length] };
-      });
-      return { cat, gpssa, intl };
-    });
-  }, [services, comparisonCountries, intlByCountry, activeCats]);
-
-  const maxCatCount = useMemo(() =>
-    Math.max(1, ...comparisonCatData.flatMap((c) => [c.gpssa, ...c.intl.map((i) => i.count)]))
-  , [comparisonCatData]);
-
-  const gapCount = useMemo(() => {
-    const gpssaCats = new Set(services.map((s) => s.category));
-    const intlCats = new Set(intlServices.map((s) => s.category));
-    let gaps = 0;
-    for (const cat of Array.from(gpssaCats)) if (!intlCats.has(cat)) gaps++;
-    for (const cat of Array.from(intlCats)) if (!gpssaCats.has(cat)) gaps++;
-    return gaps;
-  }, [services, intlServices]);
-
-  const handleCategoryClick = useCallback((cat: string) => {
-    setActiveCategory((prev) => (prev === cat ? null : cat));
-  }, []);
+  }, [services, activeFn, activeAud, searchQuery]);
 
   /* ── Stat bar ── */
   const statBarItems: StatBarItem[] = useMemo(() => {
+    const totalPains = services.reduce((a, s) => a + (s.painPoints?.length ?? 0), 0);
+    const totalOpps = services.reduce((a, s) => a + (s.opportunities?.length ?? 0), 0);
+    const avgScore = gpssaHeadline(services);
     const items: StatBarItem[] = [
-      { icon: Layers, value: services.length, label: "GPSSA Services" },
-      { icon: FolderOpen, value: activeCats.length, label: "Categories" },
-      { icon: AlertTriangle, value: services.reduce((a, s) => a + (s.painPoints?.length ?? 0), 0), label: "Pain Points" },
-      { icon: Lightbulb, value: services.reduce((a, s) => a + (s.opportunities?.length ?? 0), 0), label: "Opportunities" },
+      { icon: Layers, value: services.length, label: "Services" },
+      { icon: Sparkles, value: avgScore, label: "Avg. Maturity" },
+      { icon: AlertTriangle, value: totalPains, label: "Pain Points" },
+      { icon: Lightbulb, value: totalOpps, label: "Opportunities" },
     ];
-    if (isComparing) {
-      items.push({ icon: Globe2, value: intlServices.length, label: `Intl (${comparisonCountries.length})` });
-    }
+    if (comparator) items.push({ icon: Globe2, value: 1, label: `vs ${comparator.shortLabel}` });
     return items;
-  }, [services, intlServices.length, comparisonCountries.length, isComparing, activeCats.length]);
+  }, [services, comparator]);
 
-  if (loading) {
+  /* ── Act controls ── */
+  function gotoSpine(fn: ServiceFunction) {
+    setActiveFn(fn);
+    setActiveAud(null);
+    setAct("spine");
+  }
+  function gotoConstellation() {
+    setActiveFn(null);
+    setActiveAud(null);
+    setSearchQuery("");
+    setAct("constellation");
+  }
+  function gotoBenchmark() {
+    setAct("benchmark");
+  }
+
+  if (loading && services.length === 0) {
     return <div className="flex h-full items-center justify-center"><LoadingSpinner size="lg" /></div>;
   }
 
@@ -673,182 +764,228 @@ export default function ServiceCatalogPage() {
       <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-white/[0.06]">
         <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Service Catalog</h1>
         <div className="h-4 w-px bg-white/10" />
-        <CountrySelector selected={comparisonCountries} onChange={setComparisonCountries} pillar="services" variant="inline" />
-        {activeCategory && (
-          <div className="ml-auto relative">
-            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-muted" />
-            <input type="text" placeholder="Filter…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-36 pl-7 pr-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-cream placeholder:text-gray-muted focus:outline-none focus:border-gpssa-green/30 transition-colors" />
-          </div>
-        )}
-      </div>
 
-      {/* ─── Comparison stats banner (Mode 2 only) ─── */}
-      <AnimatePresence>
-        {isComparing && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="shrink-0 overflow-hidden"
-          >
-            <div className="flex items-center gap-4 px-5 py-2 border-b border-white/[0.04] bg-white/[0.015]">
-              <div className="flex items-center gap-1.5">
-                <CountryFlag code="ARE" size="xs" />
-                <span className="text-[10px] font-semibold text-cream">{services.length}</span>
-                <span className="text-[9px] text-gray-muted">services</span>
-              </div>
-              {comparisonCountries.map((iso3) => {
-                const count = intlByCountry.get(iso3)?.length ?? 0;
-                const country = COUNTRIES.find((c) => c.iso3 === iso3);
-                return (
-                  <div key={iso3} className="flex items-center gap-1.5">
-                    <span className="text-[9px] text-gray-muted">vs</span>
-                    <CountryFlag code={iso3} size="xs" />
-                    <span className="text-[10px] font-semibold text-cream">{count}</span>
-                    <span className="text-[9px] text-gray-muted hidden sm:inline">{country?.name?.split(" ")[0]}</span>
-                  </div>
-                );
-              })}
-              {gapCount > 0 && (
-                <div className="flex items-center gap-1 ml-auto">
-                  <ArrowLeftRight size={10} className="text-gold" />
-                  <span className="text-[10px] font-semibold text-gold">{gapCount}</span>
-                  <span className="text-[9px] text-gray-muted">category gaps</span>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ─── Main content ─── */}
-      <div className="flex-1 min-h-0 flex overflow-hidden">
-        {/* ── Left panel ── */}
-        <div className={`shrink-0 border-r border-white/[0.06] overflow-y-auto scrollbar-thin ${
-          isComparing ? "w-[280px]" : "w-[300px]"
-        }`}>
-          <AnimatePresence mode="wait">
-            {isComparing ? (
-              <motion.div key="compare-nav" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3 space-y-1">
-                <p className="text-[9px] text-gray-muted uppercase tracking-wider mb-2 px-1">Categories</p>
-                {comparisonCatData.map((d) => (
-                  <ComparisonCategoryRow
-                    key={d.cat}
-                    cat={d.cat}
-                    gpssaCount={d.gpssa}
-                    intlCounts={d.intl}
-                    maxCount={maxCatCount}
-                    isActive={activeCategory === d.cat}
-                    onClick={() => handleCategoryClick(d.cat)}
-                  />
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div key="tiles" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3">
-                <p className="text-[9px] text-gray-muted uppercase tracking-wider mb-2 px-1">Service Categories</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {catCounts.map(({ cat, count }) => (
-                    <CategoryTile key={cat} cat={cat} count={count} isActive={activeCategory === cat} onClick={() => handleCategoryClick(cat)} />
-                  ))}
-                </div>
-                <div className="mt-4 pt-3 border-t border-white/[0.05] px-1">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <CountryFlag code="ARE" size="xs" />
-                    <span className="text-[10px] font-semibold text-cream">GPSSA Portfolio</span>
-                  </div>
-                  <p className="text-[9px] text-gray-muted">{services.length} services across {CATEGORIES.length} categories. Click a tile to explore.</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        {/* Act tabs */}
+        <div className="flex items-center gap-1">
+          {(
+            [
+              { id: "constellation" as Act, label: "Overview", desc: "Constellation" },
+              { id: "spine" as Act,         label: "Explore",  desc: "Spine" },
+              { id: "benchmark" as Act,     label: "Benchmark", desc: "Compare" },
+            ]
+          ).map((tab, i) => (
+            <button
+              key={tab.id}
+              onClick={() => setAct(tab.id)}
+              className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                act === tab.id
+                  ? "bg-gpssa-green/15 text-gpssa-green border border-gpssa-green/25"
+                  : "text-gray-muted hover:text-cream hover:bg-white/[0.04] border border-transparent"
+              }`}
+            >
+              <span className="text-[9px] tabular-nums text-gray-muted/70">{i + 1}</span>
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* ── Right panel ── */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          {/* Viz toggle (comparison mode only, when category selected) */}
-          {isComparing && activeCategory && (
-            <div className="shrink-0 flex items-center gap-1 px-4 py-2 border-b border-white/[0.04]">
-              {([
-                { id: "list" as VizMode, icon: List, label: "List" },
-                { id: "bar" as VizMode, icon: BarChart3, label: "Bars" },
-                { id: "radar" as VizMode, icon: Radar, label: "Radar" },
-              ]).map((v) => {
-                const Icon = v.icon;
-                return (
-                  <button
-                    key={v.id}
-                    onClick={() => setVizMode(v.id)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors ${
-                      vizMode === v.id
-                        ? "bg-gpssa-green/15 text-gpssa-green border border-gpssa-green/25"
-                        : "text-gray-muted hover:text-cream hover:bg-white/[0.04] border border-transparent"
-                    }`}
-                  >
-                    <Icon size={11} />{v.label}
-                  </button>
-                );
-              })}
-              <span className="ml-auto text-[9px] text-gray-muted">{activeCategory}</span>
+        <div className="ml-auto flex items-center gap-2">
+          <MandateBasisChip
+            screenPath="/dashboard/services/catalog"
+            entityIds={services.map((s) => s.id)}
+          />
+          {act === "spine" && (
+            <div className="relative">
+              <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-muted" />
+              <input
+                type="text"
+                placeholder="Filter…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-36 pl-7 pr-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-cream placeholder:text-gray-muted focus:outline-none focus:border-gpssa-green/30 transition-colors"
+              />
             </div>
           )}
-
-          {/* Content area */}
-          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-4">
-            <AnimatePresence mode="wait">
-              {activeCategory ? (
-                <motion.div key={`cat-${activeCategory}-${isComparing ? vizMode : "browse"}`} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.22 }} className="h-full">
-                  {isComparing ? (
-                    vizMode === "list" ? (
-                      <ComparisonListView gpssaServices={categoryServices} intlServices={categoryIntlServices} countries={comparisonCountries} />
-                    ) : vizMode === "bar" ? (
-                      <ComparisonBarChart catCounts={comparisonCatData} />
-                    ) : (
-                      <ComparisonRadar catCounts={comparisonCatData} />
-                    )
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2 mb-3">
-                        {(() => { const cfg = getCfg(activeCategory); const Icon = cfg.icon; return <div className={`p-1.5 rounded-lg ${cfg.bg}`}><Icon size={14} className="text-cream" /></div>; })()}
-                        <div>
-                          <h2 className="text-sm font-semibold text-cream font-playfair">{activeCategory}</h2>
-                          <p className="text-[10px] text-gray-muted">{categoryServices.length} service{categoryServices.length !== 1 ? "s" : ""}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                        {categoryServices.map((svc) => (
-                          <ServiceDetailCard key={svc.id} svc={svc} onOpen={() => setDetailModal(svc)} />
-                        ))}
-                      </div>
-                      {categoryServices.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                          <Search size={20} className="text-gray-muted mb-2" />
-                          <p className="text-xs text-gray-muted">No services match your search.</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center text-center">
-                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-dashed border-white/[0.08] max-w-xs">
-                    <Layers size={28} className="mx-auto text-gray-muted mb-3" />
-                    <h2 className="font-playfair text-sm font-semibold text-cream mb-1">
-                      {isComparing ? "Select a category to compare" : "Select a category to explore"}
-                    </h2>
-                    <p className="text-[10px] text-gray-muted leading-relaxed">
-                      {isComparing
-                        ? "Choose a category on the left to see GPSSA services side-by-side with international equivalents."
-                        : "Click any category tile on the left to browse GPSSA services with full details, pain points, and opportunities."
-                      }
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          <ComparatorPicker
+            options={allOptions}
+            selected={comparator}
+            onChange={setComparator}
+            loading={comparatorLoading}
+            variant="inline"
+          />
         </div>
+      </div>
+
+      {/* ─── Content ─── */}
+      <div className="flex-1 min-h-0 overflow-hidden p-5">
+        <AnimatePresence mode="wait">
+          {act === "constellation" && (
+            <motion.div
+              key="act-constellation"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+              className="h-full overflow-y-auto pr-1"
+            >
+              <div className="mb-5">
+                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">Act I · Constellation</p>
+                <h2 className="font-playfair text-lg text-cream mb-1">Every GPSSA service, mapped to ILO branches.</h2>
+                <p className="text-xs text-gray-muted max-w-2xl leading-relaxed">
+                  Twelve canonical service functions — nine ILO C102 branches plus three administrative & digital functions —
+                  each glowing tile sized by service count and lit by current maturity. Pick any to explore.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-6">
+                {fnStats.map((stat, i) => (
+                  <ConstellationCard key={stat.fn.slug} stat={stat} index={i} onPick={() => gotoSpine(stat.fn)} />
+                ))}
+              </div>
+
+              <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-4">
+                <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-2">Or filter by audience</p>
+                <div className="flex flex-wrap gap-2">
+                  {audStats.map(({ aud, count }) => (
+                    <AudienceChip
+                      key={aud.slug}
+                      aud={aud}
+                      count={count}
+                      active={activeAud?.slug === aud.slug}
+                      onClick={() => {
+                        setActiveAud((prev) => (prev?.slug === aud.slug ? null : aud));
+                        setActiveFn(null);
+                        setAct("spine");
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {act === "spine" && (
+            <motion.div
+              key="act-spine"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.3 }}
+              className="h-full grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5 overflow-hidden"
+            >
+              <aside className="overflow-y-auto pr-1">
+                <button onClick={gotoConstellation} className="flex items-center gap-1 text-[10px] text-gray-muted hover:text-cream mb-3 transition-colors">
+                  <ArrowLeft size={11} />
+                  Back to constellation
+                </button>
+                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">Act II · Spine</p>
+                {activeFn && (
+                  <div className="rounded-xl p-3 mb-3" style={{ backgroundColor: `${activeFn.color}15`, border: `1px solid ${activeFn.color}30` }}>
+                    <h3 className="text-sm font-semibold text-cream mb-1">{activeFn.label}</h3>
+                    <p className="text-[10px] text-gray-muted leading-relaxed">{activeFn.description}</p>
+                    {activeFn.iloReference && (
+                      <div className="mt-2 pt-2 border-t border-white/[0.06] flex items-center gap-1.5">
+                        <Scale size={10} className="text-gold" />
+                        <span className="text-[10px] text-gold">{activeFn.iloReference}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {activeAud && (
+                  <div className="rounded-xl p-3 mb-3 bg-white/[0.04] border border-white/[0.08]">
+                    <h3 className="text-sm font-semibold text-cream mb-1">{activeAud.label}</h3>
+                    <p className="text-[10px] text-gray-muted leading-relaxed">{activeAud.description}</p>
+                  </div>
+                )}
+                <p className="text-[9px] uppercase tracking-wider text-gray-muted mb-1.5 mt-4">Other functions</p>
+                <div className="space-y-1">
+                  {fnStats.filter((s) => s.fn.slug !== activeFn?.slug).map((s) => (
+                    <button
+                      key={s.fn.slug}
+                      onClick={() => setActiveFn(s.fn)}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-white/[0.04] transition-colors group"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.fn.color }} />
+                      <span className="text-[11px] text-cream/80 group-hover:text-cream flex-1 truncate">{s.fn.shortLabel}</span>
+                      <span className="text-[9px] tabular-nums text-gray-muted">{s.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </aside>
+
+              <main className="overflow-y-auto pr-1">
+                {spineServices.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-center">
+                    <Search size={20} className="text-gray-muted mb-2" />
+                    <p className="text-xs text-gray-muted">No services found in this view.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-xs text-cream font-medium">{spineServices.length} services</p>
+                        <p className="text-[10px] text-gray-muted">Click any service for analyst briefing</p>
+                      </div>
+                      <button
+                        onClick={gotoBenchmark}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gpssa-green/15 border border-gpssa-green/25 text-gpssa-green text-[11px] font-medium hover:bg-gpssa-green/25 transition-colors"
+                      >
+                        Benchmark
+                        <ArrowRight size={11} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+                      {spineServices.map((svc, i) => (
+                        <SpineCard
+                          key={svc.id}
+                          svc={svc}
+                          color={activeFn?.color ?? "#22C55E"}
+                          index={i}
+                          onOpen={() => setDetailModal(svc)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </main>
+            </motion.div>
+          )}
+
+          {act === "benchmark" && (
+            <motion.div
+              key="act-benchmark"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              transition={{ duration: 0.35 }}
+              className="h-full overflow-hidden flex flex-col"
+            >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">Act III · Benchmark</p>
+                  <h2 className="font-playfair text-lg text-cream mb-1">
+                    {comparator ? `GPSSA vs ${comparator.label}` : "Pick a comparator to begin"}
+                  </h2>
+                  <p className="text-xs text-gray-muted leading-relaxed max-w-2xl">
+                    Hold GPSSA up against a global standard, a regional best-practice, or a single peer country —
+                    one comparator at a time, every dimension audited.
+                  </p>
+                </div>
+                {!comparator && (
+                  <ComparatorPicker
+                    options={allOptions}
+                    selected={comparator}
+                    onChange={setComparator}
+                    loading={comparatorLoading}
+                  />
+                )}
+              </div>
+              <div className="flex-1 min-h-0">
+                <BenchmarkPanel services={services} intl={intlServices} comparator={comparator} loading={loading} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ─── Stat Bar ─── */}
@@ -876,9 +1013,7 @@ export default function ServiceCatalogPage() {
                     </div>
                   </div>
                 )}
-                {detailModal.maturityLevel && (
-                  <Badge variant="blue" size="sm">{detailModal.maturityLevel}</Badge>
-                )}
+                {detailModal.maturityLevel && <Badge variant="blue" size="sm">{detailModal.maturityLevel}</Badge>}
               </div>
             )}
 
@@ -898,7 +1033,7 @@ export default function ServiceCatalogPage() {
             )}
             {detailModal.strengths && detailModal.strengths.length > 0 && (
               <div>
-                <span className="text-xs font-medium text-cream block mb-2">Strengths</span>
+                <span className="text-xs font-medium text-cream block mb-2 flex items-center gap-1.5"><CheckCircle2 size={11} className="text-gpssa-green" />Strengths</span>
                 <div className="flex flex-wrap gap-1.5">
                   {detailModal.strengths.map((s, i) => <Badge key={i} variant="green" size="sm">{s}</Badge>)}
                 </div>
@@ -906,7 +1041,7 @@ export default function ServiceCatalogPage() {
             )}
             {detailModal.painPoints && detailModal.painPoints.length > 0 && (
               <div>
-                <span className="text-xs font-medium text-cream block mb-2">Pain Points</span>
+                <span className="text-xs font-medium text-cream block mb-2 flex items-center gap-1.5"><XCircle size={11} className="text-red-400" />Pain Points</span>
                 <div className="flex flex-wrap gap-1.5">
                   {detailModal.painPoints.map((pp, i) => <Badge key={i} variant="red" size="sm">{pp}</Badge>)}
                 </div>
@@ -914,7 +1049,7 @@ export default function ServiceCatalogPage() {
             )}
             {detailModal.opportunities && detailModal.opportunities.length > 0 && (
               <div>
-                <span className="text-xs font-medium text-cream block mb-2">Opportunities</span>
+                <span className="text-xs font-medium text-cream block mb-2 flex items-center gap-1.5"><Lightbulb size={11} className="text-gpssa-green" />Opportunities</span>
                 <div className="flex flex-wrap gap-1.5">
                   {detailModal.opportunities.map((opp, i) => <Badge key={i} variant="green" size="sm">{opp}</Badge>)}
                 </div>
@@ -943,7 +1078,7 @@ export default function ServiceCatalogPage() {
               </div>
               {detailAnalyses.length === 0 && !analysesLoading ? (
                 <p className="text-[11px] text-gray-muted/70 italic glass rounded-lg p-3">
-                  No analyses generated yet. Run the services research agent to populate consultant-grade briefings for this service.
+                  No analyses generated yet. Run the services research agent to populate consultant-grade briefings.
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -959,12 +1094,26 @@ export default function ServiceCatalogPage() {
                     </div>
                   ))}
                   {detailAnalyses.length > 3 && (
-                    <p className="text-[10px] text-gray-muted text-center">
-                      +{detailAnalyses.length - 3} earlier analyses
-                    </p>
+                    <p className="text-[10px] text-gray-muted text-center">+{detailAnalyses.length - 3} earlier analyses</p>
                   )}
                 </div>
               )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-white/[0.05]">
+              <button
+                onClick={() => {
+                  if (!comparator) {
+                    setAct("benchmark");
+                  }
+                  setDetailModal(null);
+                  setAct("benchmark");
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gpssa-green/15 border border-gpssa-green/25 text-gpssa-green text-xs font-medium hover:bg-gpssa-green/25 transition-colors"
+              >
+                Benchmark this category
+                <ArrowRight size={11} />
+              </button>
             </div>
           </div>
         )}
@@ -972,3 +1121,6 @@ export default function ServiceCatalogPage() {
     </div>
   );
 }
+
+/** Avoid unused-import warning on `CountryFlag` (kept for potential future use). */
+void CountryFlag;

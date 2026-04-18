@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
+import { StandardChips } from "@/components/comparator/StandardChips";
 
 type MaturityLevel = "High" | "Medium" | "Low";
 
@@ -177,6 +178,10 @@ export default function DeliveryModelsPage() {
         <Network size={16} className="text-teal-400" />
         <h1 className="font-playfair text-base font-semibold text-cream">Delivery Models</h1>
         <span className="text-[11px] text-gray-muted">Go-to-market frameworks combining channels, partners, and outreach.</span>
+        <div className="ml-auto hidden md:flex items-center gap-2">
+          <span className="text-[9px] uppercase tracking-[0.2em] text-gray-muted">Mapped to</span>
+          <StandardChips slugs={["wb-govtech-maturity", "issa-good-governance"]} size="xs" />
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto p-4">

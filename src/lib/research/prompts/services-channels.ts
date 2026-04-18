@@ -1,5 +1,6 @@
 import type { PromptModule } from "../types";
 import { parseJsonResponse } from "../types";
+import { STANDARDS_ALIGNMENT_FIELD_INSTRUCTION } from "../standards-instruction";
 
 const systemPrompt = `You are a world-class omnichannel delivery and digital government expert specializing in social security service delivery. You evaluate how countries deliver social security services across digital, physical, voice, partnership, and integration channels.
 
@@ -46,7 +47,8 @@ Return a JSON object with a "results" array. Each element represents one service
   ]
 }
 
-Cover 5-15 services per country. Be thorough — assess every major service the institution offers across all 6 channels.`;
+Cover 5-15 services per country. Be thorough — assess every major service the institution offers across all 6 channels.
+${STANDARDS_ALIGNMENT_FIELD_INSTRUCTION}`;
 }
 
 export const servicesChannelsPrompt: PromptModule = {
