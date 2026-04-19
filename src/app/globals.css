@@ -74,26 +74,6 @@ h1, h2, h3, h4, h5, h6 {
   display: none;
 }
 
-/* RFI Alignment board: dense multi-column layout for the statutory-articles
-   list. Items flow into 2 sub-columns by default, expanding on wider screens.
-   `column-fill: balance` keeps columns visually even; `break-inside-avoid` on
-   each <li> prevents card splits across columns. */
-.alignment-multicol {
-  column-count: 2;
-  column-gap: 6px;
-  column-fill: balance;
-}
-@media (min-width: 1280px) {
-  .alignment-multicol {
-    column-count: 3;
-  }
-}
-@media (min-width: 1600px) {
-  .alignment-multicol {
-    column-count: 4;
-  }
-}
-
 input::placeholder,
 textarea::placeholder {
   color: var(--gray-muted);

@@ -141,43 +141,43 @@ export function ArticleBrowser({ standards, initialSlug }: ArticleBrowserProps) 
   const linksForActiveRequirement = detail?.obligationLinks ?? [];
 
   return (
-    <div className="grid h-full gap-6 lg:grid-cols-[320px_1fr]">
-      <aside className="glass-panel relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-white/[0.04] p-4">
-        <div className="relative">
-          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
+    <div className="grid h-full min-h-0 gap-3 lg:grid-cols-[280px_1fr]">
+      <aside className="glass-panel relative flex min-h-0 flex-col gap-2 overflow-hidden rounded-xl border border-white/[0.05] p-3">
+        <div className="relative shrink-0">
+          <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-white/35" />
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter laws / circulars / policies"
-            className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] py-2 pl-8 pr-3 text-[12px] text-cream placeholder-white/35 focus:border-[#00A86B]/40 focus:outline-none"
+            className="w-full rounded-md border border-white/[0.06] bg-white/[0.02] py-1.5 pl-7 pr-2 text-[11px] text-cream placeholder-white/35 focus:border-[#1B7A4A]/40 focus:outline-none"
           />
         </div>
-        <div className="flex-1 overflow-y-auto pr-1 scrollbar-none">
-          <ul className="space-y-1">
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-none">
+          <ul className="space-y-0.5">
             {filteredStandards.map((s) => {
               const active = s.slug === activeSlug;
               return (
                 <li key={s.slug}>
                   <button
                     onClick={() => setActiveSlug(s.slug)}
-                    className={`group w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
+                    className={`group w-full rounded-lg px-2.5 py-2 text-left transition-colors ${
                       active ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"
                     }`}
                     style={
                       active
-                        ? { boxShadow: "inset 0 0 0 1px rgba(0,168,107,0.35)" }
+                        ? { boxShadow: "inset 0 0 0 1px rgba(27,122,74,0.45)" }
                         : undefined
                     }
                   >
-                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-[#7DB9A4]">
+                    <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-[#7DB9A4]">
                       {s.category ?? "legal-mandate"}
                       {s.publishedAt && (
                         <span className="text-white/30">· {new Date(s.publishedAt).getFullYear()}</span>
                       )}
                     </div>
-                    <div className="mt-1 line-clamp-2 text-[13px] font-medium text-cream">{s.title}</div>
+                    <div className="mt-0.5 line-clamp-2 text-[12px] font-medium text-cream">{s.title}</div>
                     {typeof s.requirementCount === "number" && (
-                      <div className="mt-1 text-[11px] text-white/45">{s.requirementCount} articles</div>
+                      <div className="mt-0.5 text-[10px] text-white/45">{s.requirementCount} articles</div>
                     )}
                   </button>
                 </li>
@@ -190,7 +190,7 @@ export function ArticleBrowser({ standards, initialSlug }: ArticleBrowserProps) 
         </div>
       </aside>
 
-      <section className="glass-panel relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-white/[0.04] p-6">
+      <section className="glass-panel relative flex min-h-0 flex-col gap-3 overflow-hidden rounded-xl border border-white/[0.05] p-4">
         <AnimatePresence mode="wait">
           {loading ? (
             <motion.div
@@ -209,21 +209,18 @@ export function ArticleBrowser({ standards, initialSlug }: ArticleBrowserProps) 
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4, ease: EASE }}
-              className="flex h-full flex-col gap-5"
+              className="flex h-full min-h-0 flex-col gap-3"
             >
-              <header className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/50">
-                    <span className="text-[#00A86B]">{detail.category ?? "legal-mandate"}</span>
+              <header className="shrink-0 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.22em] text-white/50">
+                    <span className="text-[#1B7A4A]">{detail.category ?? "legal-mandate"}</span>
                     {detail.code && <span>· {detail.code}</span>}
                     {detail.publishedAt && <span>· {new Date(detail.publishedAt).getFullYear()}</span>}
                   </div>
-                  <h2 className="mt-1 font-playfair text-2xl font-bold text-cream">{detail.title}</h2>
+                  <h2 className="mt-0.5 font-playfair text-lg font-bold leading-tight text-cream md:text-xl">{detail.title}</h2>
                   {detail.description && (
-                    <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-white/65">{detail.description}</p>
-                  )}
-                  {detail.rationale && (
-                    <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-white/50 italic">{detail.rationale}</p>
+                    <p className="mt-1.5 line-clamp-2 max-w-3xl text-[12px] leading-relaxed text-white/60">{detail.description}</p>
                   )}
                 </div>
                 {detail.url && (
@@ -231,21 +228,21 @@ export function ArticleBrowser({ standards, initialSlug }: ArticleBrowserProps) 
                     href={detail.url}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] px-3 py-1.5 text-[11px] text-white/65 transition-colors hover:border-[#00A86B]/40 hover:text-cream"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] px-2.5 py-1 text-[10px] text-white/65 transition-colors hover:border-[#1B7A4A]/40 hover:text-cream"
                   >
-                    <FileDown size={12} /> Open source
-                    <ArrowUpRight size={11} />
+                    <FileDown size={11} /> Source
+                    <ArrowUpRight size={10} />
                   </a>
                 )}
               </header>
 
-              <div className="grid flex-1 gap-5 lg:grid-cols-[260px_1fr] overflow-hidden">
-                <div className="overflow-y-auto pr-1 scrollbar-none">
-                  <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/50">
-                    <ScrollText size={11} className="text-[#00A86B]" />
+              <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[220px_1fr]">
+                <div className="min-h-0 overflow-y-auto pr-1 scrollbar-none">
+                  <div className="mb-1.5 flex items-center gap-2 text-[9px] uppercase tracking-[0.22em] text-white/50">
+                    <ScrollText size={10} className="text-[#1B7A4A]" />
                     Articles
                   </div>
-                  <ul className="space-y-1">
+                  <ul className="space-y-0.5">
                     {detail.requirements.map((r) => {
                       const active = r.id === activeRequirementId;
                       return (
@@ -280,7 +277,7 @@ export function ArticleBrowser({ standards, initialSlug }: ArticleBrowserProps) 
                   </ul>
                 </div>
 
-                <div className="relative overflow-y-auto pr-1 scrollbar-none">
+                <div className="relative min-h-0 overflow-y-auto pr-1 scrollbar-none">
                   {activeRequirement ? (
                     <motion.article
                       key={activeRequirement.id}

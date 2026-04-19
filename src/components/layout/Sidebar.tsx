@@ -24,11 +24,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Scale,
-  Landmark,
-  Gavel,
-  ShieldCheck,
-  ListChecks,
-  History,
   Network,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -66,12 +61,7 @@ const NAV_SECTIONS: NavSection[] = [
     color: "var(--gpssa-green)",
     glow: "rgba(0,168,107,0.14)",
     items: [
-      { label: "Overview", href: "/dashboard/mandate", icon: Scale },
-      { label: "Legal Foundation", href: "/dashboard/mandate/legal", icon: Gavel },
-      { label: "Scope", href: "/dashboard/mandate/scope", icon: ShieldCheck },
-      { label: "Obligations", href: "/dashboard/mandate/obligations", icon: ListChecks },
-      { label: "Governance", href: "/dashboard/mandate/governance", icon: Landmark },
-      { label: "History", href: "/dashboard/mandate/history", icon: History },
+      { label: "Legal & Governance", href: "/dashboard/mandate", icon: Scale },
       { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
     ],
   },

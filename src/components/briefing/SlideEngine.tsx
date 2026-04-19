@@ -11,6 +11,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { Pause, Play, Maximize2, Minimize2, X, Keyboard } from "lucide-react";
 import { SlideChrome } from "./SlideChrome";
+import { useComparatorStore } from "./store";
 import type { BriefingSnapshot } from "@/lib/briefing/types";
 
 interface SlideEngineProps {
@@ -30,6 +31,10 @@ export function SlideEngine({ slides, snapshot, onClose }: SlideEngineProps) {
   const [showHelp, setShowHelp] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const total = slides.length;
+
+  // Pause autoplay and suppress most keyboard nav while the comparator
+  // picker drawer is open.
+  const pickerOpen = useComparatorStore((s) => s.pickerOpen);
 
   const goTo = useCallback(
     (idx: number) => {
@@ -82,16 +87,19 @@ export function SlideEngine({ slides, snapshot, onClose }: SlideEngineProps) {
   // Keyboard handling
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      // Ignore if typing in an input
+      // Ignore if typing in an input (covers picker search) or if the
+      // picker drawer is open (it owns Esc handling).
       const target = e.target as HTMLElement | null;
       if (
         target &&
         (target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA" ||
-          target.isContentEditable)
+          target.isContentEditable ||
+          target.dataset?.comparatorSearch != null)
       ) {
         return;
       }
+      if (pickerOpen) return;
       if (e.key === "ArrowRight" || e.key === "PageDown") {
         e.preventDefault();
         next();
@@ -123,16 +131,16 @@ export function SlideEngine({ slides, snapshot, onClose }: SlideEngineProps) {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [next, prev, goTo, total, toggleFullscreen, onClose]);
+  }, [next, prev, goTo, total, toggleFullscreen, onClose, pickerOpen]);
 
-  // Autoplay timer
+  // Autoplay timer (paused while hovered or while the picker is open)
   useEffect(() => {
-    if (!autoplay || hovered) return;
+    if (!autoplay || hovered || pickerOpen) return;
     const id = window.setTimeout(() => {
       setCurrent((c) => (c + 1) % total);
     }, SLIDE_DURATION_MS);
     return () => window.clearTimeout(id);
-  }, [autoplay, hovered, current, total]);
+  }, [autoplay, hovered, current, total, pickerOpen]);
 
   const renderSlide = slides[current];
 
@@ -189,7 +197,7 @@ export function SlideEngine({ slides, snapshot, onClose }: SlideEngineProps) {
     >
       {/* Autoplay progress bar */}
       <div className="absolute inset-x-0 top-0 z-50 h-[2px] bg-white/[0.04]">
-        {autoplay && !hovered && (
+        {autoplay && !hovered && !pickerOpen && (
           <motion.div
             key={`progress-${current}`}
             className="h-full"

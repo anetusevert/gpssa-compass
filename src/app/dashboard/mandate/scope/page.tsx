@@ -1,11 +1,10 @@
 "use client";
 
 /**
- * Mandate — Scope.
+ * Mandate — Scope (single-viewport).
  *
- * Visual answer to: "Who, where, against which contingencies?". Aggregates
- * StandardRequirement.pillar data into ILO C102 branches and overlays
- * coverage classes (UAE nationals, GCC nationals, civil/military sectors).
+ * Side-by-side grid: Six branches (3x2) on the left, Coverage classes (2x2)
+ * on the right. Header is a compact band so everything fits without scroll.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -16,10 +15,8 @@ import {
   Heart,
   HeartHandshake,
   HeartPulse,
-  Loader2,
   Network as NetworkIcon,
   ShieldCheck,
-  Sparkles,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -59,7 +56,7 @@ const BRANCHES: BranchInfo[] = [
     ilo: "ILO C102 · Part V",
     description: "Lifetime income for insured Emiratis on reaching the legal pension age.",
     Icon: HeartPulse,
-    accent: "#00A86B",
+    accent: "#1B7A4A",
   },
   {
     id: "end-of-service",
@@ -92,7 +89,7 @@ const BRANCHES: BranchInfo[] = [
     id: "registration",
     label: "Registration & contributions",
     pillar: "registration",
-    ilo: "FL 57/2023, Articles on coverage",
+    ilo: "FL 57/2023 — coverage articles",
     description: "Mandatory enrolment of employers and insured persons; monthly contributions.",
     Icon: Briefcase,
     accent: "#4899FF",
@@ -109,14 +106,14 @@ const BRANCHES: BranchInfo[] = [
 ];
 
 const COVERAGE_CLASSES = [
-  { id: "uae-civil", label: "Emirati nationals — civil sector", note: "Federal & local government, semi-public, private sector employers" },
-  { id: "uae-military", label: "Emirati nationals — military sector", note: "Specialised handling under sectoral regulations" },
-  { id: "gcc-nationals", label: "GCC nationals", note: "Insurance extension across the GCC unified law" },
-  { id: "voluntary", label: "Voluntary insurance", note: "Self-employed, sabbatical and overseas workers under specific articles" },
+  { id: "uae-civil", label: "Emirati nationals — civil sector", note: "Federal & local government, semi-public, private sector employers", accent: "#1B7A4A" },
+  { id: "uae-military", label: "Emirati nationals — military sector", note: "Specialised handling under sectoral regulations", accent: "#E7B02E" },
+  { id: "gcc-nationals", label: "GCC nationals", note: "Insurance extension across the GCC unified law", accent: "#CA63D5" },
+  { id: "voluntary", label: "Voluntary insurance", note: "Self-employed, sabbatical and overseas workers under specific articles", accent: "#7DB9A4" },
 ];
 
 export default function MandateScopePage() {
-  const [standards, setStandards] = useState<StandardSummary[]>([]);
+  const [, setStandards] = useState<StandardSummary[]>([]);
   const [details, setDetails] = useState<Record<string, StandardDetail>>({});
   const [loading, setLoading] = useState(true);
 
@@ -127,9 +124,8 @@ export default function MandateScopePage() {
       .then(async (list) => {
         if (cancelled || !Array.isArray(list)) return;
         setStandards(list);
-        // pull details to count requirements per pillar
         const detailEntries = await Promise.all(
-          list.slice(0, 12).map(async (s: StandardSummary) => {
+          list.slice(0, 8).map(async (s: StandardSummary) => {
             try {
               const r = await fetch(`/api/mandate/standards/${encodeURIComponent(s.slug)}`);
               if (!r.ok) return [s.slug, null] as const;
@@ -167,124 +163,113 @@ export default function MandateScopePage() {
   }, [details]);
 
   return (
-    <div className="relative mx-auto max-w-7xl px-8 py-10">
-      <motion.header
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: EASE }}
-        className="mb-10 max-w-3xl"
-      >
-        <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-[#00A86B]">
+    <div className="relative flex h-full flex-col overflow-hidden">
+      {/* Compact header band */}
+      <header className="shrink-0 px-4 pt-3 pb-2 md:px-6 md:pt-4">
+        <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-[#1B7A4A]">
           <ShieldCheck size={11} /> Mandate · Scope
         </div>
-        <h1 className="mt-1 font-playfair text-3xl font-semibold text-cream">
+        <h1 className="mt-0.5 truncate font-playfair text-xl font-semibold text-cream md:text-2xl">
           Who is covered, where, by which contingency
         </h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-white/60">
-          The GPSSA mandate covers six branches of social protection across
-          four coverage classes. Each branch is anchored to specific articles
-          in Federal Law No. 57 of 2023 and the GCC unified insurance extension
-          framework.
-        </p>
-      </motion.header>
+      </header>
 
-      <section>
-        <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-white/55">
-          <NetworkIcon size={11} /> Six branches
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {BRANCHES.map((b, i) => {
-            const Icon = b.Icon;
-            const count = branchCounts[b.pillar] ?? 0;
-            return (
+      {/* Side-by-side grid: 3fr + 2fr */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 px-4 pb-4 md:px-6 md:pb-6 lg:grid-cols-[3fr_2fr]">
+        {/* LEFT: Six branches 3x2 */}
+        <section className="flex min-h-0 flex-col">
+          <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/55">
+            <NetworkIcon size={10} /> Six branches
+          </div>
+          <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-3 gap-2 lg:grid-cols-3 lg:grid-rows-2">
+            {BRANCHES.map((b, i) => {
+              const Icon = b.Icon;
+              const count = branchCounts[b.pillar] ?? 0;
+              return (
+                <motion.div
+                  key={b.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: EASE, delay: i * 0.04 }}
+                  className="glass-panel relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/[0.05] p-3"
+                  style={{
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.28), 0 0 24px ${b.accent}10`,
+                  }}
+                >
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-50"
+                    style={{ background: `radial-gradient(circle, ${b.accent}28 0%, transparent 70%)` }}
+                  />
+                  <div className="relative z-10 flex items-start gap-2">
+                    <div
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: `linear-gradient(135deg, ${b.accent}28, ${b.accent}08)` }}
+                    >
+                      <Icon size={14} style={{ color: b.accent }} strokeWidth={1.7} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="truncate font-playfair text-[14px] font-semibold leading-tight text-cream">{b.label}</h3>
+                      <div className="mt-0.5 truncate text-[9px] uppercase tracking-[0.18em] text-white/45">
+                        {b.ilo}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="relative z-10 mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-white/65">
+                    {b.description}
+                  </p>
+                  <div className="relative z-10 mt-auto pt-1.5 text-[10px] text-white/45">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-1 w-1 rounded-full" style={{ background: b.accent }} />
+                      {loading
+                        ? "Counting…"
+                        : count > 0
+                        ? `${count} indexed articles`
+                        : "Awaiting indexing"}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* RIGHT: Coverage classes 2x2 */}
+        <section className="flex min-h-0 flex-col">
+          <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/55">
+            <Users size={10} /> Coverage classes
+          </div>
+          <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
+            {COVERAGE_CLASSES.map((c, i) => (
               <motion.div
-                key={b.id}
-                initial={{ opacity: 0, y: 16 }}
+                key={c.id}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: EASE, delay: i * 0.05 }}
-                className="glass-panel relative overflow-hidden rounded-2xl border border-white/[0.04] p-5"
+                transition={{ duration: 0.4, ease: EASE, delay: 0.1 + i * 0.05 }}
+                className="glass-panel relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/[0.05] p-3"
                 style={{
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 12px 32px rgba(0,0,0,0.28), 0 0 36px ${b.accent}10`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.28), 0 0 24px ${c.accent}10`,
                 }}
               >
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-50"
-                  style={{ background: `radial-gradient(circle, ${b.accent}26 0%, transparent 70%)` }}
+                  className="pointer-events-none absolute -left-10 -bottom-10 h-24 w-24 rounded-full opacity-40"
+                  style={{ background: `radial-gradient(circle, ${c.accent}28 0%, transparent 70%)` }}
                 />
-                <div className="relative z-10 flex items-start gap-3">
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                    style={{
-                      background: `linear-gradient(135deg, ${b.accent}28, ${b.accent}08)`,
-                    }}
-                  >
-                    <Icon size={16} style={{ color: b.accent }} strokeWidth={1.7} />
-                  </div>
-                  <div>
-                    <h3 className="font-playfair text-lg font-semibold text-cream">{b.label}</h3>
-                    <div className="mt-0.5 text-[10px] uppercase tracking-[0.2em] text-white/45">
-                      {b.ilo}
-                    </div>
-                  </div>
+                <div className="relative z-10 text-[9px] uppercase tracking-[0.22em]" style={{ color: c.accent }}>
+                  Coverage class
                 </div>
-                <p className="relative z-10 mt-3 text-[13px] leading-relaxed text-white/65">
-                  {b.description}
+                <h4 className="relative z-10 mt-0.5 font-playfair text-[14px] font-semibold leading-tight text-cream">
+                  {c.label}
+                </h4>
+                <p className="relative z-10 mt-1 line-clamp-3 text-[11.5px] leading-snug text-white/60">
+                  {c.note}
                 </p>
-                <div className="relative z-10 mt-4 flex items-center justify-between text-[11px] text-white/45">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="h-1 w-1 rounded-full" style={{ background: b.accent }} />
-                    {loading
-                      ? "Counting…"
-                      : count > 0
-                      ? `${count} indexed articles`
-                      : "Awaiting agent indexing"}
-                  </span>
-                </div>
               </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="mt-12">
-        <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-white/55">
-          <Users size={11} /> Coverage classes
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          {COVERAGE_CLASSES.map((c, i) => (
-            <motion.div
-              key={c.id}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: EASE, delay: 0.1 + i * 0.05 }}
-              className="glass-panel rounded-2xl border border-white/[0.04] p-5"
-            >
-              <div className="text-[11px] uppercase tracking-[0.22em] text-[#7DB9A4]">
-                Coverage class
-              </div>
-              <h4 className="mt-1 font-playfair text-lg font-semibold text-cream">{c.label}</h4>
-              <p className="mt-2 text-[13px] leading-relaxed text-white/60">{c.note}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {loading && (
-        <div className="mt-10 flex items-center gap-2 text-[12px] text-white/45">
-          <Loader2 size={12} className="animate-spin" /> Hydrating live counts from indexed
-          articles…
-        </div>
-      )}
-      {!loading && Object.keys(details).length === 0 && standards.length === 0 && (
-        <div className="mt-10 rounded-2xl border border-white/[0.05] bg-white/[0.015] p-6 text-[13px] text-white/55">
-          <Sparkles size={14} className="mb-2 inline text-[#00A86B]" />
-          <p>
-            No statutory data yet. Run the GPSSA Mandate Corpus agent to populate Standards,
-            requirements and per-pillar coverage counts.
-          </p>
-        </div>
-      )}
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

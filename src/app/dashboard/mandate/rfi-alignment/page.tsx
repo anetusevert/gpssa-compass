@@ -16,7 +16,6 @@ import {
   AlignmentBoard,
   type AlignmentPayload,
 } from "@/components/mandate/AlignmentBoard";
-import { RFI_REFERENCE } from "@/lib/mandate/rfi-sections";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -63,8 +62,7 @@ export default function MandateRfiAlignmentPage() {
               <Network size={10} /> Mandate · RFI Alignment
             </div>
             <h1 className="mt-0.5 truncate font-playfair text-base font-semibold text-cream md:text-lg">
-              How {RFI_REFERENCE.number} maps to the legal mandate &amp; live
-              app pillars
+              How your RFI maps to the legal mandate &amp; ADL GPSSA Intelligence
             </h1>
           </div>
           <div className="hidden items-center gap-2 text-[10px] text-white/55 md:flex">

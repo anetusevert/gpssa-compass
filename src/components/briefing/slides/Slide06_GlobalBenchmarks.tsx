@@ -14,7 +14,8 @@ export function Slide06_GlobalBenchmarks({ snapshot }: Props) {
     (r) =>
       r.gpssaScore != null ||
       r.globalAverage != null ||
-      r.topQuartile != null
+      r.topQuartile != null ||
+      r.bottomQuartile != null
   );
 
   if (evaluated.length === 0) {
@@ -28,40 +29,42 @@ export function Slide06_GlobalBenchmarks({ snapshot }: Props) {
     );
   }
 
-  // Pick the highest-signal 5–6 standards for the slide
-  const ranked = evaluated
-    .slice()
+  // Prefer rows where UAE has a score; fill out to 6 rows with highest-signal others.
+  const withGpssa = evaluated.filter((r) => r.gpssaScore != null);
+  const withoutGpssa = evaluated
+    .filter((r) => r.gpssaScore == null)
     .sort((a, b) => {
-      const aHas = (a.gpssaScore != null ? 2 : 0) + (a.globalAverage != null ? 1 : 0);
-      const bHas = (b.gpssaScore != null ? 2 : 0) + (b.globalAverage != null ? 1 : 0);
-      return bHas - aHas;
-    })
-    .slice(0, 6);
+      const aSig = (a.globalAverage != null ? 1 : 0) + (a.topQuartile != null ? 1 : 0) + (a.bottomQuartile != null ? 1 : 0);
+      const bSig = (b.globalAverage != null ? 1 : 0) + (b.topQuartile != null ? 1 : 0) + (b.bottomQuartile != null ? 1 : 0);
+      return bSig - aSig;
+    });
+
+  const TARGET = 6;
+  const ranked = [
+    ...withGpssa.slice(0, TARGET),
+    ...withoutGpssa.slice(0, Math.max(0, TARGET - withGpssa.length)),
+  ].slice(0, TARGET);
 
   const rows: BenchmarkRow[] = ranked.map((s) => ({
     id: s.slug,
-    label: s.code ? `${s.code} · ${s.title}` : s.title,
-    category: s.category,
+    label: s.shortLabel,
+    oneLiner: s.oneLiner,
     gpssa: s.gpssaScore,
     globalAverage: s.globalAverage,
     topQuartile: s.topQuartile,
+    bottomQuartile: s.bottomQuartile,
     floor: s.floor,
   }));
-
-  const meets = rows.filter(
-    (r) =>
-      r.gpssa != null && r.globalAverage != null && r.gpssa >= r.globalAverage
-  ).length;
 
   return (
     <SlideLayout
       eyebrow="vs. Global Benchmarks"
-      title={`GPSSA already meets ${meets} of ${rows.length} canonical benchmarks.`}
-      subtitle="Plotted on a 0–100 scale: GPSSA position vs. global average and top-quartile performance per standard."
+      title="Where the UAE leads, lags, and has runway."
+      subtitle="Pension dimensions scored 0–100. UAE position vs the global laggard floor, the global average, and the leader frontier."
     >
-      <div className="flex h-full items-center justify-center max-w-5xl mx-auto">
+      <div className="flex h-full items-center justify-center max-w-5xl mx-auto pb-4">
         <div className="w-full">
-          <BenchmarkLine rows={rows} />
+          <BenchmarkLine rows={rows} entityLabel="UAE" />
         </div>
       </div>
     </SlideLayout>

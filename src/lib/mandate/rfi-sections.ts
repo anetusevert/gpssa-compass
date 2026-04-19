@@ -267,7 +267,7 @@ export const RFI_SECTIONS: RfiSection[] = [
     body: "Optimize processes that improve service delivery, monitoring, service intelligence, compliance, decision support, or operational efficiency.",
     kind: "area-of-focus",
     relatedPillars: ["delivery", "mandate"],
-    relatedScreens: ["/dashboard/delivery/models", "/dashboard/mandate/obligations"],
+    relatedScreens: ["/dashboard/delivery/models", "/dashboard/mandate/governance"],
   },
   {
     id: "aof-cross-entity-bundles",

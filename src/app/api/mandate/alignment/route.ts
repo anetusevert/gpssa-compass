@@ -14,7 +14,7 @@ const APP_SCREENS: { id: string; label: string; pillar: string; href: string }[]
   { id: "screen-delivery-personas", label: "Delivery — Personas", pillar: "delivery", href: "/dashboard/delivery/personas" },
   { id: "screen-atlas-benchmarking", label: "Atlas — Benchmarking", pillar: "atlas", href: "/dashboard/atlas/benchmarking" },
   { id: "screen-mandate-governance", label: "Mandate — Governance", pillar: "mandate", href: "/dashboard/mandate/governance" },
-  { id: "screen-mandate-obligations", label: "Mandate — Obligations", pillar: "mandate", href: "/dashboard/mandate/obligations" },
+  { id: "screen-mandate-hub", label: "Mandate — Legal & Governance", pillar: "mandate", href: "/dashboard/mandate" },
 ];
 
 const ENTITY_TYPE_TO_SCREEN: Record<string, string[]> = {

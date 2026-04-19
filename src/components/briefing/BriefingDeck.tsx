@@ -19,6 +19,7 @@ import { Slide08_ServiceChannelHeatmap } from "./slides/Slide08_ServiceChannelHe
 import { Slide09_Opportunities } from "./slides/Slide09_Opportunities";
 import { Slide10_Closing } from "./slides/Slide10_Closing";
 import { SlidePlaceholder } from "./SlidePlaceholder";
+import { ComparatorPicker } from "./ComparatorPicker";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -69,7 +70,7 @@ const SLIDES: SlideRenderer[] = [
     ({ snapshot }) => <Slide09_Opportunities snapshot={snapshot} />,
     "Strategic Opportunities"
   ),
-  () => <Slide10_Closing />,
+  dataReadySlide(({ snapshot }) => <Slide10_Closing snapshot={snapshot} />, "Closing"),
 ];
 
 export function BriefingDeck() {
@@ -191,6 +192,9 @@ export function BriefingDeck() {
               snapshot={snapshot}
               onClose={closeDeck}
             />
+
+            {/* Shared comparator drawer (Slides 5 & 7) */}
+            {snapshot && <ComparatorPicker snapshot={snapshot} />}
           </div>
         </motion.div>
       )}

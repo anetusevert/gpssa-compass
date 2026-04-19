@@ -18,8 +18,6 @@ import {
   ArrowRight,
   X,
   Scale,
-  Gavel,
-  Landmark,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -105,9 +103,8 @@ function MandateBar() {
   const router = useRouter();
 
   const subLinks = [
-    { label: "Legal Foundation", href: "/dashboard/mandate/legal", icon: Gavel },
+    { label: "Legal & Governance", href: "/dashboard/mandate", icon: Scale },
     { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
-    { label: "Governance", href: "/dashboard/mandate/governance", icon: Landmark },
   ];
 
   return (

@@ -17,6 +17,8 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const collapsed = useSidebarStore((s) => s.collapsed);
   const isAtlasCountryPage = pathname.startsWith("/dashboard/atlas/country/");
+  // Every Mandate route is a single-viewport experience (no document scroll).
+  const isMandatePage = pathname.startsWith("/dashboard/mandate");
   const isFullViewport = pathname === "/dashboard/atlas/benchmarking"
     || pathname === "/dashboard/services/catalog"
     || pathname === "/dashboard/services/channels"
@@ -24,8 +26,7 @@ export default function DashboardLayout({
     || pathname === "/dashboard/delivery/personas"
     || pathname === "/dashboard/products/portfolio"
     || pathname === "/dashboard/products/segments"
-    || pathname === "/dashboard/mandate"
-    || pathname === "/dashboard/mandate/rfi-alignment"
+    || isMandatePage
     || isAtlasCountryPage;
   const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
 

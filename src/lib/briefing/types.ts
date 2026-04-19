@@ -51,12 +51,33 @@ export interface AtlasTopCountry {
   maturityLabel: string | null;
 }
 
+/** Full country payload exposed to the comparator picker. */
+export interface AtlasCountryRow {
+  iso3: string;
+  iso2: string | null;
+  name: string;
+  region: string;
+  flag: string | null;
+  maturityScore: number | null;
+  maturityLabel: string | null;
+  /** Normalised radar metrics (0–100). null when the source field is null. */
+  metrics: {
+    maturityScore: number | null;
+    coverageRate: number | null;
+    replacementRate: number | null;
+    sustainability: number | null;
+    digitalReadiness: number | null;
+  };
+}
+
 export interface AtlasSection {
   countryCount: number;
   researchedCount: number;
   regions: AtlasRegionBucket[];
   maturity: AtlasMaturityBucket[];
   top: AtlasTopCountry[];
+  /** All countries with a known maturityScore, ranked desc, used by the picker. */
+  countries: AtlasCountryRow[];
 }
 
 // ── Services ─────────────────────────────────────────────────────────────
@@ -142,8 +163,22 @@ export interface StandardComparisonRow {
   globalAverage: number | null;
   /** Top quartile (or "best practice") global score on this standard. */
   topQuartile: number | null;
+  /** Bottom quartile ("laggards") global score on this standard. */
+  bottomQuartile: number | null;
   /** ILO/OECD/etc. recommended floor when applicable. */
   floor: number | null;
+  /** Plain-English explainer (what the dimension actually measures). */
+  oneLiner: string;
+  /** Short, direct dimension label (e.g. "Coverage", "Adequacy"). */
+  shortLabel: string;
+}
+
+/** Pre-computed aggregate "comparator" payloads used on the radar slide. */
+export interface StandardAggregate {
+  id: string;
+  label: string;
+  description: string;
+  metrics: Record<string, number>;
 }
 
 export interface StandardsSection {
@@ -156,6 +191,8 @@ export interface StandardsSection {
   globalBestMetrics: Record<string, number> | null;
   /** GPSSA derived metrics (from UAE country row when available). */
   gpssaMetrics: Record<string, number> | null;
+  /** Curated abstract aggregates exposed in the comparator picker. */
+  aggregates: StandardAggregate[];
 }
 
 // ── Benchmarks (peer institutions) ───────────────────────────────────────
@@ -173,11 +210,24 @@ export interface PeerInstitutionRow {
   scoredDimensions: number;
   /** Whether this row represents GPSSA itself. */
   isGpssa: boolean;
+  /** Per-dimension scores keyed by dimension slug. */
+  dimensionScores: Record<string, number>;
+}
+
+export interface BenchmarkDimensionRow {
+  slug: string;
+  name: string;
+  description: string | null;
+  category: string | null;
 }
 
 export interface BenchmarksSection {
+  /** Curated benchmark target peers (sorted GPSSA first, then by avg desc). */
   peers: PeerInstitutionRow[];
+  /** Every institution in the database, used by the comparator picker. */
+  allPeers: PeerInstitutionRow[];
   dimensions: number;
+  dimensionList: BenchmarkDimensionRow[];
 }
 
 // ── Opportunities ────────────────────────────────────────────────────────

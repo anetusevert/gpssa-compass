@@ -19,7 +19,8 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ScrollText, Target, Layers as LayersIcon, ArrowRight } from "lucide-react";
+import { ScrollText, Target, Layers as LayersIcon, ArrowRight, ExternalLink } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import {
   RFI_KIND_ACCENT,
   RFI_KIND_LABELS,
@@ -96,8 +97,84 @@ const SCREEN_COLOR: Record<string, string> = {
   international: "#4899FF",
 };
 
+const PILLAR_LABELS: Record<string, string> = {
+  registration: "Registration",
+  contribution: "Contribution",
+  pension: "Pension",
+  "end-of-service": "End of Service",
+  injury: "Work Injury",
+  death: "Death & Survivors",
+  gcc: "GCC Coordination",
+  advisory: "Advisory",
+  complaint: "Complaints",
+  governance: "Governance",
+  transparency: "Transparency",
+  digital: "Digital",
+  other: "Other",
+};
+
+const SCREEN_DESCRIPTIONS: Record<string, string> = {
+  "screen-services-catalog":
+    "Live catalog of every GPSSA service, the journey it sits in, the law it derives from, and current channel coverage.",
+  "screen-services-channels":
+    "Channel-by-channel capability matrix showing which services are available in app, web, contact center, branch, and partner systems.",
+  "screen-products-portfolio":
+    "Portfolio of in-flight and proposed pension, end-of-service, injury and death products with status and ownership.",
+  "screen-products-segments":
+    "Segment coverage view: which member, employer, pensioner and beneficiary segments each product currently serves.",
+  "screen-delivery-channels":
+    "Operational performance per delivery channel — SLA, fulfillment time, repeat contact and complaint themes.",
+  "screen-delivery-personas":
+    "Persona-led journey diagnostics highlighting friction, effort and pain points across the service experience.",
+  "screen-atlas-benchmarking":
+    "International benchmarking atlas comparing GPSSA against peer social-security funds on KPIs and product mix.",
+  "screen-mandate-governance":
+    "Governance hub: mandate basis, accountable owners, review cadence and KPI ownership for each obligation.",
+  "screen-mandate-hub":
+    "Top-level mandate workspace linking the legal corpus, RFI alignment, history and live pillar performance.",
+};
+
+type ActiveSelection = { kind: "article" | "rfi" | "screen"; id: string } | null;
+
 export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   const [hover, setHover] = useState<HoverState>({ type: null, id: null });
+  const [active, setActive] = useState<ActiveSelection>(null);
+
+  const articleById = useMemo(
+    () => new Map(payload.articles.map((a) => [a.id, a])),
+    [payload]
+  );
+  const rfiById = useMemo(
+    () => new Map(payload.rfiSections.map((r) => [r.id, r])),
+    [payload]
+  );
+  const screenById = useMemo(
+    () => new Map(payload.appScreens.map((s) => [s.id, s])),
+    [payload]
+  );
+
+  // Group statutory articles by pillar (count desc, unknown last)
+  const articleGroups = useMemo(() => {
+    const buckets = new Map<string, ArticleNode[]>();
+    for (const a of payload.articles) {
+      const key = a.pillar ?? "other";
+      const bucket = buckets.get(key);
+      if (bucket) bucket.push(a);
+      else buckets.set(key, [a]);
+    }
+    return Array.from(buckets.entries())
+      .sort((a, b) => {
+        if (a[0] === "other") return 1;
+        if (b[0] === "other") return -1;
+        return b[1].length - a[1].length;
+      })
+      .map(([pillar, items]) => ({
+        pillar,
+        items,
+        color: PILLAR_COLOR[pillar] ?? "rgba(255,255,255,0.55)",
+        label: PILLAR_LABELS[pillar] ?? pillar,
+      }));
+  }, [payload]);
 
   const articleRefs = useRef<Map<string, HTMLLIElement>>(new Map());
   const rfiRefs = useRef<Map<string, HTMLLIElement>>(new Map());
@@ -291,7 +368,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   return (
     <div
       ref={stageRef}
-      className="relative grid h-full w-full grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)_minmax(0,0.75fr)] gap-2 overflow-hidden rounded-2xl border border-white/[0.04] bg-gradient-to-b from-white/[0.015] to-transparent p-2 md:gap-3 md:p-3"
+      className="relative grid h-full w-full grid-cols-3 gap-2 overflow-hidden rounded-2xl border border-white/[0.04] bg-gradient-to-b from-white/[0.015] to-transparent p-2 md:gap-3 md:p-3"
       onMouseLeave={() => setHover({ type: null, id: null })}
     >
       {/* Edges only render on hover; idle board is intentionally clean so the
@@ -364,55 +441,68 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
         Icon={ScrollText}
         accent="#00A86B"
       >
-        <ul className="alignment-multicol pr-1">
-          {payload.articles.map((a) => {
-            const dim = isDimmed("article", a.id);
-            const hi = isHighlighted("article", a.id);
-            const color = (a.pillar && PILLAR_COLOR[a.pillar]) || "rgba(255,255,255,0.55)";
-            return (
-              <li
-                key={a.id}
-                ref={setRef(articleRefs, a.id)}
-                onMouseEnter={() => setHover({ type: "article", id: a.id })}
-                className={`group relative mb-1 inline-block w-full cursor-pointer break-inside-avoid rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
-                  hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
-                }`}
-                style={{
-                  opacity: dim ? 0.2 : 1,
-                  boxShadow: hi ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22` : undefined,
-                  borderLeft: `2px solid ${color}88`,
-                }}
+        <div className="flex flex-col gap-2 pr-1">
+          {articleGroups.map((group) => (
+            <section key={group.pillar} className="flex flex-col">
+              <header
+                className="sticky top-0 z-10 mb-1 flex items-center gap-1.5 rounded-md border border-white/[0.05] bg-black/55 px-1.5 py-1 backdrop-blur"
+                style={{ borderLeft: `3px solid ${group.color}` }}
               >
-                <div className="flex items-center gap-1.5 text-[8px] uppercase tracking-[0.14em] text-white/45">
-                  <span className="truncate">
-                    {(a.standard.code ?? a.standard.slug ?? "").toString().slice(0, 14)}
-                  </span>
-                  {a.code && <span className="shrink-0 text-white/65">· {a.code}</span>}
-                  {a.pillar && (
-                    <span
-                      className="ml-auto shrink-0 rounded px-1 py-px text-[8px] font-medium uppercase tracking-wide"
-                      style={{ background: `${color}26`, color }}
+                <span
+                  className="text-[9px] font-semibold uppercase tracking-[0.18em]"
+                  style={{ color: group.color }}
+                >
+                  {group.label}
+                </span>
+                <span className="ml-auto text-[9px] font-medium tabular-nums text-white/40">
+                  {group.items.length}
+                </span>
+              </header>
+              <ul className="flex flex-col gap-1">
+                {group.items.map((a) => {
+                  const dim = isDimmed("article", a.id);
+                  const hi = isHighlighted("article", a.id);
+                  const color = group.color;
+                  return (
+                    <li
+                      key={a.id}
+                      ref={setRef(articleRefs, a.id)}
+                      onMouseEnter={() => setHover({ type: "article", id: a.id })}
+                      onClick={() => setActive({ kind: "article", id: a.id })}
+                      className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
+                        hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
+                      }`}
+                      style={{
+                        opacity: dim ? 0.2 : 1,
+                        boxShadow: hi ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22` : undefined,
+                        borderLeft: `2px solid ${color}88`,
+                      }}
                     >
-                      {a.pillar}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">
-                  {a.title}
-                </div>
-              </li>
-            );
-          })}
+                      <div className="flex items-center gap-1.5 text-[8px] uppercase tracking-[0.14em] text-white/45">
+                        <span className="truncate">
+                          {(a.standard.code ?? a.standard.slug ?? "").toString().slice(0, 18)}
+                        </span>
+                        {a.code && <span className="shrink-0 text-white/65">· {a.code}</span>}
+                      </div>
+                      <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">
+                        {a.title}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
           {payload.articles.length === 0 && (
-            <li className="rounded-lg p-4 text-[12px] text-white/40">
+            <div className="rounded-lg p-4 text-[12px] text-white/40">
               No statutory articles indexed yet.
-            </li>
+            </div>
           )}
-        </ul>
+        </div>
       </Column>
 
       <Column
-        title="RFI 02-2026"
+        title="Your RFI"
         subtitle={`${payload.rfiSections.length} sections`}
         Icon={Target}
         accent="#E7B02E"
@@ -427,6 +517,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
                 key={r.id}
                 ref={setRef(rfiRefs, r.id)}
                 onMouseEnter={() => setHover({ type: "rfi", id: r.id })}
+                onClick={() => setActive({ kind: "rfi", id: r.id })}
                 className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
                   hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
                 }`}
@@ -448,7 +539,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
       </Column>
 
       <Column
-        title="App screens"
+        title="ADL GPSSA Intelligence"
         subtitle={`${payload.appScreens.length} touchpoints`}
         Icon={LayersIcon}
         accent="#4899FF"
@@ -463,6 +554,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
                 key={s.id}
                 ref={setRef(screenRefs, s.id)}
                 onMouseEnter={() => setHover({ type: "screen", id: s.id })}
+                onClick={() => setActive({ kind: "screen", id: s.id })}
                 className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
                   hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
                 }`}
@@ -499,11 +591,247 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
             transition={{ duration: 0.3, ease: EASE }}
             className="pointer-events-none absolute inset-x-0 bottom-2 z-10 mx-auto w-fit rounded-full border border-white/[0.06] bg-black/40 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-white/45 backdrop-blur"
           >
-            Hover any node — the connections light up
+            Hover any node — the connections light up · Click any tile for detail
           </motion.div>
         )}
       </AnimatePresence>
+
+      <DetailModal
+        active={active}
+        onClose={() => setActive(null)}
+        onJump={(next) => setActive(next)}
+        articleById={articleById}
+        rfiById={rfiById}
+        screenById={screenById}
+        articles={payload.articles}
+      />
     </div>
+  );
+}
+
+function DetailModal({
+  active,
+  onClose,
+  onJump,
+  articleById,
+  rfiById,
+  screenById,
+  articles,
+}: {
+  active: ActiveSelection;
+  onClose: () => void;
+  onJump: (next: ActiveSelection) => void;
+  articleById: Map<string, ArticleNode>;
+  rfiById: Map<string, RfiNode>;
+  screenById: Map<string, ScreenNode>;
+  articles: ArticleNode[];
+}) {
+  if (!active) {
+    return <Modal isOpen={false} onClose={onClose}>{null}</Modal>;
+  }
+
+  if (active.kind === "article") {
+    const a = articleById.get(active.id);
+    if (!a) return <Modal isOpen={false} onClose={onClose}>{null}</Modal>;
+    const color = (a.pillar && PILLAR_COLOR[a.pillar]) || "rgba(255,255,255,0.55)";
+    const linkedScreens = a.screenLinks
+      .map((l) => screenById.get(l.screenId))
+      .filter((s): s is ScreenNode => Boolean(s));
+    const linkedRfis = a.rfiSectionIds
+      .map((id) => rfiById.get(id))
+      .filter((r): r is RfiNode => Boolean(r));
+    return (
+      <Modal isOpen onClose={onClose} size="xl" title={a.title}>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-white/70">
+              {a.standard.code ?? a.standard.slug}
+            </span>
+            <span className="text-[11px] text-white/55">{a.standard.title}</span>
+            {a.code && (
+              <span className="rounded bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-white/65">
+                {a.code}
+              </span>
+            )}
+            {a.pillar && (
+              <span
+                className="ml-auto rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
+                style={{ background: `${color}26`, color }}
+              >
+                {PILLAR_LABELS[a.pillar] ?? a.pillar}
+              </span>
+            )}
+          </div>
+
+          {a.description ? (
+            <p className="whitespace-pre-line text-[13px] leading-relaxed text-cream/90">
+              {a.description}
+            </p>
+          ) : (
+            <p className="text-[12px] italic text-white/45">
+              No additional legal text recorded for this article in the corpus.
+            </p>
+          )}
+
+          {linkedRfis.length > 0 && (
+            <div>
+              <h4 className="mb-1.5 text-[10px] uppercase tracking-[0.22em] text-white/50">
+                Maps to RFI sections
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {linkedRfis.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => onJump({ kind: "rfi", id: r.id })}
+                    className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-left text-[11px] text-cream transition hover:border-white/20 hover:bg-white/[0.08]"
+                    style={{ borderLeft: `2px solid ${RFI_KIND_ACCENT[r.kind]}` }}
+                  >
+                    <span className="text-white/55">{r.sectionRef}</span> · {r.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {linkedScreens.length > 0 && (
+            <div>
+              <h4 className="mb-1.5 text-[10px] uppercase tracking-[0.22em] text-white/50">
+                Addressed by Intelligence
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {linkedScreens.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => onJump({ kind: "screen", id: s.id })}
+                    className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-left text-[11px] text-cream transition hover:border-white/20 hover:bg-white/[0.08]"
+                    style={{ borderLeft: `2px solid ${SCREEN_COLOR[s.pillar] ?? "#FFFFFF"}` }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+    );
+  }
+
+  if (active.kind === "rfi") {
+    const r = rfiById.get(active.id);
+    if (!r) return <Modal isOpen={false} onClose={onClose}>{null}</Modal>;
+    const color = RFI_KIND_ACCENT[r.kind];
+    const backArticles = articles.filter((a) => a.rfiSectionIds.includes(r.id));
+    return (
+      <Modal isOpen onClose={onClose} size="xl" title={r.title}>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-white/70">
+              {r.sectionRef}
+            </span>
+            <span
+              className="rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
+              style={{ background: `${color}26`, color }}
+            >
+              {RFI_KIND_LABELS[r.kind]}
+            </span>
+          </div>
+
+          <p className="whitespace-pre-line text-[13px] leading-relaxed text-cream/90">
+            {r.body}
+          </p>
+
+          {r.relatedScreens.length > 0 && (
+            <div>
+              <h4 className="mb-1.5 text-[10px] uppercase tracking-[0.22em] text-white/50">
+                Related Intelligence screens
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {r.relatedScreens.map((path) => (
+                  <a
+                    key={path}
+                    href={path}
+                    className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-cream transition hover:border-white/20 hover:bg-white/[0.08]"
+                  >
+                    {path}
+                    <ExternalLink size={11} className="text-white/45" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {backArticles.length > 0 && (
+            <div>
+              <h4 className="mb-1.5 text-[10px] uppercase tracking-[0.22em] text-white/50">
+                Anchored in {backArticles.length} statutory{" "}
+                {backArticles.length === 1 ? "article" : "articles"}
+              </h4>
+              <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto pr-1">
+                {backArticles.slice(0, 30).map((a) => {
+                  const c = (a.pillar && PILLAR_COLOR[a.pillar]) || "rgba(255,255,255,0.55)";
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => onJump({ kind: "article", id: a.id })}
+                      className="max-w-full rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-left text-[11px] text-cream transition hover:border-white/20 hover:bg-white/[0.08]"
+                      style={{ borderLeft: `2px solid ${c}` }}
+                    >
+                      <span className="text-white/55">
+                        {a.standard.code ?? a.standard.slug}
+                        {a.code ? ` · ${a.code}` : ""}
+                      </span>
+                      <span className="ml-1 line-clamp-1">{a.title}</span>
+                    </button>
+                  );
+                })}
+                {backArticles.length > 30 && (
+                  <span className="self-center text-[11px] text-white/40">
+                    +{backArticles.length - 30} more
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+    );
+  }
+
+  // screen
+  const s = screenById.get(active.id);
+  if (!s) return <Modal isOpen={false} onClose={onClose}>{null}</Modal>;
+  const color = SCREEN_COLOR[s.pillar] ?? "#FFFFFF";
+  const description =
+    SCREEN_DESCRIPTIONS[s.id] ?? "Intelligence touchpoint linked to the GPSSA mandate.";
+  return (
+    <Modal isOpen onClose={onClose} size="lg" title={s.label}>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className="rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
+            style={{ background: `${color}26`, color }}
+          >
+            {s.pillar}
+          </span>
+          <span className="text-[11px] text-white/45">{s.href}</span>
+        </div>
+
+        <p className="text-[13px] leading-relaxed text-cream/90">{description}</p>
+
+        <a
+          href={s.href}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-cream transition hover:border-white/25 hover:bg-white/[0.09]"
+          style={{ boxShadow: `inset 0 0 0 1px ${color}33` }}
+        >
+          Open this screen
+          <ExternalLink size={12} />
+        </a>
+      </div>
+    </Modal>
   );
 }
 

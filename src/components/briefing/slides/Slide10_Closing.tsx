@@ -6,55 +6,110 @@ import { ArrowRight, Globe, Layers, Package, GitCompare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { SlideLayout } from "./SlideLayout";
 import { useBriefingStore } from "../store";
+import type { BriefingSnapshot } from "@/lib/briefing/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+interface Props {
+  snapshot: BriefingSnapshot;
+}
+
 interface CTA {
   label: string;
-  sub: string;
   href: string;
   icon: LucideIcon;
   color: string;
+  badge: (s: BriefingSnapshot) => string;
 }
 
 const CTAS: CTA[] = [
   {
     label: "Global Atlas",
-    sub: "196 nations",
     href: "/dashboard/atlas",
     icon: Globe,
     color: "rgba(0,168,107,0.85)",
+    badge: (s) => `${s.atlas.countryCount} nations`,
   },
   {
     label: "Service Catalog",
-    sub: "31 services",
     href: "/dashboard/services/catalog",
     icon: Layers,
     color: "rgba(45,74,140,0.85)",
+    badge: (s) => `${s.services.count} services`,
   },
   {
     label: "Product Portfolio",
-    sub: "Tiers & segments",
     href: "/dashboard/products/portfolio",
     icon: Package,
     color: "rgba(197,165,114,0.85)",
+    badge: (s) => `${s.products.count} products`,
   },
   {
     label: "Benchmarking",
-    sub: "Live comparators",
     href: "/dashboard/atlas/benchmarking",
     icon: GitCompare,
     color: "rgba(45,212,191,0.85)",
+    badge: (s) => `${s.benchmarks.peers.length} peers`,
   },
 ];
 
-const STATEMENTS = [
-  { kicker: "01", title: "Live", body: "Updates continuously as agents finish." },
-  { kicker: "02", title: "Sourced", body: "Every claim cites a verifiable source." },
-  { kicker: "03", title: "Comparable", body: "Benchmarks against the world." },
-];
+function AmbientBackdrop() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 grid-overlay opacity-40" />
 
-export function Slide10_Closing() {
+      <div
+        className="orb halo-pulse"
+        style={{
+          width: 700,
+          height: 700,
+          left: "-10%",
+          top: "-12%",
+          background:
+            "radial-gradient(circle, rgba(0,168,107,0.12) 0%, transparent 70%)",
+        }}
+      />
+      <div
+        className="orb drift-slow drift-reverse"
+        style={{
+          width: 520,
+          height: 520,
+          right: "-6%",
+          top: "20%",
+          background:
+            "radial-gradient(circle, rgba(45,74,140,0.1) 0%, transparent 72%)",
+        }}
+      />
+      <div
+        className="orb drift-slow"
+        style={{
+          width: 400,
+          height: 400,
+          left: "50%",
+          bottom: "-8%",
+          background:
+            "radial-gradient(circle, rgba(197,165,114,0.1) 0%, transparent 75%)",
+        }}
+      />
+
+      <div className="ambient-ring left-[12%] top-[18%] h-72 w-72 opacity-30" />
+      <div className="ambient-ring bottom-[14%] right-[12%] h-96 w-96 opacity-20" />
+
+      <motion.div
+        className="absolute left-[15%] top-[35%] h-px w-48 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+        animate={{ x: [0, 50, -15, 0], opacity: [0.15, 0.5, 0.25, 0.15] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-[30%] right-[18%] h-px w-64 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+        animate={{ x: [0, -70, 20, 0], opacity: [0.1, 0.4, 0.15, 0.1] }}
+        transition={{ duration: 13, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </div>
+  );
+}
+
+export function Slide10_Closing({ snapshot }: Props) {
   const router = useRouter();
   const closeDeck = useBriefingStore((s) => s.closeDeck);
 
@@ -69,88 +124,74 @@ export function Slide10_Closing() {
       title="Foundations are strong. Let's turn them into leadership."
       subtitle="GPSSA Compass is your operating system for the next pension era — already up, already comparing, already proposing the next move."
     >
-      <div className="flex h-full flex-col items-center justify-center gap-12">
-        <div className="grid w-full max-w-4xl grid-cols-3 gap-4">
-          {STATEMENTS.map((s, i) => (
-            <motion.div
-              key={s.title}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.6,
-                delay: 0.4 + i * 0.18,
-                ease: EASE,
-              }}
-              className="rounded-2xl px-6 py-5 ring-1 ring-white/[0.05]"
-              style={{
-                background:
-                  "linear-gradient(160deg, rgba(17,34,64,0.55), rgba(7,17,34,0.85))",
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,0.05), 0 14px 40px rgba(0,0,0,0.2)",
-              }}
-            >
-              <div className="text-[11px] uppercase tracking-[0.32em] text-[#33C490]/85 mb-2">
-                {s.kicker}
-              </div>
-              <div className="font-playfair text-3xl font-bold text-cream">
-                {s.title}
-              </div>
-              <div className="mt-2 text-sm text-white/55">{s.body}</div>
-            </motion.div>
-          ))}
-        </div>
+      <div className="relative flex h-full flex-col items-center justify-center">
+        <AmbientBackdrop />
 
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 1.2 }}
-          className="text-[11px] uppercase tracking-[0.32em] text-white/40"
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="relative z-10 mb-8 text-[11px] uppercase tracking-[0.32em] text-white/40"
         >
           Continue exploring
         </motion.div>
 
-        <div className="grid w-full max-w-4xl grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="relative z-10 grid w-full max-w-5xl grid-cols-2 gap-5 md:grid-cols-4">
           {CTAS.map((cta, i) => {
             const Icon = cta.icon;
             return (
               <motion.button
                 key={cta.href}
                 onClick={() => handleNav(cta.href)}
-                initial={{ opacity: 0, y: 14 }}
+                initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
-                  duration: 0.5,
-                  delay: 1.4 + i * 0.1,
+                  duration: 0.6,
+                  delay: 0.6 + i * 0.12,
                   ease: EASE,
                 }}
-                whileHover={{ y: -3, scale: 1.02 }}
+                whileHover={{ y: -4 }}
                 whileTap={{ scale: 0.98 }}
-                className="group flex items-center gap-3 rounded-xl px-4 py-3 text-left ring-1 ring-white/[0.06] overflow-hidden relative"
+                className="group glass-card surface-depth tile-no-frame relative flex flex-col items-start gap-4 overflow-hidden rounded-[28px] p-6 text-left transition"
                 style={{
-                  background:
-                    "linear-gradient(135deg, rgba(17,34,64,0.65), rgba(7,17,34,0.92))",
+                  boxShadow:
+                    "0 18px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
                 }}
               >
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                {/* Soft glow on hover */}
+                <motion.div
+                  className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full opacity-0 transition group-hover:opacity-100"
                   style={{
-                    background: `linear-gradient(135deg, color-mix(in srgb, ${cta.color} 26%, transparent), color-mix(in srgb, ${cta.color} 8%, transparent))`,
+                    background: `radial-gradient(circle, ${cta.color} 0%, transparent 70%)`,
+                  }}
+                />
+
+                <div
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                  style={{
+                    background: `linear-gradient(135deg, color-mix(in srgb, ${cta.color} 28%, transparent), color-mix(in srgb, ${cta.color} 8%, transparent))`,
                     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
                   }}
                 >
-                  <Icon size={16} className="text-cream" strokeWidth={1.6} />
+                  <Icon size={18} className="text-cream" strokeWidth={1.6} />
                 </div>
-                <div className="flex flex-col leading-tight">
-                  <div className="text-[13px] font-semibold text-cream">
+
+                <div className="flex flex-col gap-1">
+                  <div className="font-playfair text-xl font-semibold text-cream leading-tight">
                     {cta.label}
                   </div>
-                  <div className="text-[10px] uppercase tracking-[0.16em] text-white/40">
-                    {cta.sub}
+                  <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/[0.05] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/55 ring-1 ring-white/10">
+                    <span
+                      className="block h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: cta.color }}
+                    />
+                    {cta.badge(snapshot)}
                   </div>
                 </div>
+
                 <ArrowRight
-                  size={14}
-                  className="ml-auto text-white/30 transition-all duration-200 group-hover:translate-x-1 group-hover:text-cream"
+                  size={16}
+                  className="absolute right-5 top-5 text-white/25 transition-all duration-200 group-hover:translate-x-1 group-hover:text-cream"
                 />
               </motion.button>
             );

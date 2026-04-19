@@ -76,36 +76,30 @@ function MandateLegalView() {
   }, [standards, tab]);
 
   return (
-    <div className="relative mx-auto flex h-full max-w-[1500px] flex-col gap-6 px-8 py-8">
+    <div className="relative flex h-full flex-col overflow-hidden">
       <motion.header
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: EASE }}
-        className="flex flex-wrap items-end justify-between gap-6"
+        transition={{ duration: 0.45, ease: EASE }}
+        className="shrink-0 flex flex-wrap items-end justify-between gap-3 px-4 pt-3 pb-2 md:px-6 md:pt-4"
       >
-        <div>
-          <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-[#00A86B]">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-[#1B7A4A]">
             <Scale size={11} /> Mandate · Legal Foundation
           </div>
-          <h1 className="mt-1 font-playfair text-3xl font-semibold text-cream">
+          <h1 className="mt-0.5 truncate font-playfair text-xl font-semibold text-cream md:text-2xl">
             Read the law, article by article
           </h1>
-          <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-white/60">
-            Federal Law No. 6 of 1999, Federal Law No. 57 of 2023, executive
-            regulations and circulars — extracted from gpssa.gov.ae and
-            decoded into plain-English articles tagged to the GPSSA pillars
-            they govern.
-          </p>
         </div>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-white/[0.02] p-1">
-          <Filter size={11} className="ml-2 text-white/40" />
+        <div className="inline-flex items-center gap-1 rounded-full border border-white/[0.06] bg-white/[0.02] p-0.5">
+          <Filter size={10} className="ml-1.5 text-white/40" />
           {CATEGORY_TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] transition-colors ${
+              className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em] transition-colors ${
                 tab === t.id
-                  ? "bg-[#00A86B]/15 text-cream"
+                  ? "bg-[#1B7A4A]/20 text-cream"
                   : "text-white/55 hover:bg-white/[0.04] hover:text-cream"
               }`}
             >
@@ -115,7 +109,7 @@ function MandateLegalView() {
         </div>
       </motion.header>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 px-4 pb-4 md:px-6 md:pb-6">
         {loading ? (
           <div className="flex h-full items-center justify-center text-white/45">
             <Loader2 size={16} className="mr-2 animate-spin" /> Loading legal corpus…

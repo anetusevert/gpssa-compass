@@ -9,9 +9,11 @@ import type {
   ChannelCapabilityCell,
   DeliverySection,
   OpportunitiesSection,
+  PeerInstitutionRow,
   ProductsSection,
   ServicesSection,
   SourcesSection,
+  StandardAggregate,
   StandardsSection,
 } from "./types";
 
@@ -108,36 +110,79 @@ async function buildCompleteness(): Promise<BriefingCompleteness> {
 }
 
 async function buildAtlas(): Promise<AtlasSection> {
-  const [countryCount, researchedCount, regionGroups, maturityGroups, top] =
-    await Promise.all([
-      prisma.country.count(),
-      prisma.country.count({ where: { researchStatus: "completed" } }),
-      prisma.country.groupBy({
-        by: ["region"],
-        _count: { _all: true },
-        orderBy: { _count: { region: "desc" } },
-      }),
-      prisma.country.groupBy({
-        by: ["maturityLabel"],
-        _count: { _all: true },
-        where: { maturityLabel: { not: null } },
-      }),
-      prisma.country.findMany({
-        where: {
-          maturityScore: { not: null },
-          researchStatus: "completed",
-        },
-        orderBy: { maturityScore: "desc" },
-        take: 10,
-        select: {
-          iso3: true,
-          name: true,
-          region: true,
-          maturityScore: true,
-          maturityLabel: true,
-        },
-      }),
-    ]);
+  const [
+    countryCount,
+    researchedCount,
+    regionGroups,
+    maturityGroups,
+    top,
+    fullCountries,
+  ] = await Promise.all([
+    prisma.country.count(),
+    prisma.country.count({ where: { researchStatus: "completed" } }),
+    prisma.country.groupBy({
+      by: ["region"],
+      _count: { _all: true },
+      orderBy: { _count: { region: "desc" } },
+    }),
+    prisma.country.groupBy({
+      by: ["maturityLabel"],
+      _count: { _all: true },
+      where: { maturityLabel: { not: null } },
+    }),
+    prisma.country.findMany({
+      where: {
+        maturityScore: { not: null },
+        researchStatus: "completed",
+      },
+      orderBy: { maturityScore: "desc" },
+      take: 10,
+      select: {
+        iso3: true,
+        name: true,
+        region: true,
+        maturityScore: true,
+        maturityLabel: true,
+      },
+    }),
+    prisma.country.findMany({
+      where: { maturityScore: { not: null } },
+      orderBy: { maturityScore: "desc" },
+      select: {
+        iso3: true,
+        iso2: true,
+        name: true,
+        region: true,
+        flag: true,
+        maturityScore: true,
+        maturityLabel: true,
+        coverageRate: true,
+        replacementRate: true,
+        sustainability: true,
+        digitalLevel: true,
+      },
+    }),
+  ]);
+
+  const countries = fullCountries.map((c) => ({
+    iso3: c.iso3,
+    iso2: c.iso2 ?? null,
+    name: c.name,
+    region: c.region,
+    flag: c.flag ?? null,
+    maturityScore: c.maturityScore ?? null,
+    maturityLabel: c.maturityLabel ?? null,
+    metrics: {
+      maturityScore: c.maturityScore ?? null,
+      coverageRate: c.coverageRate ?? null,
+      replacementRate: c.replacementRate ?? null,
+      sustainability: c.sustainability ?? null,
+      digitalReadiness:
+        c.digitalLevel != null
+          ? DIGITAL_LEVEL_TO_SCORE[c.digitalLevel] ?? null
+          : null,
+    },
+  }));
 
   return {
     countryCount,
@@ -151,6 +196,7 @@ async function buildAtlas(): Promise<AtlasSection> {
       count: g._count._all,
     })),
     top,
+    countries,
   };
 }
 
@@ -324,6 +370,73 @@ async function buildDelivery(): Promise<DeliverySection> {
   };
 }
 
+/** Curated explainers + short labels keyed by standard slug (case-insensitive) or category match. */
+const STANDARD_EXPLAINERS: Array<{
+  match: (slug: string, title: string, category: string) => boolean;
+  shortLabel: string;
+  oneLiner: string;
+}> = [
+  {
+    match: (s, t) => /coverage|c102|enrol/i.test(s + t),
+    shortLabel: "Coverage",
+    oneLiner: "% of working-age population enrolled in mandatory pension protection.",
+  },
+  {
+    match: (s, t) => /adequa|replacement|c128/i.test(s + t),
+    shortLabel: "Adequacy",
+    oneLiner: "Replacement rate — pension as a share of pre-retirement earnings.",
+  },
+  {
+    match: (s, t) => /sustain|fund|reserve|asset/i.test(s + t),
+    shortLabel: "Sustainability",
+    oneLiner: "Long-run fiscal balance — assets and contributions vs projected liabilities.",
+  },
+  {
+    match: (s, t) => /digital|automation|service.*delivery|e-?service/i.test(s + t),
+    shortLabel: "Digital",
+    oneLiner: "Digital maturity of pension services — self-service, automation, AI.",
+  },
+  {
+    match: (s, t) => /govern|transparen|account|audit/i.test(s + t),
+    shortLabel: "Governance",
+    oneLiner: "Independent oversight, disclosure, and risk management of the scheme.",
+  },
+  {
+    match: (s, t) => /equity|gender|inclusion|informal/i.test(s + t),
+    shortLabel: "Equity",
+    oneLiner: "Inclusion of women, informal workers, and low-income earners in benefits.",
+  },
+  {
+    match: (s, t) => /portab|migrant|cross.?border/i.test(s + t),
+    shortLabel: "Portability",
+    oneLiner: "Ability to carry pension rights across employers and borders.",
+  },
+  {
+    match: (s, t, c) => /innovation|product|design/i.test(s + t + c),
+    shortLabel: "Innovation",
+    oneLiner: "Modern product design — auto-enrol, lifecycle, parametric features.",
+  },
+];
+
+function getStandardExplainer(
+  slug: string,
+  title: string,
+  category: string,
+  fallback: string | null
+): { shortLabel: string; oneLiner: string } {
+  for (const e of STANDARD_EXPLAINERS) {
+    if (e.match(slug, title, category)) {
+      return { shortLabel: e.shortLabel, oneLiner: e.oneLiner };
+    }
+  }
+  // Fallbacks: short label = first significant word of title, oneLiner = bodyShort or category
+  const firstWord = title.split(/[\s—-]+/)[0]?.replace(/[^a-zA-Z]/g, "") || "Standard";
+  return {
+    shortLabel: firstWord.length > 14 ? firstWord.slice(0, 12) + "…" : firstWord,
+    oneLiner: fallback?.trim() || `${category} dimension scored 0–100.`,
+  };
+}
+
 async function buildStandards(): Promise<StandardsSection> {
   const [standards, computedRefs, uaeCountry] = await Promise.all([
     prisma.standard.findMany({
@@ -333,6 +446,7 @@ async function buildStandards(): Promise<StandardsSection> {
         code: true,
         title: true,
         category: true,
+        bodyShort: true,
         compliances: {
           select: {
             entityType: true,
@@ -377,14 +491,26 @@ async function buildStandards(): Promise<StandardsSection> {
     const globalAverage = safeAvg(allScores);
 
     const sortedDesc = [...allScores].sort((a, b) => b - a);
+    const sortedAsc = [...allScores].sort((a, b) => a - b);
     const cutoff = Math.max(1, Math.ceil(sortedDesc.length * 0.25));
     const topQuartile =
       sortedDesc.length === 0
         ? null
         : safeAvg(sortedDesc.slice(0, cutoff));
+    const bottomQuartile =
+      sortedAsc.length === 0
+        ? null
+        : safeAvg(sortedAsc.slice(0, cutoff));
 
     // ILO category usually carries an implied 100% floor expectation.
     const floor = s.category?.toLowerCase().includes("ilo") ? 100 : null;
+
+    const explainer = getStandardExplainer(
+      s.slug,
+      s.title,
+      s.category ?? "",
+      s.bodyShort ?? null
+    );
 
     return {
       slug: s.slug,
@@ -394,7 +520,10 @@ async function buildStandards(): Promise<StandardsSection> {
       gpssaScore: gpssaCmp?.score ?? null,
       globalAverage,
       topQuartile,
+      bottomQuartile,
       floor,
+      oneLiner: explainer.oneLiner,
+      shortLabel: explainer.shortLabel,
     };
   });
 
@@ -414,6 +543,39 @@ async function buildStandards(): Promise<StandardsSection> {
       }
     : null;
 
+  // Build aggregates from computed references where available, falling back to
+  // sensible defaults so the comparator picker always has options.
+  const aggregates: StandardAggregate[] = [];
+  if (globalAvgRef) {
+    aggregates.push({
+      id: "global-average",
+      label: "Global Average",
+      description: "Mean score across all evaluated nations.",
+      metrics: globalAvgRef.payload.metrics as unknown as Record<string, number>,
+    });
+  }
+  if (globalBestRef) {
+    aggregates.push({
+      id: "global-best-practice",
+      label: "Global Best Practice",
+      description: "Top-quartile frontier across evaluated nations.",
+      metrics: globalBestRef.payload.metrics as unknown as Record<string, number>,
+    });
+  }
+
+  // Optional regional / leader cohort aggregates from computed refs (best-effort).
+  for (const slug of ["gcc-average", "global-leaders", "peer-group-gpssa"]) {
+    const ref = computedRefs.find((r) => r.slug === slug);
+    if (ref) {
+      aggregates.push({
+        id: slug,
+        label: ref.shortName ?? ref.name ?? slug,
+        description: ref.description ?? "",
+        metrics: ref.payload.metrics as unknown as Record<string, number>,
+      });
+    }
+  }
+
   return {
     count: standards.length,
     evaluatedCount,
@@ -425,13 +587,13 @@ async function buildStandards(): Promise<StandardsSection> {
       ? (globalBestRef.payload.metrics as unknown as Record<string, number>)
       : null,
     gpssaMetrics,
+    aggregates,
   };
 }
 
 async function buildBenchmarks(): Promise<BenchmarksSection> {
-  const [institutions, dimensions] = await Promise.all([
+  const [allInstitutions, dimensionList] = await Promise.all([
     prisma.institution.findMany({
-      where: { isBenchmarkTarget: true },
       select: {
         id: true,
         name: true,
@@ -439,43 +601,34 @@ async function buildBenchmarks(): Promise<BenchmarksSection> {
         country: true,
         countryCode: true,
         region: true,
+        isBenchmarkTarget: true,
         benchmarkScores: {
-          select: { score: true, dimensionId: true },
+          select: {
+            score: true,
+            dimensionId: true,
+            dimension: { select: { slug: true, name: true } },
+          },
         },
       },
     }),
-    prisma.benchmarkDimension.count(),
+    prisma.benchmarkDimension.findMany({
+      orderBy: { sortOrder: "asc" },
+      select: {
+        slug: true,
+        name: true,
+        description: true,
+        category: true,
+      },
+    }),
   ]);
 
-  // Also surface GPSSA itself if it exists as an Institution row
-  const gpssaInst = await prisma.institution.findFirst({
-    where: {
-      OR: [
-        { name: { contains: "GPSSA" } },
-        { shortName: { contains: "GPSSA" } },
-      ],
-    },
-    select: {
-      id: true,
-      name: true,
-      shortName: true,
-      country: true,
-      countryCode: true,
-      region: true,
-      benchmarkScores: {
-        select: { score: true, dimensionId: true },
-      },
-    },
-  });
-
-  const merged = [...institutions];
-  if (gpssaInst && !merged.some((i) => i.id === gpssaInst.id)) {
-    merged.unshift(gpssaInst);
-  }
-
-  const peers = merged.map((inst) => {
-    const scores = inst.benchmarkScores.map((s) => s.score);
-    const avg = safeAvg(scores);
+  function toRow(inst: (typeof allInstitutions)[number]): PeerInstitutionRow {
+    const dimensionScores: Record<string, number> = {};
+    for (const s of inst.benchmarkScores) {
+      const slug = s.dimension?.slug;
+      if (slug) dimensionScores[slug] = s.score;
+    }
+    const scoreValues = Object.values(dimensionScores);
     const isGpssa =
       inst.name.toUpperCase().includes("GPSSA") ||
       (inst.shortName ?? "").toUpperCase().includes("GPSSA");
@@ -486,11 +639,27 @@ async function buildBenchmarks(): Promise<BenchmarksSection> {
       country: inst.country,
       countryCode: inst.countryCode,
       region: inst.region,
-      averageScore: avg,
-      scoredDimensions: scores.length,
+      averageScore: safeAvg(scoreValues),
+      scoredDimensions: scoreValues.length,
       isGpssa,
+      dimensionScores,
     };
-  });
+  }
+
+  const allPeers = allInstitutions.map(toRow);
+
+  // Curated benchmark targets, plus GPSSA always pinned to the front.
+  const targets = allInstitutions
+    .filter((i) => i.isBenchmarkTarget)
+    .map(toRow);
+  const gpssaRow =
+    allPeers.find((p) => p.isGpssa) ??
+    targets.find((p) => p.isGpssa) ??
+    null;
+  const peers = [...targets];
+  if (gpssaRow && !peers.some((p) => p.id === gpssaRow.id)) {
+    peers.unshift(gpssaRow);
+  }
 
   // Sort: GPSSA first, then by score desc, nulls last
   peers.sort((a, b) => {
@@ -501,9 +670,20 @@ async function buildBenchmarks(): Promise<BenchmarksSection> {
     return bv - av;
   });
 
+  // allPeers sorted: GPSSA first, then targets by score, then the rest by score.
+  allPeers.sort((a, b) => {
+    if (a.isGpssa && !b.isGpssa) return -1;
+    if (!a.isGpssa && b.isGpssa) return 1;
+    const av = a.averageScore ?? -1;
+    const bv = b.averageScore ?? -1;
+    return bv - av;
+  });
+
   return {
     peers,
-    dimensions,
+    allPeers,
+    dimensions: dimensionList.length,
+    dimensionList,
   };
 }
 
