@@ -18,6 +18,10 @@
  *     captured per-page and reported in the result object.
  */
 
+// MUST come before any other scraper import: installs the `File`/`Blob`
+// globals on Node runtimes (Railway/Nixpacks containers) that don't expose
+// them, so cheerio/pdf-parse don't throw at module-load time.
+import "./polyfill";
 import pLimit from "p-limit";
 import * as fs from "fs/promises";
 import * as os from "os";

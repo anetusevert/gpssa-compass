@@ -1,11 +1,12 @@
+# Nixpacks build config for Railway.
+#
+# Pin Node 20 explicitly. The package.json `engines` field and `.nvmrc` are
+# both supposed to drive the runtime version, but Nixpacks has historically
+# resolved different defaults depending on the detected language plan. This
+# file is the most authoritative knob and prevents the "File is not defined"
+# class of errors that show up when the container ends up on Node < 20.
 [phases.setup]
-nixPkgs = ["nodejs_18", "npm-9_x"]
+nixPkgs = ["nodejs_20"]
 
-[phases.install]
-cmds = ["npm ci"]
-
-[phases.build]
-cmds = ["npm run build"]
-
-[start]
-cmd = "npx prisma db push --skip-generate && HOSTNAME=0.0.0.0 PORT=${PORT:-3000} node .next/standalone/server.js"
+[variables]
+NODE_VERSION = "20"

@@ -8,6 +8,7 @@
  * pdfToMarkdown: pdf-parse based extraction with light formatting fixes.
  */
 
+import "./polyfill";
 import * as cheerio from "cheerio";
 import { createHash } from "crypto";
 
