@@ -146,7 +146,7 @@ function CountTile({
         <Icon size={16} style={{ color: accent }} strokeWidth={1.7} />
         <span className="text-[10px] uppercase tracking-[0.22em] text-white/50">{label}</span>
       </div>
-      <div className="mt-3 font-playfair text-3xl font-bold text-cream">{value.toLocaleString()}</div>
+      <div className="mt-3 font-playfair text-3xl font-bold text-cream">{value.toLocaleString("en-US")}</div>
     </div>
   );
 }

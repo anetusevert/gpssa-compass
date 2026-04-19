@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Globe,
@@ -23,15 +23,15 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-function getGreeting(): string {
-  const h = new Date().getHours();
+function greetingFor(date: Date): string {
+  const h = date.getHours();
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
 }
 
-function getFormattedDate(): string {
-  return new Date().toLocaleDateString("en-US", {
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -560,6 +560,17 @@ export default function DashboardHome() {
   const userName = rawName.split(".")[0];
   const [openPillar, setOpenPillar] = useState<string | null>(null);
 
+  // Defer locale-/clock-dependent rendering to client mount so SSR and the first
+  // hydration match (otherwise the server's TZ vs the browser's TZ diverge and
+  // we trip React #418/#425).
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+  }, []);
+
+  const greeting = now ? greetingFor(now) : "";
+  const dateString = now ? formatDate(now) : "\u00A0";
+
   const activePillar = PILLARS.find((p) => p.id === openPillar) ?? null;
 
   return (
@@ -609,10 +620,10 @@ export default function DashboardHome() {
         transition={{ duration: 0.55, ease: EASE }}
       >
         <p className="mb-1 text-[11px] font-medium tracking-[0.24em] text-white/30 uppercase">
-          {getFormattedDate()}
+          {dateString}
         </p>
         <h1 className="font-playfair text-3xl font-bold text-cream md:text-4xl">
-          {getGreeting()}, {userName}
+          {greeting ? `${greeting}, ${userName}` : `Hello, ${userName}`}
         </h1>
         <p className="mt-2 text-sm text-white/35">
           Social Insurance &amp; Pension Knowledge Intelligence

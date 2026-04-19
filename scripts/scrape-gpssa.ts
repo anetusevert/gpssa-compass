@@ -138,6 +138,7 @@ async function main() {
   const result = await scrapeGpssaCorpus({
     langs: opts.langs,
     followPdfs: opts.followPdfs,
+    pdfOutputDir: path.join(process.cwd(), "public", "mandate-pdfs"),
     cachedEtags: etags,
     cachedLastModified: lastModified,
   });

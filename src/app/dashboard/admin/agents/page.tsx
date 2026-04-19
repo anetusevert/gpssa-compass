@@ -220,11 +220,17 @@ export default function AgentsPage() {
   const [scrapeFollowPdfs, setScrapeFollowPdfs] = useState(true);
   const [scrapeForce, setScrapeForce] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState<string | null>(null);
-  const [lastScrapeResult, setLastScrapeResult] = useState<{ pages: number; updated: number; ts: string } | null>(null);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [lastScrapeResult, setLastScrapeResult] = useState<{
+    pages: number;
+    errorCount: number;
+    ts: string;
+  } | null>(null);
 
   async function handleScrapeGpssa() {
     if (scrapeBusy) return;
     setScrapeBusy(true);
+    setScrapeError(null);
     setScrapeStatus("Hitting gpssa.gov.ae politely…");
     try {
       const res = await fetch("/api/mandate/scrape", {
@@ -233,18 +239,22 @@ export default function AgentsPage() {
         body: JSON.stringify({ followPdfs: scrapeFollowPdfs, force: scrapeForce }),
       });
       const data = await res.json().catch(() => null);
-      if (res.ok && data) {
-        setLastScrapeResult({
-          pages: data.totalPages ?? data.pages ?? 0,
-          updated: data.updated ?? data.upserted ?? 0,
-          ts: new Date().toISOString(),
-        });
-        setScrapeStatus(`Scrape complete · ${data.totalPages ?? data.pages ?? 0} pages indexed`);
+      if (res.ok && data?.ok) {
+        const pages = data.persisted ?? data.totalPages ?? data.pages ?? 0;
+        const errorCount = data.errorCount ?? 0;
+        setLastScrapeResult({ pages, errorCount, ts: new Date().toISOString() });
+        setScrapeStatus(
+          `Scrape complete · ${pages} pages indexed${errorCount ? ` · ${errorCount} per-page errors` : ""}`
+        );
       } else {
-        setScrapeStatus(`Scrape failed: ${data?.error ?? res.status}`);
+        const message = data?.message ?? data?.error ?? `HTTP ${res.status}`;
+        const code = data?.code ? ` (${data.code})` : "";
+        setScrapeError(`${message}${code}`);
+        setScrapeStatus(null);
       }
     } catch (err) {
-      setScrapeStatus(`Scrape error: ${(err as Error).message}`);
+      setScrapeError((err as Error).message);
+      setScrapeStatus(null);
     } finally {
       setScrapeBusy(false);
     }
@@ -680,12 +690,21 @@ export default function AgentsPage() {
               {lastScrapeResult && (
                 <span className="inline-flex items-center gap-1.5 text-cream/60">
                   <FileDown size={11} className="text-gpssa-green" />
-                  Last run · {lastScrapeResult.pages} pages · {new Date(lastScrapeResult.ts).toLocaleString()}
+                  Last run · {lastScrapeResult.pages} pages
+                  {lastScrapeResult.errorCount ? ` · ${lastScrapeResult.errorCount} errors` : ""}
+                  {" · "}
+                  {new Date(lastScrapeResult.ts).toLocaleString("en-US")}
                 </span>
               )}
               {scrapeStatus && !lastScrapeResult && <span>{scrapeStatus}</span>}
               {scrapeStatus && lastScrapeResult && <span className="text-cream/60">{scrapeStatus}</span>}
             </div>
+            {scrapeError && (
+              <div className="mt-2 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                <strong className="font-semibold text-red-100">Scrape failed:</strong>{" "}
+                <span className="break-words">{scrapeError}</span>
+              </div>
+            )}
           </div>
           <Button
             size="sm"

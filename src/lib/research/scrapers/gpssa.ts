@@ -20,6 +20,7 @@
 
 import pLimit from "p-limit";
 import * as fs from "fs/promises";
+import * as os from "os";
 import * as path from "path";
 import { htmlToMarkdown, pdfToMarkdown, sha256 } from "./normalize";
 
@@ -158,7 +159,7 @@ export async function scrapeGpssaCorpus(opts: ScrapeOptions = {}): Promise<Scrap
   const langs: Lang[] = opts.langs && opts.langs.length > 0 ? opts.langs : ["en"];
   const sectionFilter = opts.sectionFilter && opts.sectionFilter.length > 0 ? new Set(opts.sectionFilter) : null;
   const followPdfs = opts.followPdfs !== false;
-  const pdfOutputDir = opts.pdfOutputDir || path.join(process.cwd(), "public", "mandate-pdfs");
+  const pdfOutputDir = opts.pdfOutputDir || path.join(os.tmpdir(), "gpssa-pdfs");
   const cachedEtags = opts.cachedEtags || {};
   const cachedLastModified = opts.cachedLastModified || {};
 

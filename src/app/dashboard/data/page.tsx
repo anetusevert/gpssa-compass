@@ -175,7 +175,7 @@ function AnimatedNumber({ value }: { value: number }) {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
-  return <>{display.toLocaleString()}</>;
+  return <>{display.toLocaleString("en-US")}</>;
 }
 
 /* ─── Universal search result item ─── */
