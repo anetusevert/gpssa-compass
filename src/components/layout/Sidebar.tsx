@@ -61,7 +61,7 @@ const NAV_SECTIONS: NavSection[] = [
     color: "var(--gpssa-green)",
     glow: "rgba(0,168,107,0.14)",
     items: [
-      { label: "Legal & Governance", href: "/dashboard/mandate", icon: Scale },
+      { label: "Mandate", href: "/dashboard/mandate", icon: Scale },
       { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
     ],
   },

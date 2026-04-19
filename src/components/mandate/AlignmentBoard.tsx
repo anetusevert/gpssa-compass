@@ -17,9 +17,15 @@
  * SVG that overlays the columns and recomputes its viewBox on resize.
  */
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ScrollText, Target, Layers as LayersIcon, ArrowRight, ExternalLink } from "lucide-react";
+import {
+  ScrollText,
+  Target,
+  Layers as LayersIcon,
+  ExternalLink,
+  ChevronDown,
+} from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import {
   RFI_KIND_ACCENT,
@@ -136,9 +142,21 @@ const SCREEN_DESCRIPTIONS: Record<string, string> = {
 
 type ActiveSelection = { kind: "article" | "rfi" | "screen"; id: string } | null;
 
+const RFI_KIND_ORDER: RfiKind[] = ["objective", "workstream", "deliverable", "area-of-focus"];
+const SCREEN_PILLAR_ORDER = ["services", "products", "delivery", "atlas", "mandate", "international"];
+const SCREEN_PILLAR_LABELS: Record<string, string> = {
+  services: "Services",
+  products: "Products",
+  delivery: "Delivery",
+  atlas: "Global Atlas",
+  mandate: "Mandate",
+  international: "International",
+};
+
 export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   const [hover, setHover] = useState<HoverState>({ type: null, id: null });
   const [active, setActive] = useState<ActiveSelection>(null);
+  const [openPillars, setOpenPillars] = useState<Set<string>>(new Set());
 
   const articleById = useMemo(
     () => new Map(payload.articles.map((a) => [a.id, a])),
@@ -177,9 +195,74 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   }, [payload]);
 
   const articleRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  const pillarHeaderRefs = useRef<Map<string, HTMLElement>>(new Map());
   const rfiRefs = useRef<Map<string, HTMLLIElement>>(new Map());
   const screenRefs = useRef<Map<string, HTMLLIElement>>(new Map());
   const stageRef = useRef<HTMLDivElement>(null);
+  const articleColumnRef = useRef<HTMLDivElement>(null);
+  const rfiColumnRef = useRef<HTMLDivElement>(null);
+  const screenColumnRef = useRef<HTMLDivElement>(null);
+
+  const togglePillar = (key: string) => {
+    setOpenPillars((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const allOpen =
+    articleGroups.length > 0 && articleGroups.every((g) => openPillars.has(g.pillar));
+
+  const expandAll = () => {
+    setOpenPillars(new Set(articleGroups.map((g) => g.pillar)));
+  };
+  const collapseAll = () => {
+    setOpenPillars(new Set());
+  };
+
+  // RFI grouped by kind
+  const rfiGroups = useMemo(() => {
+    return RFI_KIND_ORDER.map((kind) => ({
+      kind,
+      label: RFI_KIND_LABELS[kind],
+      color: RFI_KIND_ACCENT[kind],
+      items: payload.rfiSections.filter((r) => r.kind === kind),
+    })).filter((g) => g.items.length > 0);
+  }, [payload]);
+
+  // Screens grouped by pillar
+  const screenGroups = useMemo(() => {
+    const buckets = new Map<string, ScreenNode[]>();
+    for (const s of payload.appScreens) {
+      const arr = buckets.get(s.pillar) ?? [];
+      arr.push(s);
+      buckets.set(s.pillar, arr);
+    }
+    const ordered: { pillar: string; label: string; color: string; items: ScreenNode[] }[] = [];
+    for (const p of SCREEN_PILLAR_ORDER) {
+      const items = buckets.get(p);
+      if (items && items.length > 0) {
+        ordered.push({
+          pillar: p,
+          label: SCREEN_PILLAR_LABELS[p] ?? p,
+          color: SCREEN_COLOR[p] ?? "#FFFFFF",
+          items,
+        });
+        buckets.delete(p);
+      }
+    }
+    for (const [pillar, items] of buckets) {
+      ordered.push({
+        pillar,
+        label: SCREEN_PILLAR_LABELS[pillar] ?? pillar,
+        color: SCREEN_COLOR[pillar] ?? "#FFFFFF",
+        items,
+      });
+    }
+    return ordered;
+  }, [payload]);
 
   // Edges
   const articleToScreen = useMemo(() => {
@@ -233,6 +316,20 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
     return { articles, rfis, screens };
   }, [hover, articleToScreen, articleToRfi, rfiToScreen]);
 
+  // Per-pillar count of currently-highlighted articles, used for the
+  // "N involved" badge on collapsed pillar headers.
+  const pillarInvolvement = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const id of highlight.articles) {
+      const a = articleById.get(id);
+      if (!a) continue;
+      const key = a.pillar ?? "other";
+      if (!m.has(key)) m.set(key, new Set());
+      m.get(key)!.add(id);
+    }
+    return m;
+  }, [highlight.articles, articleById]);
+
   const isDimmed = (type: HoverState["type"], id: string): boolean => {
     if (!hover.type) return false;
     if (type === "article") return !highlight.articles.has(id);
@@ -250,10 +347,17 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   };
 
   // ── SVG path computation ───────────────────────────────────────────────
+  type PathSeg = {
+    id: string;
+    d: string;
+    color: string;
+    active: boolean;
+    headerBound?: boolean;
+  };
   const [paths, setPaths] = useState<{
-    articleToRfi: { id: string; d: string; color: string; active: boolean }[];
-    rfiToScreen: { id: string; d: string; color: string; active: boolean }[];
-    articleToScreen: { id: string; d: string; color: string; active: boolean }[];
+    articleToRfi: PathSeg[];
+    rfiToScreen: PathSeg[];
+    articleToScreen: PathSeg[];
     width: number;
     height: number;
   }>({ articleToRfi: [], rfiToScreen: [], articleToScreen: [], width: 0, height: 0 });
@@ -264,6 +368,17 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
     const stageRect = stage.getBoundingClientRect();
     const width = stageRect.width;
     const height = stageRect.height;
+
+    const inStage = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      // Skip elements that are scrolled fully outside their column.
+      return (
+        r.bottom > stageRect.top &&
+        r.top < stageRect.bottom &&
+        r.right > stageRect.left &&
+        r.left < stageRect.right
+      );
+    };
 
     const centerY = (el: HTMLElement) => {
       const r = el.getBoundingClientRect();
@@ -288,34 +403,56 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
       return ids.every((i) => set.has(i));
     };
 
-    const a2r: typeof paths.articleToRfi = [];
+    // Resolve the source point for an article — its tile if expanded, else
+    // its pillar header so the line still terminates on something visible.
+    const resolveArticleAnchor = (articleId: string): {
+      el: HTMLElement;
+      headerBound: boolean;
+    } | null => {
+      const tile = articleRefs.current.get(articleId);
+      if (tile && inStage(tile)) return { el: tile, headerBound: false };
+      const a = articleById.get(articleId);
+      if (!a) return null;
+      const pillarKey = a.pillar ?? "other";
+      const header = pillarHeaderRefs.current.get(pillarKey);
+      if (header && inStage(header)) return { el: header, headerBound: true };
+      return null;
+    };
+
+    const a2r: PathSeg[] = [];
     for (const e of articleToRfi) {
-      const a = articleRefs.current.get(e.articleId);
+      const src = resolveArticleAnchor(e.articleId);
       const r = rfiRefs.current.get(e.rfiId);
-      if (!a || !r) continue;
-      const sx = right(a);
-      const sy = centerY(a);
+      if (!src || !r || !inStage(r)) continue;
+      const sx = right(src.el);
+      const sy = centerY(src.el);
       const tx = left(r);
       const ty = centerY(r);
-      const article = payload.articles.find((x) => x.id === e.articleId);
-      const color = (article?.pillar && PILLAR_COLOR[article.pillar]) || "rgba(255,255,255,0.4)";
+      const a = articleById.get(e.articleId);
+      const color = (a?.pillar && PILLAR_COLOR[a.pillar]) || "rgba(255,255,255,0.4)";
       const active = isActive(
         new Set<string>([...Array.from(highlight.articles), ...Array.from(highlight.rfis)]),
         [e.articleId, e.rfiId]
       );
-      a2r.push({ id: `a2r-${e.articleId}-${e.rfiId}`, d: buildPath(sx, sy, tx, ty), color, active });
+      a2r.push({
+        id: `a2r-${e.articleId}-${e.rfiId}`,
+        d: buildPath(sx, sy, tx, ty),
+        color,
+        active,
+        headerBound: src.headerBound,
+      });
     }
 
-    const r2s: typeof paths.rfiToScreen = [];
+    const r2s: PathSeg[] = [];
     for (const e of rfiToScreen) {
       const r = rfiRefs.current.get(e.rfiId);
       const s = screenRefs.current.get(e.screenId);
-      if (!r || !s) continue;
+      if (!r || !s || !inStage(r) || !inStage(s)) continue;
       const sx = right(r);
       const sy = centerY(r);
       const tx = left(s);
       const ty = centerY(s);
-      const rfi = payload.rfiSections.find((x) => x.id === e.rfiId);
+      const rfi = rfiById.get(e.rfiId);
       const color = rfi ? RFI_KIND_ACCENT[rfi.kind] : "rgba(255,255,255,0.4)";
       const active = isActive(
         new Set<string>([...Array.from(highlight.rfis), ...Array.from(highlight.screens)]),
@@ -324,22 +461,28 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
       r2s.push({ id: `r2s-${e.rfiId}-${e.screenId}`, d: buildPath(sx, sy, tx, ty), color, active });
     }
 
-    const a2s: typeof paths.articleToScreen = [];
+    const a2s: PathSeg[] = [];
     for (const e of articleToScreen) {
-      const a = articleRefs.current.get(e.articleId);
+      const src = resolveArticleAnchor(e.articleId);
       const s = screenRefs.current.get(e.screenId);
-      if (!a || !s) continue;
-      const sx = right(a);
-      const sy = centerY(a);
+      if (!src || !s || !inStage(s)) continue;
+      const sx = right(src.el);
+      const sy = centerY(src.el);
       const tx = left(s);
       const ty = centerY(s);
-      const screen = payload.appScreens.find((x) => x.id === e.screenId);
+      const screen = screenById.get(e.screenId);
       const color = (screen?.pillar && SCREEN_COLOR[screen.pillar]) || "rgba(255,255,255,0.4)";
       const active = isActive(
         new Set<string>([...Array.from(highlight.articles), ...Array.from(highlight.screens)]),
         [e.articleId, e.screenId]
       );
-      a2s.push({ id: `a2s-${e.articleId}-${e.screenId}`, d: buildPath(sx, sy, tx, ty), color, active });
+      a2s.push({
+        id: `a2s-${e.articleId}-${e.screenId}`,
+        d: buildPath(sx, sy, tx, ty),
+        color,
+        active,
+        headerBound: src.headerBound,
+      });
     }
 
     setPaths({ articleToRfi: a2r, rfiToScreen: r2s, articleToScreen: a2s, width, height });
@@ -348,14 +491,22 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   useLayoutEffect(() => {
     recompute();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, hover]);
+  }, [payload, hover, openPillars, rfiGroups, screenGroups]);
 
   useEffect(() => {
     const onResize = () => recompute();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, hover]);
+  }, [payload, hover, openPillars]);
+
+  // Run a deferred recompute after pillar expand/collapse animation finishes
+  // so paths line up with the final layout, not the in-progress one.
+  useEffect(() => {
+    const t = window.setTimeout(() => recompute(), 260);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openPillars]);
 
   const setRef = (
     map: React.MutableRefObject<Map<string, HTMLLIElement>>,
@@ -364,6 +515,13 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
     if (el) map.current.set(key, el);
     else map.current.delete(key);
   };
+
+  const setHeaderRef = (key: string) => (el: HTMLElement | null) => {
+    if (el) pillarHeaderRefs.current.set(key, el);
+    else pillarHeaderRefs.current.delete(key);
+  };
+
+  const onColumnScroll = () => recompute();
 
   return (
     <div
@@ -395,8 +553,9 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
                 d={p.d}
                 fill="none"
                 stroke={p.color}
-                strokeWidth={2}
+                strokeWidth={p.headerBound ? 2.5 : 2}
                 strokeOpacity={0.95}
+                strokeDasharray={p.headerBound ? "4 3" : undefined}
                 filter="url(#soft-glow)"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}
@@ -409,8 +568,9 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
                 d={p.d}
                 fill="none"
                 stroke={p.color}
-                strokeWidth={2}
+                strokeWidth={p.headerBound ? 2.5 : 2}
                 strokeOpacity={0.95}
+                strokeDasharray={p.headerBound ? "4 3" : undefined}
                 filter="url(#soft-glow)"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}
@@ -436,63 +596,126 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
       </svg>
 
       <Column
+        ref={articleColumnRef}
         title="Statutory articles"
-        subtitle={`${payload.articles.length} obligations`}
+        subtitle={`${payload.articles.length} obligations · ${articleGroups.length} pillars`}
         Icon={ScrollText}
         accent="#00A86B"
+        onBodyScroll={onColumnScroll}
+        action={
+          <button
+            type="button"
+            onClick={allOpen ? collapseAll : expandAll}
+            className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.16em] text-white/65 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+          >
+            {allOpen ? "Collapse all" : "Expand all"}
+          </button>
+        }
       >
-        <div className="flex flex-col gap-2 pr-1">
-          {articleGroups.map((group) => (
-            <section key={group.pillar} className="flex flex-col">
-              <header
-                className="sticky top-0 z-10 mb-1 flex items-center gap-1.5 rounded-md border border-white/[0.05] bg-black/55 px-1.5 py-1 backdrop-blur"
-                style={{ borderLeft: `3px solid ${group.color}` }}
-              >
-                <span
-                  className="text-[9px] font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: group.color }}
+        <div className="flex flex-col gap-1.5">
+          {articleGroups.map((group) => {
+            const isOpen = openPillars.has(group.pillar);
+            const involved = pillarInvolvement.get(group.pillar);
+            const involvedCount = involved?.size ?? 0;
+            const isInvolved = involvedCount > 0;
+            return (
+              <section key={group.pillar} className="flex flex-col">
+                <button
+                  ref={setHeaderRef(group.pillar)}
+                  type="button"
+                  onClick={() => togglePillar(group.pillar)}
+                  onMouseEnter={() => {
+                    // Hovering a collapsed pillar header reveals all its
+                    // article connections by activating the first article;
+                    // we keep the simple model and just clear hover so
+                    // nothing fights with the user's intent.
+                  }}
+                  className={`sticky top-0 z-10 flex items-center gap-2 rounded-md border border-white/[0.06] px-2 py-1.5 text-left backdrop-blur transition ${
+                    isInvolved
+                      ? "bg-white/[0.07]"
+                      : "bg-black/55 hover:bg-white/[0.04]"
+                  }`}
+                  style={{
+                    borderLeft: `3px solid ${group.color}`,
+                    boxShadow: isInvolved
+                      ? `0 0 0 1px ${group.color}55, 0 0 18px ${group.color}22`
+                      : undefined,
+                  }}
                 >
-                  {group.label}
-                </span>
-                <span className="ml-auto text-[9px] font-medium tabular-nums text-white/40">
-                  {group.items.length}
-                </span>
-              </header>
-              <ul className="flex flex-col gap-1">
-                {group.items.map((a) => {
-                  const dim = isDimmed("article", a.id);
-                  const hi = isHighlighted("article", a.id);
-                  const color = group.color;
-                  return (
-                    <li
-                      key={a.id}
-                      ref={setRef(articleRefs, a.id)}
-                      onMouseEnter={() => setHover({ type: "article", id: a.id })}
-                      onClick={() => setActive({ kind: "article", id: a.id })}
-                      className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
-                        hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
-                      }`}
-                      style={{
-                        opacity: dim ? 0.2 : 1,
-                        boxShadow: hi ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22` : undefined,
-                        borderLeft: `2px solid ${color}88`,
-                      }}
+                  <motion.span
+                    animate={{ rotate: isOpen ? 0 : -90 }}
+                    transition={{ duration: 0.22, ease: EASE }}
+                    className="flex h-3 w-3 items-center justify-center text-white/50"
+                  >
+                    <ChevronDown size={12} />
+                  </motion.span>
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+                    style={{ color: group.color }}
+                  >
+                    {group.label}
+                  </span>
+                  <span className="text-[9.5px] tabular-nums text-white/40">
+                    {group.items.length}
+                  </span>
+                  {isInvolved && (
+                    <span
+                      className="ml-auto rounded-full px-1.5 py-px text-[9px] font-medium uppercase tracking-wide"
+                      style={{ background: `${group.color}26`, color: group.color }}
                     >
-                      <div className="flex items-center gap-1.5 text-[8px] uppercase tracking-[0.14em] text-white/45">
-                        <span className="truncate">
-                          {(a.standard.code ?? a.standard.slug ?? "").toString().slice(0, 18)}
-                        </span>
-                        {a.code && <span className="shrink-0 text-white/65">· {a.code}</span>}
-                      </div>
-                      <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">
-                        {a.title}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+                      {involvedCount} involved
+                    </span>
+                  )}
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.ul
+                      key="body"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: EASE }}
+                      className="flex flex-col gap-1 overflow-hidden pl-1.5 pr-0.5 pt-1"
+                    >
+                      {group.items.map((a) => {
+                        const dim = isDimmed("article", a.id);
+                        const hi = isHighlighted("article", a.id);
+                        const color = group.color;
+                        return (
+                          <li
+                            key={a.id}
+                            ref={setRef(articleRefs, a.id)}
+                            onMouseEnter={() => setHover({ type: "article", id: a.id })}
+                            onClick={() => setActive({ kind: "article", id: a.id })}
+                            className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
+                              hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
+                            }`}
+                            style={{
+                              opacity: dim ? 0.2 : 1,
+                              boxShadow: hi
+                                ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22`
+                                : undefined,
+                              borderLeft: `2px solid ${color}88`,
+                            }}
+                          >
+                            <div className="flex items-center gap-1.5 text-[8px] uppercase tracking-[0.14em] text-white/45">
+                              <span className="truncate">
+                                {(a.standard.code ?? a.standard.slug ?? "").toString().slice(0, 18)}
+                              </span>
+                              {a.code && <span className="shrink-0 text-white/65">· {a.code}</span>}
+                            </div>
+                            <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">
+                              {a.title}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </motion.ul>
+                  )}
+                </AnimatePresence>
+              </section>
+            );
+          })}
           {payload.articles.length === 0 && (
             <div className="rounded-lg p-4 text-[12px] text-white/40">
               No statutory articles indexed yet.
@@ -502,83 +725,123 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
       </Column>
 
       <Column
+        ref={rfiColumnRef}
         title="Your RFI"
-        subtitle={`${payload.rfiSections.length} sections`}
+        subtitle={`${payload.rfiSections.length} sections · ${rfiGroups.length} kinds`}
         Icon={Target}
         accent="#E7B02E"
+        onBodyScroll={onColumnScroll}
       >
-        <ul className="flex flex-col gap-1 pr-1">
-          {payload.rfiSections.map((r) => {
-            const dim = isDimmed("rfi", r.id);
-            const hi = isHighlighted("rfi", r.id);
-            const color = RFI_KIND_ACCENT[r.kind];
-            return (
-              <li
-                key={r.id}
-                ref={setRef(rfiRefs, r.id)}
-                onMouseEnter={() => setHover({ type: "rfi", id: r.id })}
-                onClick={() => setActive({ kind: "rfi", id: r.id })}
-                className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
-                  hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
-                }`}
-                style={{
-                  opacity: dim ? 0.2 : 1,
-                  boxShadow: hi ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22` : undefined,
-                  borderLeft: `2px solid ${color}88`,
-                }}
+        <div className="flex flex-col gap-1.5">
+          {rfiGroups.map((group) => (
+            <section key={group.kind} className="flex flex-col">
+              <header
+                className="sticky top-0 z-10 flex items-center gap-2 rounded-md border border-white/[0.06] bg-black/55 px-2 py-1 backdrop-blur"
+                style={{ borderLeft: `3px solid ${group.color}` }}
               >
-                <div className="flex items-center gap-1.5 text-[8.5px] uppercase tracking-[0.14em] text-white/45">
-                  <span className="truncate">{r.sectionRef}</span>
-                  <span className="shrink-0" style={{ color }}>· {RFI_KIND_LABELS[r.kind]}</span>
-                </div>
-                <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">{r.title}</div>
-              </li>
-            );
-          })}
-        </ul>
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+                  style={{ color: group.color }}
+                >
+                  {group.label}s
+                </span>
+                <span className="ml-auto text-[9.5px] tabular-nums text-white/40">
+                  {group.items.length}
+                </span>
+              </header>
+              <ul className="flex flex-col gap-1 pl-1.5 pr-0.5 pt-1">
+                {group.items.map((r) => {
+                  const dim = isDimmed("rfi", r.id);
+                  const hi = isHighlighted("rfi", r.id);
+                  const color = group.color;
+                  return (
+                    <li
+                      key={r.id}
+                      ref={setRef(rfiRefs, r.id)}
+                      onMouseEnter={() => setHover({ type: "rfi", id: r.id })}
+                      onClick={() => setActive({ kind: "rfi", id: r.id })}
+                      className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
+                        hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
+                      }`}
+                      style={{
+                        opacity: dim ? 0.2 : 1,
+                        boxShadow: hi
+                          ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22`
+                          : undefined,
+                        borderLeft: `2px solid ${color}88`,
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5 text-[8.5px] uppercase tracking-[0.14em] text-white/45">
+                        <span className="truncate">{r.sectionRef}</span>
+                      </div>
+                      <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">
+                        {r.title}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
       </Column>
 
       <Column
+        ref={screenColumnRef}
         title="ADL GPSSA Intelligence"
-        subtitle={`${payload.appScreens.length} touchpoints`}
+        subtitle={`${payload.appScreens.length} touchpoints · ${screenGroups.length} pillars`}
         Icon={LayersIcon}
         accent="#4899FF"
+        onBodyScroll={onColumnScroll}
       >
-        <ul className="flex flex-col gap-1 pr-1">
-          {payload.appScreens.map((s) => {
-            const dim = isDimmed("screen", s.id);
-            const hi = isHighlighted("screen", s.id);
-            const color = SCREEN_COLOR[s.pillar] ?? "#FFFFFF";
-            return (
-              <li
-                key={s.id}
-                ref={setRef(screenRefs, s.id)}
-                onMouseEnter={() => setHover({ type: "screen", id: s.id })}
-                onClick={() => setActive({ kind: "screen", id: s.id })}
-                className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
-                  hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
-                }`}
-                style={{
-                  opacity: dim ? 0.2 : 1,
-                  boxShadow: hi ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22` : undefined,
-                  borderLeft: `2px solid ${color}88`,
-                }}
+        <div className="flex flex-col gap-1.5">
+          {screenGroups.map((group) => (
+            <section key={group.pillar} className="flex flex-col">
+              <header
+                className="sticky top-0 z-10 flex items-center gap-2 rounded-md border border-white/[0.06] bg-black/55 px-2 py-1 backdrop-blur"
+                style={{ borderLeft: `3px solid ${group.color}` }}
               >
-                <div className="flex items-center justify-between text-[8.5px] uppercase tracking-[0.14em] text-white/45">
-                  <span>{s.pillar}</span>
-                  <a
-                    href={s.href}
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-white/40 transition-colors hover:text-white"
-                  >
-                    <ArrowRight size={11} />
-                  </a>
-                </div>
-                <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">{s.label}</div>
-              </li>
-            );
-          })}
-        </ul>
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+                  style={{ color: group.color }}
+                >
+                  {group.label}
+                </span>
+                <span className="ml-auto text-[9.5px] tabular-nums text-white/40">
+                  {group.items.length}
+                </span>
+              </header>
+              <ul className="flex flex-col gap-1 pl-1.5 pr-0.5 pt-1">
+                {group.items.map((s) => {
+                  const dim = isDimmed("screen", s.id);
+                  const hi = isHighlighted("screen", s.id);
+                  const color = group.color;
+                  return (
+                    <li
+                      key={s.id}
+                      ref={setRef(screenRefs, s.id)}
+                      onMouseEnter={() => setHover({ type: "screen", id: s.id })}
+                      onClick={() => setActive({ kind: "screen", id: s.id })}
+                      className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1.5 transition-colors duration-200 ${
+                        hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
+                      }`}
+                      style={{
+                        opacity: dim ? 0.2 : 1,
+                        boxShadow: hi
+                          ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22`
+                          : undefined,
+                        borderLeft: `2px solid ${color}88`,
+                      }}
+                    >
+                      <div className="text-[10.5px] leading-snug text-cream">{s.label}</div>
+                      <div className="mt-0.5 truncate text-[9px] text-white/40">{s.href}</div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
       </Column>
 
       <AnimatePresence>
@@ -591,7 +854,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
             transition={{ duration: 0.3, ease: EASE }}
             className="pointer-events-none absolute inset-x-0 bottom-2 z-10 mx-auto w-fit rounded-full border border-white/[0.06] bg-black/40 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-white/45 backdrop-blur"
           >
-            Hover any node — the connections light up · Click any tile for detail
+            Hover to highlight · Click pillar to expand · Click any tile for detail
           </motion.div>
         )}
       </AnimatePresence>
@@ -835,19 +1098,21 @@ function DetailModal({
   );
 }
 
-function Column({
-  title,
-  subtitle,
-  Icon,
-  accent,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  Icon: typeof ScrollText;
-  accent: string;
-  children: React.ReactNode;
-}) {
+const Column = React.forwardRef<
+  HTMLDivElement,
+  {
+    title: string;
+    subtitle: string;
+    Icon: typeof ScrollText;
+    accent: string;
+    action?: React.ReactNode;
+    onBodyScroll?: () => void;
+    children: React.ReactNode;
+  }
+>(function Column(
+  { title, subtitle, Icon, accent, action, onBodyScroll, children },
+  bodyRef
+) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-1.5 overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 px-1">
@@ -866,8 +1131,15 @@ function Column({
           </h3>
           <div className="text-[9px] uppercase tracking-[0.22em] text-white/40">{subtitle}</div>
         </div>
+        {action && <div className="ml-auto shrink-0">{action}</div>}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-none">{children}</div>
+      <div
+        ref={bodyRef}
+        onScroll={onBodyScroll}
+        className="alignment-scroll min-h-0 flex-1 overflow-y-auto pr-1"
+      >
+        {children}
+      </div>
     </div>
   );
-}
+});

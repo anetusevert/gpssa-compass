@@ -103,7 +103,7 @@ function MandateBar() {
   const router = useRouter();
 
   const subLinks = [
-    { label: "Legal & Governance", href: "/dashboard/mandate", icon: Scale },
+    { label: "Mandate", href: "/dashboard/mandate", icon: Scale },
     { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
   ];
 

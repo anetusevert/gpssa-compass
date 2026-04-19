@@ -1,15 +1,16 @@
 "use client";
 
 /**
- * Mandate — Legal & Governance Hub
+ * Mandate — Hub
  *
  * The single-viewport landing for the Mandate pillar. A compact header sits on
- * top of a slim count strip; below it, four cinematic tiles route to the four
- * lenses (Legal Foundation, Scope, Governance, History). No document scroll.
+ * top of a slim count strip; below it, four horizontal navigation bars
+ * (matching the home dashboard's Mandate/Atlas bar style) route to the four
+ * lenses (Legal Foundation, Scope, Governance, History).
  */
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -19,6 +20,7 @@ import {
   ShieldCheck,
   Scale,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { MandateHero } from "@/components/mandate/MandateHero";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -36,12 +38,13 @@ interface OverviewPayload {
   latestMilestones: { id: string }[];
 }
 
-interface TileDef {
+interface BarDef {
   href: string;
-  icon: typeof Gavel;
+  icon: LucideIcon;
   title: string;
-  desc: string;
+  subtitle: string;
   accent: string;
+  glow: string;
   countLabel: string;
 }
 
@@ -71,37 +74,41 @@ export default function MandateHubPage() {
     obligationLinks: 0,
   };
 
-  const tiles: TileDef[] = [
+  const bars: BarDef[] = [
     {
       href: "/dashboard/mandate/legal",
       icon: Gavel,
       title: "Legal Foundation",
-      desc: "Federal laws, executive regulations and circulars decoded into plain English.",
+      subtitle: "Federal laws, executive regulations and circulars decoded into plain English.",
       accent: "#1B7A4A",
+      glow: "rgba(27,122,74,0.22)",
       countLabel: `${counts.standards} instruments · ${counts.requirements} articles`,
     },
     {
       href: "/dashboard/mandate/scope",
       icon: ShieldCheck,
       title: "Scope",
-      desc: "Who is covered, where, by which contingency — sectors, nationalities, branches.",
+      subtitle: "Who is covered, where, by which contingency — sectors, nationalities, branches.",
       accent: "#7DB9A4",
+      glow: "rgba(125,185,164,0.22)",
       countLabel: "Six branches · four coverage classes",
     },
     {
       href: "/dashboard/mandate/governance",
       icon: Landmark,
       title: "Governance",
-      desc: "Board composition, supervision, oversight — how the mandate is steered and audited.",
+      subtitle: "Board composition, supervision, oversight — how the mandate is steered and audited.",
       accent: "#C5A572",
+      glow: "rgba(197,165,114,0.22)",
       countLabel: `${counts.obligationLinks} obligation links`,
     },
     {
       href: "/dashboard/mandate/history",
       icon: HistoryIcon,
       title: "History",
-      desc: "Three decades of GPSSA milestones, reforms, agreements and recognitions.",
+      subtitle: "Three decades of GPSSA milestones, reforms, agreements and recognitions.",
       accent: "#E7B02E",
+      glow: "rgba(231,176,46,0.22)",
       countLabel: `${counts.milestones || 18} milestones`,
     },
   ];
@@ -122,20 +129,13 @@ export default function MandateHubPage() {
         <div className="flex items-end justify-between gap-4">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.28em] text-[#1B7A4A]">
-              Mandate · Legal &amp; Governance
+              Mandate
             </div>
             <h1 className="mt-0.5 truncate font-playfair text-xl font-semibold text-cream md:text-2xl">
               <Scale size={18} className="-mt-0.5 mr-2 inline text-[#1B7A4A]" strokeWidth={2} />
               The mandate that anchors every service, product and channel.
             </h1>
           </div>
-          <Link
-            href="/dashboard/mandate/rfi-alignment"
-            className="hidden shrink-0 items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.025] px-3 py-1.5 text-[11px] text-white/70 transition-colors hover:border-white/[0.16] hover:text-cream md:inline-flex"
-          >
-            RFI Alignment
-            <ArrowRight size={12} />
-          </Link>
         </div>
       </header>
 
@@ -144,11 +144,11 @@ export default function MandateHubPage() {
         <MandateHero counts={counts} />
       </div>
 
-      {/* 2x2 cinematic tile grid */}
+      {/* Stacked horizontal bars (home-page style) */}
       <div className="min-h-0 flex-1 px-4 pb-4 pt-3 md:px-6 md:pb-6">
-        <div className="grid h-full grid-cols-1 grid-rows-4 gap-3 md:grid-cols-2 md:grid-rows-2">
-          {tiles.map((tile, i) => (
-            <Tile key={tile.href} tile={tile} index={i} />
+        <div className="flex h-full flex-col justify-center gap-2.5">
+          {bars.map((bar, i) => (
+            <NavBar key={bar.href} bar={bar} index={i} />
           ))}
         </div>
       </div>
@@ -156,67 +156,86 @@ export default function MandateHubPage() {
   );
 }
 
-function Tile({ tile, index }: { tile: TileDef; index: number }) {
-  const Icon = tile.icon;
+function NavBar({ bar, index }: { bar: BarDef; index: number }) {
+  const router = useRouter();
+  const Icon = bar.icon;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.985 }}
+    <motion.button
+      onClick={() => router.push(bar.href)}
+      className="shimmer-border glass-bar group relative w-full overflow-hidden rounded-2xl text-left"
+      initial={{ opacity: 0, y: -16, scale: 0.985 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.55, ease: EASE, delay: 0.08 * index }}
-      whileHover={{ y: -3 }}
-      className="min-h-0"
+      transition={{ duration: 0.55, ease: EASE, delay: 0.05 + index * 0.07 }}
+      whileHover={{ scale: 1.008, y: -1 }}
+      whileTap={{ scale: 0.997 }}
     >
-      <Link
-        href={tile.href}
-        className="group glass-panel relative flex h-full flex-col justify-between gap-3 overflow-hidden rounded-2xl border border-white/[0.05] p-5 transition-colors hover:border-white/[0.14]"
+      {/* Top-right ambient orb (kind-tinted) */}
+      <motion.div
+        className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full opacity-50"
         style={{
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 22px 48px rgba(0,0,0,0.36)",
+          background: `radial-gradient(circle, ${bar.glow} 0%, transparent 70%)`,
         }}
-      >
-        {/* Ambient orb */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full opacity-50 transition-all duration-500 group-hover:scale-110 group-hover:opacity-90"
-          style={{ background: `radial-gradient(circle, ${tile.accent}30 0%, transparent 70%)` }}
-        />
-        {/* Bottom accent line */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] origin-left scale-x-0 transition-transform duration-500 group-hover:scale-x-100"
-          style={{ background: `linear-gradient(90deg, transparent, ${tile.accent}, transparent)` }}
-        />
+        animate={{ x: [0, -16, 0], y: [0, 6, 0], scale: [1, 1.18, 1] }}
+        transition={{ duration: 9 + index, ease: "easeInOut", repeat: Infinity }}
+      />
+      {/* Bottom-left ambient orb */}
+      <motion.div
+        className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full opacity-30"
+        style={{
+          background: `radial-gradient(circle, ${bar.glow} 0%, transparent 70%)`,
+        }}
+        animate={{ x: [0, 14, 0], y: [0, -6, 0] }}
+        transition={{ duration: 11 + index, ease: "easeInOut", repeat: Infinity }}
+      />
 
-        <div className="relative z-10 flex items-start gap-3">
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-            style={{
-              background: `linear-gradient(135deg, ${tile.accent}26, ${tile.accent}06)`,
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
-            }}
+      <div className="relative z-10 flex items-center gap-4 px-5 py-3.5 md:px-6">
+        {/* Icon */}
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+          style={{
+            background: `linear-gradient(135deg, ${bar.accent}30, ${bar.accent}08)`,
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 16px rgba(0,0,0,0.15)",
+          }}
+        >
+          <Icon size={18} style={{ color: bar.accent }} strokeWidth={1.6} />
+        </div>
+
+        {/* Title + subtitle */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h3 className="font-playfair text-lg font-bold leading-tight text-cream">
+            {bar.title}
+          </h3>
+          <p className="mt-0.5 line-clamp-1 text-[12px] text-white/55">
+            {bar.subtitle}
+          </p>
+        </div>
+
+        {/* Count chip (hidden on small screens) */}
+        <div className="mr-1 hidden items-center md:flex">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.04] px-2.5 py-1.5 text-[11px] text-white/55 transition-colors duration-200 group-hover:bg-white/[0.08] group-hover:text-white/80"
           >
-            <Icon size={18} style={{ color: tile.accent }} strokeWidth={1.7} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-playfair text-xl font-semibold leading-tight text-cream md:text-2xl">
-              {tile.title}
-            </h3>
-            <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-white/60">
-              {tile.desc}
-            </p>
-          </div>
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: bar.accent }}
+            />
+            {bar.countLabel}
+          </span>
         </div>
 
-        <div className="relative z-10 flex items-center justify-between text-[11px]">
-          <span className="inline-flex items-center gap-1.5 text-white/55">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: tile.accent }} />
-            {tile.countLabel}
-          </span>
-          <span className="inline-flex items-center gap-1 text-white/45 transition-colors group-hover:text-cream">
-            Open
-            <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </div>
-      </Link>
-    </motion.div>
+        {/* Arrow */}
+        <motion.div
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.04] transition-colors duration-200 group-hover:bg-white/[0.08]"
+          animate={{ x: [0, 3, 0] }}
+          transition={{ duration: 2 + index * 0.2, ease: "easeInOut", repeat: Infinity }}
+        >
+          <ArrowRight
+            size={14}
+            className="text-white/50 transition-colors duration-200 group-hover:text-white/85"
+          />
+        </motion.div>
+      </div>
+    </motion.button>
   );
 }
