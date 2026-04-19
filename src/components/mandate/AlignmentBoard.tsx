@@ -157,6 +157,8 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   const [hover, setHover] = useState<HoverState>({ type: null, id: null });
   const [active, setActive] = useState<ActiveSelection>(null);
   const [openPillars, setOpenPillars] = useState<Set<string>>(new Set());
+  const [openRfiKinds, setOpenRfiKinds] = useState<Set<string>>(new Set());
+  const [openScreenPillars, setOpenScreenPillars] = useState<Set<string>>(new Set());
 
   const articleById = useMemo(
     () => new Map(payload.articles.map((a) => [a.id, a])),
@@ -220,6 +222,24 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   };
   const collapseAll = () => {
     setOpenPillars(new Set());
+  };
+
+  const toggleRfiKind = (kind: string) => {
+    setOpenRfiKinds((prev) => {
+      const next = new Set(prev);
+      if (next.has(kind)) next.delete(kind);
+      else next.add(kind);
+      return next;
+    });
+  };
+
+  const toggleScreenPillar = (pillar: string) => {
+    setOpenScreenPillars((prev) => {
+      const next = new Set(prev);
+      if (next.has(pillar)) next.delete(pillar);
+      else next.add(pillar);
+      return next;
+    });
   };
 
   // RFI grouped by kind
@@ -491,22 +511,20 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   useLayoutEffect(() => {
     recompute();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, hover, openPillars, rfiGroups, screenGroups]);
+  }, [payload, hover, openPillars, openRfiKinds, openScreenPillars, rfiGroups, screenGroups]);
 
   useEffect(() => {
     const onResize = () => recompute();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, hover, openPillars]);
+  }, [payload, hover, openPillars, openRfiKinds, openScreenPillars]);
 
-  // Run a deferred recompute after pillar expand/collapse animation finishes
-  // so paths line up with the final layout, not the in-progress one.
   useEffect(() => {
     const t = window.setTimeout(() => recompute(), 260);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openPillars]);
+  }, [openPillars, openRfiKinds, openScreenPillars]);
 
   const setRef = (
     map: React.MutableRefObject<Map<string, HTMLLIElement>>,
@@ -731,58 +749,93 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
         Icon={Target}
         accent="#E7B02E"
         onBodyScroll={onColumnScroll}
+        action={
+          <button
+            type="button"
+            onClick={() => {
+              const allRfiOpen = rfiGroups.length > 0 && rfiGroups.every((g) => openRfiKinds.has(g.kind));
+              setOpenRfiKinds(allRfiOpen ? new Set() : new Set(rfiGroups.map((g) => g.kind)));
+            }}
+            className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.16em] text-white/65 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+          >
+            {rfiGroups.length > 0 && rfiGroups.every((g) => openRfiKinds.has(g.kind)) ? "Collapse all" : "Expand all"}
+          </button>
+        }
       >
         <div className="flex flex-col gap-1.5">
-          {rfiGroups.map((group) => (
-            <section key={group.kind} className="flex flex-col">
-              <header
-                className="sticky top-0 z-10 flex items-center gap-2 rounded-md border border-white/[0.06] bg-black/55 px-2 py-1 backdrop-blur"
-                style={{ borderLeft: `3px solid ${group.color}` }}
-              >
-                <span
-                  className="text-[10px] font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: group.color }}
+          {rfiGroups.map((group) => {
+            const isOpen = openRfiKinds.has(group.kind);
+            return (
+              <section key={group.kind} className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => toggleRfiKind(group.kind)}
+                  className="sticky top-0 z-10 flex items-center gap-2 rounded-md border border-white/[0.06] bg-black/55 px-2 py-1.5 text-left backdrop-blur transition hover:bg-white/[0.04]"
+                  style={{ borderLeft: `3px solid ${group.color}` }}
                 >
-                  {group.label}s
-                </span>
-                <span className="ml-auto text-[9.5px] tabular-nums text-white/40">
-                  {group.items.length}
-                </span>
-              </header>
-              <ul className="flex flex-col gap-1 pl-1.5 pr-0.5 pt-1">
-                {group.items.map((r) => {
-                  const dim = isDimmed("rfi", r.id);
-                  const hi = isHighlighted("rfi", r.id);
-                  const color = group.color;
-                  return (
-                    <li
-                      key={r.id}
-                      ref={setRef(rfiRefs, r.id)}
-                      onMouseEnter={() => setHover({ type: "rfi", id: r.id })}
-                      onClick={() => setActive({ kind: "rfi", id: r.id })}
-                      className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
-                        hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
-                      }`}
-                      style={{
-                        opacity: dim ? 0.2 : 1,
-                        boxShadow: hi
-                          ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22`
-                          : undefined,
-                        borderLeft: `2px solid ${color}88`,
-                      }}
+                  <motion.span
+                    animate={{ rotate: isOpen ? 0 : -90 }}
+                    transition={{ duration: 0.22, ease: EASE }}
+                    className="flex h-3 w-3 items-center justify-center text-white/50"
+                  >
+                    <ChevronDown size={12} />
+                  </motion.span>
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+                    style={{ color: group.color }}
+                  >
+                    {group.label}s
+                  </span>
+                  <span className="ml-auto text-[9.5px] tabular-nums text-white/40">
+                    {group.items.length}
+                  </span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.ul
+                      key="body"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: EASE }}
+                      className="flex flex-col gap-1 overflow-hidden pl-1.5 pr-0.5 pt-1"
                     >
-                      <div className="flex items-center gap-1.5 text-[8.5px] uppercase tracking-[0.14em] text-white/45">
-                        <span className="truncate">{r.sectionRef}</span>
-                      </div>
-                      <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">
-                        {r.title}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+                      {group.items.map((r) => {
+                        const dim = isDimmed("rfi", r.id);
+                        const hi = isHighlighted("rfi", r.id);
+                        const color = group.color;
+                        return (
+                          <li
+                            key={r.id}
+                            ref={setRef(rfiRefs, r.id)}
+                            onMouseEnter={() => setHover({ type: "rfi", id: r.id })}
+                            onClick={() => setActive({ kind: "rfi", id: r.id })}
+                            className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
+                              hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
+                            }`}
+                            style={{
+                              opacity: dim ? 0.2 : 1,
+                              boxShadow: hi
+                                ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22`
+                                : undefined,
+                              borderLeft: `2px solid ${color}88`,
+                            }}
+                          >
+                            <div className="flex items-center gap-1.5 text-[8.5px] uppercase tracking-[0.14em] text-white/45">
+                              <span className="truncate">{r.sectionRef}</span>
+                            </div>
+                            <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">
+                              {r.title}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </motion.ul>
+                  )}
+                </AnimatePresence>
+              </section>
+            );
+          })}
         </div>
       </Column>
 
@@ -793,54 +846,89 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
         Icon={LayersIcon}
         accent="#4899FF"
         onBodyScroll={onColumnScroll}
+        action={
+          <button
+            type="button"
+            onClick={() => {
+              const allScreenOpen = screenGroups.length > 0 && screenGroups.every((g) => openScreenPillars.has(g.pillar));
+              setOpenScreenPillars(allScreenOpen ? new Set() : new Set(screenGroups.map((g) => g.pillar)));
+            }}
+            className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.16em] text-white/65 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+          >
+            {screenGroups.length > 0 && screenGroups.every((g) => openScreenPillars.has(g.pillar)) ? "Collapse all" : "Expand all"}
+          </button>
+        }
       >
         <div className="flex flex-col gap-1.5">
-          {screenGroups.map((group) => (
-            <section key={group.pillar} className="flex flex-col">
-              <header
-                className="sticky top-0 z-10 flex items-center gap-2 rounded-md border border-white/[0.06] bg-black/55 px-2 py-1 backdrop-blur"
-                style={{ borderLeft: `3px solid ${group.color}` }}
-              >
-                <span
-                  className="text-[10px] font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: group.color }}
+          {screenGroups.map((group) => {
+            const isOpen = openScreenPillars.has(group.pillar);
+            return (
+              <section key={group.pillar} className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => toggleScreenPillar(group.pillar)}
+                  className="sticky top-0 z-10 flex items-center gap-2 rounded-md border border-white/[0.06] bg-black/55 px-2 py-1.5 text-left backdrop-blur transition hover:bg-white/[0.04]"
+                  style={{ borderLeft: `3px solid ${group.color}` }}
                 >
-                  {group.label}
-                </span>
-                <span className="ml-auto text-[9.5px] tabular-nums text-white/40">
-                  {group.items.length}
-                </span>
-              </header>
-              <ul className="flex flex-col gap-1 pl-1.5 pr-0.5 pt-1">
-                {group.items.map((s) => {
-                  const dim = isDimmed("screen", s.id);
-                  const hi = isHighlighted("screen", s.id);
-                  const color = group.color;
-                  return (
-                    <li
-                      key={s.id}
-                      ref={setRef(screenRefs, s.id)}
-                      onMouseEnter={() => setHover({ type: "screen", id: s.id })}
-                      onClick={() => setActive({ kind: "screen", id: s.id })}
-                      className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1.5 transition-colors duration-200 ${
-                        hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
-                      }`}
-                      style={{
-                        opacity: dim ? 0.2 : 1,
-                        boxShadow: hi
-                          ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22`
-                          : undefined,
-                        borderLeft: `2px solid ${color}88`,
-                      }}
+                  <motion.span
+                    animate={{ rotate: isOpen ? 0 : -90 }}
+                    transition={{ duration: 0.22, ease: EASE }}
+                    className="flex h-3 w-3 items-center justify-center text-white/50"
+                  >
+                    <ChevronDown size={12} />
+                  </motion.span>
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+                    style={{ color: group.color }}
+                  >
+                    {group.label}
+                  </span>
+                  <span className="ml-auto text-[9.5px] tabular-nums text-white/40">
+                    {group.items.length}
+                  </span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.ul
+                      key="body"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: EASE }}
+                      className="flex flex-col gap-1 overflow-hidden pl-1.5 pr-0.5 pt-1"
                     >
-                      <div className="text-[10.5px] leading-snug text-cream">{s.label}</div>
-                      <div className="mt-0.5 truncate text-[9px] text-white/40">{s.href}</div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+                      {group.items.map((s) => {
+                        const dim = isDimmed("screen", s.id);
+                        const hi = isHighlighted("screen", s.id);
+                        const color = group.color;
+                        return (
+                          <li
+                            key={s.id}
+                            ref={setRef(screenRefs, s.id)}
+                            onMouseEnter={() => setHover({ type: "screen", id: s.id })}
+                            onClick={() => setActive({ kind: "screen", id: s.id })}
+                            className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1.5 transition-colors duration-200 ${
+                              hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
+                            }`}
+                            style={{
+                              opacity: dim ? 0.2 : 1,
+                              boxShadow: hi
+                                ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22`
+                                : undefined,
+                              borderLeft: `2px solid ${color}88`,
+                            }}
+                          >
+                            <div className="text-[10.5px] leading-snug text-cream">{s.label}</div>
+                            <div className="mt-0.5 truncate text-[9px] text-white/40">{s.href}</div>
+                          </li>
+                        );
+                      })}
+                    </motion.ul>
+                  )}
+                </AnimatePresence>
+              </section>
+            );
+          })}
         </div>
       </Column>
 
