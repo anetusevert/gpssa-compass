@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
-import { scrapeGpssaCorpus, type Lang } from "@/lib/research/scrapers/gpssa";
+import type { Lang } from "@/lib/research/scrapers/gpssa";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /**
  * POST /api/mandate/scrape
@@ -49,6 +52,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const { scrapeGpssaCorpus } = await import("@/lib/research/scrapers/gpssa");
   const result = await scrapeGpssaCorpus({
     langs,
     followPdfs,
