@@ -9,8 +9,22 @@
  */
 
 import * as cheerio from "cheerio";
-import pdfParse from "pdf-parse";
 import { createHash } from "crypto";
+
+// `pdf-parse` (and its transitive deps) reference the `File` global at module
+// load time, which crashes on Node runtimes that do not expose it. Defer the
+// import until a PDF is actually being parsed so the HTML-only code path on
+// /api/mandate/scrape (followPdfs=false) never touches it.
+type PdfParseFn = (buf: Buffer) => Promise<{ text?: string }>;
+let _pdfParse: PdfParseFn | null = null;
+async function getPdfParse(): Promise<PdfParseFn> {
+  if (_pdfParse) return _pdfParse;
+  const mod = (await import("pdf-parse")) as unknown as
+    | { default: PdfParseFn }
+    | PdfParseFn;
+  _pdfParse = (typeof mod === "function" ? mod : mod.default) as PdfParseFn;
+  return _pdfParse;
+}
 
 const STRIPPED_SELECTORS = [
   "script",
@@ -130,6 +144,7 @@ export function htmlToMarkdown(rawHtml: string, baseUrl: string): HtmlExtraction
 }
 
 export async function pdfToMarkdown(buf: Buffer): Promise<{ title: string; markdown: string }> {
+  const pdfParse = await getPdfParse();
   const parsed = await pdfParse(buf);
   const raw = parsed.text || "";
   const cleaned = raw
