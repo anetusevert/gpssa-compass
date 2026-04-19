@@ -291,9 +291,11 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   return (
     <div
       ref={stageRef}
-      className="relative flex h-full w-full gap-6 overflow-hidden rounded-3xl border border-white/[0.04] bg-gradient-to-b from-white/[0.015] to-transparent p-6"
+      className="relative grid h-full w-full grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)_minmax(0,0.75fr)] gap-2 overflow-hidden rounded-2xl border border-white/[0.04] bg-gradient-to-b from-white/[0.015] to-transparent p-2 md:gap-3 md:p-3"
       onMouseLeave={() => setHover({ type: null, id: null })}
     >
+      {/* Edges only render on hover; idle board is intentionally clean so the
+          dense item lists remain readable. */}
       <svg
         className="pointer-events-none absolute inset-0 h-full w-full"
         viewBox={`0 0 ${Math.max(1, paths.width)} ${Math.max(1, paths.height)}`}
@@ -308,44 +310,52 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
             </feMerge>
           </filter>
         </defs>
-        <g>
-          {paths.articleToScreen.map((p) => (
-            <motion.path
-              key={p.id}
-              d={p.d}
-              fill="none"
-              stroke={p.color}
-              strokeWidth={p.active ? 2 : 0.8}
-              strokeOpacity={p.active ? 0.95 : hover.type ? 0.05 : 0.18}
-              filter={p.active ? "url(#soft-glow)" : undefined}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-            />
-          ))}
-          {paths.articleToRfi.map((p) => (
-            <motion.path
-              key={p.id}
-              d={p.d}
-              fill="none"
-              stroke={p.color}
-              strokeWidth={p.active ? 2 : 1}
-              strokeOpacity={p.active ? 0.95 : hover.type ? 0.05 : 0.22}
-              filter={p.active ? "url(#soft-glow)" : undefined}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-            />
-          ))}
-          {paths.rfiToScreen.map((p) => (
-            <motion.path
-              key={p.id}
-              d={p.d}
-              fill="none"
-              stroke={p.color}
-              strokeWidth={p.active ? 2 : 1}
-              strokeOpacity={p.active ? 0.95 : hover.type ? 0.05 : 0.22}
-              filter={p.active ? "url(#soft-glow)" : undefined}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-            />
-          ))}
-        </g>
+        {hover.type && (
+          <g>
+            {paths.articleToScreen.filter((p) => p.active).map((p) => (
+              <motion.path
+                key={p.id}
+                d={p.d}
+                fill="none"
+                stroke={p.color}
+                strokeWidth={2}
+                strokeOpacity={0.95}
+                filter="url(#soft-glow)"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+              />
+            ))}
+            {paths.articleToRfi.filter((p) => p.active).map((p) => (
+              <motion.path
+                key={p.id}
+                d={p.d}
+                fill="none"
+                stroke={p.color}
+                strokeWidth={2}
+                strokeOpacity={0.95}
+                filter="url(#soft-glow)"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+              />
+            ))}
+            {paths.rfiToScreen.filter((p) => p.active).map((p) => (
+              <motion.path
+                key={p.id}
+                d={p.d}
+                fill="none"
+                stroke={p.color}
+                strokeWidth={2}
+                strokeOpacity={0.95}
+                filter="url(#soft-glow)"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+              />
+            ))}
+          </g>
+        )}
       </svg>
 
       <Column
@@ -354,7 +364,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
         Icon={ScrollText}
         accent="#00A86B"
       >
-        <ul className="flex flex-col gap-1.5 pr-2">
+        <ul className="alignment-multicol pr-1">
           {payload.articles.map((a) => {
             const dim = isDimmed("article", a.id);
             const hi = isHighlighted("article", a.id);
@@ -364,27 +374,32 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
                 key={a.id}
                 ref={setRef(articleRefs, a.id)}
                 onMouseEnter={() => setHover({ type: "article", id: a.id })}
-                className={`group relative cursor-pointer rounded-lg border border-white/[0.04] px-3 py-2 transition-all duration-300 ${
-                  hi ? "bg-white/[0.06]" : "bg-white/[0.015] hover:bg-white/[0.04]"
+                className={`group relative mb-1 inline-block w-full cursor-pointer break-inside-avoid rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
+                  hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
                 }`}
                 style={{
-                  opacity: dim ? 0.18 : 1,
-                  boxShadow: hi ? `inset 0 0 0 1px ${color}55, 0 0 24px ${color}1a` : undefined,
+                  opacity: dim ? 0.2 : 1,
+                  boxShadow: hi ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22` : undefined,
+                  borderLeft: `2px solid ${color}88`,
                 }}
               >
-                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-white/40">
-                  {a.standard.code ?? a.standard.slug}
-                  {a.code && <span className="text-white/55">· {a.code}</span>}
-                </div>
-                <div className="mt-0.5 truncate text-[12px] text-cream">{a.title}</div>
-                {a.pillar && (
-                  <span
-                    className="absolute right-2 top-2 inline-block rounded-full px-1.5 py-px text-[9px] uppercase tracking-wider text-white/85"
-                    style={{ background: `${color}33`, color }}
-                  >
-                    {a.pillar}
+                <div className="flex items-center gap-1.5 text-[8px] uppercase tracking-[0.14em] text-white/45">
+                  <span className="truncate">
+                    {(a.standard.code ?? a.standard.slug ?? "").toString().slice(0, 14)}
                   </span>
-                )}
+                  {a.code && <span className="shrink-0 text-white/65">· {a.code}</span>}
+                  {a.pillar && (
+                    <span
+                      className="ml-auto shrink-0 rounded px-1 py-px text-[8px] font-medium uppercase tracking-wide"
+                      style={{ background: `${color}26`, color }}
+                    >
+                      {a.pillar}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">
+                  {a.title}
+                </div>
               </li>
             );
           })}
@@ -402,7 +417,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
         Icon={Target}
         accent="#E7B02E"
       >
-        <ul className="flex flex-col gap-1.5 pr-2">
+        <ul className="flex flex-col gap-1 pr-1">
           {payload.rfiSections.map((r) => {
             const dim = isDimmed("rfi", r.id);
             const hi = isHighlighted("rfi", r.id);
@@ -412,19 +427,20 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
                 key={r.id}
                 ref={setRef(rfiRefs, r.id)}
                 onMouseEnter={() => setHover({ type: "rfi", id: r.id })}
-                className={`group relative cursor-pointer rounded-lg border border-white/[0.04] px-3 py-2 transition-all duration-300 ${
-                  hi ? "bg-white/[0.06]" : "bg-white/[0.015] hover:bg-white/[0.04]"
+                className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
+                  hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
                 }`}
                 style={{
-                  opacity: dim ? 0.18 : 1,
-                  boxShadow: hi ? `inset 0 0 0 1px ${color}55, 0 0 24px ${color}1a` : undefined,
+                  opacity: dim ? 0.2 : 1,
+                  boxShadow: hi ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22` : undefined,
+                  borderLeft: `2px solid ${color}88`,
                 }}
               >
-                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-white/40">
-                  {r.sectionRef}
-                  <span style={{ color }}>· {RFI_KIND_LABELS[r.kind]}</span>
+                <div className="flex items-center gap-1.5 text-[8.5px] uppercase tracking-[0.14em] text-white/45">
+                  <span className="truncate">{r.sectionRef}</span>
+                  <span className="shrink-0" style={{ color }}>· {RFI_KIND_LABELS[r.kind]}</span>
                 </div>
-                <div className="mt-0.5 line-clamp-2 text-[12px] text-cream">{r.title}</div>
+                <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">{r.title}</div>
               </li>
             );
           })}
@@ -437,7 +453,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
         Icon={LayersIcon}
         accent="#4899FF"
       >
-        <ul className="flex flex-col gap-1.5 pr-2">
+        <ul className="flex flex-col gap-1 pr-1">
           {payload.appScreens.map((s) => {
             const dim = isDimmed("screen", s.id);
             const hi = isHighlighted("screen", s.id);
@@ -447,27 +463,26 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
                 key={s.id}
                 ref={setRef(screenRefs, s.id)}
                 onMouseEnter={() => setHover({ type: "screen", id: s.id })}
-                className={`group relative cursor-pointer rounded-lg border border-white/[0.04] px-3 py-2 transition-all duration-300 ${
-                  hi ? "bg-white/[0.06]" : "bg-white/[0.015] hover:bg-white/[0.04]"
+                className={`group relative cursor-pointer rounded-md border border-white/[0.04] px-2 py-1 transition-colors duration-200 ${
+                  hi ? "bg-white/[0.07]" : "bg-white/[0.018] hover:bg-white/[0.04]"
                 }`}
                 style={{
-                  opacity: dim ? 0.18 : 1,
-                  boxShadow: hi ? `inset 0 0 0 1px ${color}55, 0 0 24px ${color}1a` : undefined,
+                  opacity: dim ? 0.2 : 1,
+                  boxShadow: hi ? `inset 0 0 0 1px ${color}66, 0 0 18px ${color}22` : undefined,
+                  borderLeft: `2px solid ${color}88`,
                 }}
               >
-                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-white/40">
-                  {s.pillar}
-                </div>
-                <div className="mt-0.5 flex items-center justify-between text-[12px] text-cream">
-                  <span className="truncate">{s.label}</span>
+                <div className="flex items-center justify-between text-[8.5px] uppercase tracking-[0.14em] text-white/45">
+                  <span>{s.pillar}</span>
                   <a
                     href={s.href}
                     onClick={(e) => e.stopPropagation()}
-                    className="ml-2 text-white/40 hover:text-white"
+                    className="text-white/40 transition-colors hover:text-white"
                   >
-                    <ArrowRight size={12} />
+                    <ArrowRight size={11} />
                   </a>
                 </div>
+                <div className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-cream">{s.label}</div>
               </li>
             );
           })}
@@ -475,16 +490,16 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
       </Column>
 
       <AnimatePresence>
-        {hover.type && (
+        {!hover.type && (
           <motion.div
             key="hint"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: EASE }}
-            className="pointer-events-none absolute inset-x-0 bottom-3 z-10 mx-auto w-fit rounded-full border border-white/[0.06] bg-black/40 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-white/55 backdrop-blur"
+            className="pointer-events-none absolute inset-x-0 bottom-2 z-10 mx-auto w-fit rounded-full border border-white/[0.06] bg-black/40 px-3 py-1 text-[9px] uppercase tracking-[0.22em] text-white/45 backdrop-blur"
           >
-            Move between columns to follow the obligation
+            Hover any node — the connections light up
           </motion.div>
         )}
       </AnimatePresence>
@@ -506,23 +521,25 @@ function Column({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full flex-1 flex-col gap-3 overflow-hidden">
-      <div className="flex items-center gap-3 px-1">
+    <div className="flex h-full min-h-0 flex-col gap-1.5 overflow-hidden">
+      <div className="flex shrink-0 items-center gap-2 px-1">
         <div
-          className="flex h-8 w-8 items-center justify-center rounded-lg"
+          className="flex h-6 w-6 items-center justify-center rounded-md"
           style={{
             background: `linear-gradient(135deg, ${accent}25, ${accent}05)`,
-            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px ${accent}25`,
+            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 0 12px ${accent}22`,
           }}
         >
-          <Icon size={14} style={{ color: accent }} strokeWidth={1.7} />
+          <Icon size={12} style={{ color: accent }} strokeWidth={1.7} />
         </div>
-        <div>
-          <h3 className="font-playfair text-base font-semibold text-cream">{title}</h3>
-          <div className="text-[10px] uppercase tracking-[0.22em] text-white/40">{subtitle}</div>
+        <div className="min-w-0">
+          <h3 className="truncate font-playfair text-sm font-semibold leading-tight text-cream">
+            {title}
+          </h3>
+          <div className="text-[9px] uppercase tracking-[0.22em] text-white/40">{subtitle}</div>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto scrollbar-none">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-none">{children}</div>
     </div>
   );
 }

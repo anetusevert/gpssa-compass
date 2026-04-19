@@ -41,7 +41,7 @@ export default function MandateRfiAlignmentPage() {
   }, []);
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div className="relative flex h-full flex-col overflow-hidden">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10"
@@ -52,34 +52,29 @@ export default function MandateRfiAlignmentPage() {
       />
 
       <motion.header
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: EASE }}
-        className="shrink-0 border-b border-white/[0.05] bg-black/15 px-8 py-5 backdrop-blur"
+        transition={{ duration: 0.45, ease: EASE }}
+        className="shrink-0 border-b border-white/[0.05] bg-black/15 px-4 py-2.5 backdrop-blur md:px-6 md:py-3"
       >
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-[#00A86B]">
-              <Network size={11} /> Mandate · RFI Alignment Board
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 text-[9px] uppercase tracking-[0.28em] text-[#00A86B]">
+              <Network size={10} /> Mandate · RFI Alignment
             </div>
-            <h1 className="mt-1 font-playfair text-2xl font-semibold text-cream">
-              How {RFI_REFERENCE.number} maps to the legal mandate and the live
+            <h1 className="mt-0.5 truncate font-playfair text-base font-semibold text-cream md:text-lg">
+              How {RFI_REFERENCE.number} maps to the legal mandate &amp; live
               app pillars
             </h1>
-            <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-white/55">
-              Hover any node to follow the obligation: legal article ↔ RFI
-              objective / workstream / deliverable / area-of-focus ↔ the
-              concrete GPSSA service, product or channel that delivers it.
-            </p>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-white/55">
-            <Sparkles size={11} className="text-[#00A86B]" />
-            <span>Edges drawn live · hover-driven</span>
+          <div className="hidden items-center gap-2 text-[10px] text-white/55 md:flex">
+            <Sparkles size={10} className="text-[#00A86B]" />
+            <span>Hover any node — connections appear</span>
           </div>
         </div>
       </motion.header>
 
-      <div className="min-h-0 flex-1 overflow-hidden p-6">
+      <div className="min-h-0 flex-1 overflow-hidden p-2 md:p-3">
         {loading ? (
           <div className="flex h-full items-center justify-center text-white/45">
             <Loader2 size={16} className="mr-2 animate-spin" /> Loading alignment graph…
