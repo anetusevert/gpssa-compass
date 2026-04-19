@@ -252,3 +252,103 @@ export function audienceForCategory(value: string | null | undefined): ServiceAu
   const r = resolveCategory(value);
   return r?.kind === "audience" ? r.entry : null;
 }
+
+// ── Heuristic classification ──────────────────────────────────────────────
+
+/**
+ * Sentinel "function" returned when a service can't be confidently
+ * mapped to one of the twelve canonical ILO branches. Lets the UI
+ * surface a long-tail bucket instead of silently dropping rows.
+ */
+export const UNCLASSIFIED_FUNCTION: ServiceFunction = {
+  slug: "unclassified",
+  label: "Other / Unclassified",
+  shortLabel: "Other",
+  standardSlugs: [],
+  description: "Services not yet mapped to a canonical ILO C102 branch — review and re-categorise.",
+  color: "#64748B",
+  icon: "help-circle",
+  sortOrder: 99,
+  legacyAliases: [],
+};
+
+/**
+ * Each rule: a list of regex patterns evaluated against a lowercased
+ * `name + description + category` blob. First rule that matches wins.
+ * Rules ordered by specificity — narrower terms first.
+ */
+const HEURISTIC_RULES: Array<{ slug: string; patterns: RegExp[] }> = [
+  { slug: "survivors-benefits",     patterns: [/\bsurviv/, /widow/, /orphan/, /\bdeath\b/, /funeral/, /bereav/] },
+  { slug: "employment-injury",      patterns: [/\binjur/, /\baccident/, /workplace/, /occupational/, /work[- ]?related/] },
+  { slug: "invalidity-benefits",    patterns: [/disab/, /invalid/, /incapacit/] },
+  { slug: "old-age-pensions",       patterns: [/pension/, /retire/, /old[- ]?age/, /end of service/, /\beos\b/, /gratuity/] },
+  { slug: "unemployment",           patterns: [/unemploy/, /jobseek/, /job seek/, /labou?r[- ]?market/, /redundan/] },
+  { slug: "maternity-family",       patterns: [/matern/, /family/, /child(ren)?/, /allowance/, /parental/, /paternit/, /spouse/, /depend(e|a)nt/] },
+  { slug: "healthcare-sickness",    patterns: [/health/, /sick/, /medical/, /hospital/, /clinic/, /pharmac/, /care\b/] },
+  { slug: "complaints-grievance",   patterns: [/complaint/, /grievance/, /appeal/, /ombuds/, /dispute/] },
+  { slug: "certificates-information",patterns: [/certificate/, /statement/, /no[- ]?objection/, /letter/, /attest/, /\binformation\b/, /inquiry/, /enquiry/, /suggest/] },
+  { slug: "digital-self-service",   patterns: [/digital/, /portal/, /\bapp\b/, /mobile/, /self[- ]?service/, /chatbot/, /\bai\b/, /assistant/, /online/] },
+  { slug: "contributions",          patterns: [/contribut/, /complian/, /payroll/, /reconcil/, /payment/, /settle/, /refund/, /purchase of service/] },
+  { slug: "registration",           patterns: [/regist/, /onboard/, /enroll/, /enrol/, /identit/, /\bkyc\b/, /\bid\b/] },
+];
+
+/**
+ * Robust resolver: tries the strict `resolveCategory()` first, then
+ * keyword-classifies based on `name + description + category`, then
+ * falls back to {@link UNCLASSIFIED_FUNCTION}.
+ *
+ * Always returns *some* function — guarantees every service lands in
+ * exactly one bucket so counts add up to 100%.
+ */
+export function classifyServiceFunction(input: {
+  name?: string | null;
+  description?: string | null;
+  category?: string | null;
+}): ServiceFunction {
+  const direct = functionForCategory(input.category);
+  if (direct) return direct;
+
+  const blob = `${input.name ?? ""} ${input.description ?? ""} ${input.category ?? ""}`.toLowerCase();
+  for (const rule of HEURISTIC_RULES) {
+    if (rule.patterns.some((re) => re.test(blob))) {
+      const fn = SERVICE_FUNCTIONS.find((f) => f.slug === rule.slug);
+      if (fn) return fn;
+    }
+  }
+  return UNCLASSIFIED_FUNCTION;
+}
+
+/**
+ * Returns canonical audience if `category` is an audience or any
+ * audience alias appears in name/description; otherwise null.
+ */
+export function classifyServiceAudience(input: {
+  name?: string | null;
+  description?: string | null;
+  category?: string | null;
+  userTypes?: string[] | null;
+}): ServiceAudience | null {
+  const direct = audienceForCategory(input.category);
+  if (direct) return direct;
+
+  if (Array.isArray(input.userTypes)) {
+    for (const ut of input.userTypes) {
+      const found = audienceForCategory(ut);
+      if (found) return found;
+    }
+  }
+
+  const blob = `${input.name ?? ""} ${input.description ?? ""}`.toLowerCase();
+  for (const aud of SERVICE_AUDIENCES) {
+    if (blob.includes(aud.shortLabel.toLowerCase()) || blob.includes(aud.label.toLowerCase())) {
+      return aud;
+    }
+  }
+  return null;
+}
+
+/** All twelve ILO branches plus the long-tail bucket, in display order. */
+export const SERVICE_FUNCTIONS_WITH_OTHER: ServiceFunction[] = [
+  ...SERVICE_FUNCTIONS,
+  UNCLASSIFIED_FUNCTION,
+];

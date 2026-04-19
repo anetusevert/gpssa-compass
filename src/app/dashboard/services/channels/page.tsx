@@ -1,21 +1,18 @@
 "use client";
 
 /**
- * Channel Capabilities — 3-Act Cinematic Redesign
+ * Channel Capabilities — guided three-section narrative
  *
- *   ACT I  — Cockpit          : six channel "tiles" lit by current maturity,
- *            animated in like a heads-up display.
+ *   1. Channel Mix at a Glance        — six channel KPI tiles + omnichannel headline.
+ *   2. Service-by-Channel Coverage    — full coverage matrix with sticky header.
+ *   3. How Our Channels Compare       — full-width benchmark cockpit (rail picker, dial, radar, gap table).
  *
- *   ACT II — Service-flow Sankey : visualize how every GPSSA service routes
- *            through the six channels at Full / Partial / Planned / None.
- *
- *   ACT III— Benchmark        : compare GPSSA's channel matrix against a
- *            Standard (UN EGDI, ISSA SQ), a Computed Reference (Global Avg,
- *            GCC Best), or a single Country.
+ * Every service in the database is routed via the heuristic classifier so the
+ * coverage matrix never silently drops a row.
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { motion } from "framer-motion";
 import {
   Search,
   Globe2,
@@ -23,10 +20,12 @@ import {
   Radio,
   Sparkles,
   Code2,
-  ArrowLeft,
-  ArrowRight,
+  ArrowDown,
   Scale,
   CheckCircle2,
+  Filter,
+  RotateCcw,
+  Telescope,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -43,8 +42,9 @@ import {
   type Channel,
   type ChannelLevel,
   type ChannelSlug,
-  resolveCategory,
-  SERVICE_FUNCTIONS,
+  classifyServiceFunction,
+  UNCLASSIFIED_FUNCTION,
+  SERVICE_FUNCTIONS_WITH_OTHER,
 } from "@/lib/taxonomy";
 
 import { ComparatorPicker } from "@/components/comparator/ComparatorPicker";
@@ -62,6 +62,7 @@ interface ServiceChannelRow {
   id: string;
   name: string;
   category: string;
+  description?: string | null;
   channels: Record<ChannelSlug, ChannelLevel>;
   notes?: string;
 }
@@ -74,8 +75,6 @@ interface IntlChannelRow {
   category: string;
   channels: Record<ChannelSlug, ChannelLevel>;
 }
-
-type Act = "cockpit" | "flow" | "benchmark";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Static seed
@@ -126,21 +125,21 @@ function maturityBand(score: number): string {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ACT I — Cockpit
+   Section 1 — Channel KPI tile (flat, accent bar)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function ChannelCockpitTile({
+function ChannelTile({
   channel,
   rows,
   index,
-  onClick,
   active,
+  onClick,
 }: {
   channel: Channel;
   rows: ServiceChannelRow[];
   index: number;
-  onClick: () => void;
   active: boolean;
+  onClick: () => void;
 }) {
   const score = channelMaturity(rows, channel.slug as ChannelSlug);
   const dist = channelDistribution(rows, channel.slug as ChannelSlug);
@@ -149,47 +148,37 @@ function ChannelCockpitTile({
   return (
     <motion.button
       onClick={onClick}
-      initial={{ opacity: 0, y: 18, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.45, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.18 } }}
-      whileTap={{ scale: 0.98 }}
-      className={`group relative text-left rounded-2xl p-4 overflow-hidden transition-all ${
-        active ? "ring-2 ring-cream/30" : ""
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -2 }}
+      className={`group relative text-left rounded-xl bg-white/[0.025] border p-4 overflow-hidden transition-colors ${
+        active
+          ? "border-cream/30 bg-white/[0.05]"
+          : "border-white/[0.06] hover:border-white/[0.14] hover:bg-white/[0.04]"
       }`}
-      style={{
-        background: `linear-gradient(135deg, ${channel.color}1c 0%, rgba(11,18,32,0.6) 60%)`,
-        border: `1px solid ${channel.color}40`,
-      }}
     >
       <div
-        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-25 group-hover:opacity-50 transition-opacity"
-        style={{ background: `radial-gradient(circle, ${channel.color}cc, transparent 70%)` }}
+        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
+        style={{ backgroundColor: channel.color }}
       />
-      <div className="relative z-10">
-        <div className="flex items-start justify-between mb-3">
-          <span
-            className="inline-flex items-center justify-center w-8 h-8 rounded-lg"
-            style={{ backgroundColor: `${channel.color}25` }}
-          >
-            <Radio size={14} style={{ color: channel.color }} />
-          </span>
-          <span className="text-[9px] uppercase tracking-wider text-gray-muted">{channel.osiPillar}</span>
+      <div className="pl-2">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-cream leading-tight">{channel.label}</h3>
+            <span className="text-[9px] uppercase tracking-wider text-gray-muted">{channel.osiPillar}</span>
+          </div>
+          <Radio size={12} style={{ color: channel.color }} className="shrink-0 mt-0.5" />
         </div>
-        <h3 className="text-sm font-semibold text-cream mb-0.5">{channel.label}</h3>
-        <p className="text-[10px] text-gray-muted/90 line-clamp-2 mb-3 leading-snug">{channel.description}</p>
+        <p className="text-[10px] text-gray-muted/90 line-clamp-2 mb-3 leading-snug min-h-[28px]">
+          {channel.description}
+        </p>
 
         <div className="flex items-baseline justify-between mb-2">
-          <span className="text-2xl font-bold text-cream tabular-nums">{score}</span>
-          <span
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-            style={{ backgroundColor: `${channel.color}22`, color: channel.color }}
-          >
-            {band}
-          </span>
+          <span className="text-2xl font-bold text-cream tabular-nums leading-none">{score}</span>
+          <span className="text-[10px] text-gray-muted">{band}</span>
         </div>
 
-        {/* Stacked distribution bar */}
         <div className="h-1.5 rounded-full overflow-hidden flex bg-white/[0.04]">
           {(CHANNEL_LEVELS as readonly ChannelLevel[]).map((lvl) => {
             const w = rows.length === 0 ? 0 : (dist[lvl] / rows.length) * 100;
@@ -199,7 +188,7 @@ function ChannelCockpitTile({
                 key={lvl}
                 initial={{ width: 0 }}
                 animate={{ width: `${w}%` }}
-                transition={{ duration: 0.6, delay: 0.15 + index * 0.04 }}
+                transition={{ duration: 0.6, delay: 0.15 + index * 0.03 }}
                 style={{ backgroundColor: CHANNEL_LEVEL_COLORS[lvl] }}
                 className="h-full"
                 title={`${lvl}: ${dist[lvl]}`}
@@ -207,10 +196,10 @@ function ChannelCockpitTile({
             );
           })}
         </div>
-        <div className="flex items-center justify-between mt-1 text-[9px] text-gray-muted">
-          <span><span className="text-cream font-semibold">{dist.Full}</span> Full</span>
-          <span><span className="text-cream/80">{dist.Partial}</span> Partial</span>
-          <span>{dist.Planned} Planned</span>
+        <div className="flex items-center justify-between mt-1.5 text-[9px] text-gray-muted">
+          <span><span className="text-cream font-semibold tabular-nums">{dist.Full}</span> Full</span>
+          <span><span className="text-cream/80 tabular-nums">{dist.Partial}</span> Partial</span>
+          <span className="tabular-nums">{dist.Planned} Planned</span>
         </div>
       </div>
     </motion.button>
@@ -218,44 +207,50 @@ function ChannelCockpitTile({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ACT II — Service-flow (mini-Sankey)
+   Section 2 — Coverage matrix
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function ServiceFlow({ rows }: { rows: ServiceChannelRow[] }) {
-  // For each (function, channel) pair compute weighted maturity 0-100
-  const cells = useMemo(() => {
-    const grid = new Map<string, Map<ChannelSlug, number>>();
-    for (const fn of SERVICE_FUNCTIONS) grid.set(fn.slug, new Map());
-    for (const r of rows) {
-      const cat = resolveCategory(r.category);
-      if (cat?.kind !== "function") continue;
-      const fnGrid = grid.get(cat.entry.slug)!;
-      for (const ch of CHANNELS) {
-        const lvl = r.channels[ch.slug as ChannelSlug] ?? "None";
-        const cur = fnGrid.get(ch.slug as ChannelSlug) ?? 0;
-        fnGrid.set(ch.slug as ChannelSlug, cur + CHANNEL_LEVEL_SCORES[lvl]);
-      }
+interface CoverageRow {
+  fnSlug: string;
+  fnLabel: string;
+  fnColor: string;
+  values: { ch: Channel; v: number }[];
+  n: number;
+}
+
+function buildCoverage(rows: ServiceChannelRow[]): CoverageRow[] {
+  const grid = new Map<string, Map<ChannelSlug, number>>();
+  const counts = new Map<string, number>();
+  for (const fn of SERVICE_FUNCTIONS_WITH_OTHER) {
+    grid.set(fn.slug, new Map());
+    counts.set(fn.slug, 0);
+  }
+  for (const r of rows) {
+    const fn = classifyServiceFunction({ name: r.name, description: r.description, category: r.category });
+    const fnGrid = grid.get(fn.slug)!;
+    counts.set(fn.slug, (counts.get(fn.slug) ?? 0) + 1);
+    for (const ch of CHANNELS) {
+      const lvl = r.channels[ch.slug as ChannelSlug] ?? "None";
+      const cur = fnGrid.get(ch.slug as ChannelSlug) ?? 0;
+      fnGrid.set(ch.slug as ChannelSlug, cur + CHANNEL_LEVEL_SCORES[lvl]);
     }
-    // Normalize to averages per (fn, ch)
-    const counts = new Map<string, number>();
-    for (const r of rows) {
-      const cat = resolveCategory(r.category);
-      if (cat?.kind !== "function") continue;
-      counts.set(cat.entry.slug, (counts.get(cat.entry.slug) ?? 0) + 1);
-    }
-    const result: { fnSlug: string; fnLabel: string; fnColor: string; values: { ch: Channel; v: number }[]; n: number }[] = [];
-    for (const fn of SERVICE_FUNCTIONS) {
-      const n = counts.get(fn.slug) ?? 0;
-      if (n === 0) continue;
-      const fnGrid = grid.get(fn.slug)!;
-      const values = CHANNELS.map((ch) => ({
-        ch,
-        v: Math.round((fnGrid.get(ch.slug as ChannelSlug) ?? 0) / n),
-      }));
-      result.push({ fnSlug: fn.slug, fnLabel: fn.shortLabel, fnColor: fn.color, values, n });
-    }
-    return result;
-  }, [rows]);
+  }
+  const result: CoverageRow[] = [];
+  for (const fn of SERVICE_FUNCTIONS_WITH_OTHER) {
+    const n = counts.get(fn.slug) ?? 0;
+    if (n === 0) continue;
+    const fnGrid = grid.get(fn.slug)!;
+    const values = CHANNELS.map((ch) => ({
+      ch,
+      v: Math.round((fnGrid.get(ch.slug as ChannelSlug) ?? 0) / n),
+    }));
+    result.push({ fnSlug: fn.slug, fnLabel: fn.shortLabel, fnColor: fn.color, values, n });
+  }
+  return result;
+}
+
+function CoverageMatrix({ rows }: { rows: ServiceChannelRow[] }) {
+  const cells = useMemo(() => buildCoverage(rows), [rows]);
 
   if (cells.length === 0) {
     return <div className="text-center text-xs text-gray-muted py-12">No services to flow.</div>;
@@ -263,13 +258,16 @@ function ServiceFlow({ rows }: { rows: ServiceChannelRow[] }) {
 
   return (
     <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] overflow-hidden">
-      {/* Header row */}
-      <div className="grid items-end" style={{ gridTemplateColumns: `200px repeat(${CHANNELS.length}, 1fr)` }}>
-        <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-gray-muted">Function</div>
+      {/* Header row — sticky inside the matrix */}
+      <div
+        className="grid items-end sticky top-0 z-10 bg-navy/90 backdrop-blur-md border-b border-white/[0.06]"
+        style={{ gridTemplateColumns: `200px repeat(${CHANNELS.length}, 1fr)` }}
+      >
+        <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-gray-muted">Branch</div>
         {CHANNELS.map((ch) => (
           <div key={ch.slug} className="px-2 py-2 text-center">
             <div
-              className="inline-flex items-center justify-center w-7 h-7 rounded-md mb-1"
+              className="inline-flex items-center justify-center w-6 h-6 rounded-md mb-1"
               style={{ backgroundColor: `${ch.color}22` }}
             >
               <Radio size={11} style={{ color: ch.color }} />
@@ -283,14 +281,14 @@ function ServiceFlow({ rows }: { rows: ServiceChannelRow[] }) {
       {cells.map((row, rowIdx) => (
         <motion.div
           key={row.fnSlug}
-          initial={{ opacity: 0, x: -16 }}
+          initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: rowIdx * 0.03 }}
+          transition={{ duration: 0.25, delay: Math.min(rowIdx, 12) * 0.025 }}
           className="grid border-t border-white/[0.05] hover:bg-white/[0.02] transition-colors"
           style={{ gridTemplateColumns: `200px repeat(${CHANNELS.length}, 1fr)` }}
         >
           <div className="flex items-center gap-2 px-3 py-2.5">
-            <span className="w-1.5 h-7 rounded-full" style={{ backgroundColor: row.fnColor }} />
+            <span className="w-1 h-7 rounded-full" style={{ backgroundColor: row.fnColor }} />
             <div className="min-w-0">
               <p className="text-[11px] font-medium text-cream truncate">{row.fnLabel}</p>
               <p className="text-[9px] text-gray-muted">{row.n} service{row.n !== 1 ? "s" : ""}</p>
@@ -302,12 +300,9 @@ function ServiceFlow({ rows }: { rows: ServiceChannelRow[] }) {
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${v}%` }}
-                  transition={{ duration: 0.6, delay: rowIdx * 0.03 + 0.1 }}
+                  transition={{ duration: 0.5, delay: Math.min(rowIdx, 12) * 0.02 + 0.1 }}
                   className="h-full rounded-md"
-                  style={{
-                    background: `linear-gradient(90deg, ${ch.color}77, ${ch.color}cc)`,
-                    boxShadow: v > 70 ? `0 0 8px ${ch.color}77` : "none",
-                  }}
+                  style={{ background: ch.color, opacity: 0.6 + (v / 100) * 0.4 }}
                 />
                 <span className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold text-cream tabular-nums z-10">
                   {v}
@@ -322,16 +317,22 @@ function ServiceFlow({ rows }: { rows: ServiceChannelRow[] }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ACT III — Benchmark
+   Section 3 — Cockpit
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function ChannelBenchmark({
+function ChannelCockpit({
   rows,
   comparator,
+  setComparator,
+  comparatorOptions,
+  comparatorLoading,
   intl,
 }: {
   rows: ServiceChannelRow[];
   comparator: ComparatorOption | null;
+  setComparator: (c: ComparatorOption | null) => void;
+  comparatorOptions: ComparatorOption[];
+  comparatorLoading: boolean;
   intl: IntlChannelRow[];
 }) {
   const [refMaturity, setRefMaturity] = useState<Record<string, number> | null>(null);
@@ -362,7 +363,6 @@ function ChannelBenchmark({
           for (const ch of CHANNELS) out[ch.slug] = channelMaturity(intlForCountry, ch.slug as ChannelSlug);
           if (!cancelled) setRefMaturity(out);
         } else {
-          // standard: derive expected channel maturity from standardSlugs membership
           const out: Record<string, number> = {};
           for (const ch of CHANNELS) {
             out[ch.slug] = ch.standardSlugs.includes(comparator.id) ? 80 : 30;
@@ -402,81 +402,184 @@ function ChannelBenchmark({
     }));
   }, [rows, refMaturity]);
 
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-6 h-full overflow-y-auto pr-1">
-      <div className="space-y-4">
-        <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4">
-          <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-3">Composite</p>
-          <div className="flex justify-center">
-            <ComplianceDial
-              score={headlineGpssa}
-              reference={headlineRef}
-              label="Channel Maturity"
-              sublabel={comparator ? `vs ${comparator.shortLabel}` : "Pick a comparator →"}
-              size="md"
-              color="#0EA5E9"
-              band={maturityBand(headlineGpssa)}
-            />
-          </div>
-        </div>
+  const headlineGap = comparator && headlineRef != null ? headlineGpssa - headlineRef : 0;
 
-        {comparator && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4"
-          >
-            <div className="flex items-start gap-2 mb-2">
-              <span className="inline-block w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: comparator.color }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-cream truncate">{comparator.label}</p>
-                <p className="text-[9px] uppercase tracking-wider text-gray-muted">{comparator.kind}</p>
-                {comparator.description && (
-                  <p className="text-[10px] text-gray-muted/90 mt-2 leading-relaxed line-clamp-4">
-                    {comparator.description}
-                  </p>
-                )}
+  const presets = useMemo(() => {
+    const findOpt = (kind: ComparatorOption["kind"], id: string) =>
+      comparatorOptions.find((o) => o.kind === kind && o.id === id);
+    return [
+      findOpt("standard", "un-egov-survey"),
+      findOpt("computed", "gcc-average"),
+      findOpt("country", "SGP"),
+    ].filter(Boolean) as ComparatorOption[];
+  }, [comparatorOptions]);
+
+  return (
+    <div className="space-y-4">
+      <ComparatorPicker
+        options={comparatorOptions}
+        selected={comparator}
+        onChange={setComparator}
+        loading={comparatorLoading}
+        variant="rail"
+      />
+
+      {!comparator ? (
+        <div className="rounded-2xl bg-white/[0.025] border border-white/[0.06] p-8 text-center">
+          <Telescope size={28} className="text-gpssa-green/60 mx-auto mb-3" />
+          <h3 className="font-playfair text-lg text-cream mb-1">Pick a comparator above to begin</h3>
+          <p className="text-xs text-gray-muted max-w-md mx-auto mb-5">
+            We&apos;ll compare GPSSA&apos;s six-channel mix against your chosen reference and show every channel
+            gap on a single radar.
+          </p>
+          {presets.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <span className="text-[10px] uppercase tracking-wider text-gray-muted/80 mr-1">Try:</span>
+              {presets.map((opt) => (
+                <button
+                  key={`${opt.kind}-${opt.id}`}
+                  onClick={() => setComparator(opt)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.18] text-[11px] text-cream transition-colors"
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: opt.color }} />
+                  {opt.kind === "country" && opt.iso3 && <CountryFlag code={opt.iso3} size="xs" />}
+                  Compare to {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+            <div className="xl:col-span-4 space-y-3">
+              <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-5">
+                <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-4 text-center">
+                  Composite channel maturity
+                </p>
+                <div className="flex justify-center">
+                  <ComplianceDial
+                    score={headlineGpssa}
+                    reference={headlineRef}
+                    label="Channel Maturity"
+                    sublabel={`vs ${comparator.shortLabel}`}
+                    size="lg"
+                    color="#0EA5E9"
+                    band={maturityBand(headlineGpssa)}
+                  />
+                </div>
+                <div className="mt-4 pt-4 border-t border-white/[0.06] flex items-center justify-around text-center">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-gray-muted">GPSSA</p>
+                    <p className="text-xl font-bold tabular-nums text-cream">{headlineGpssa}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-gray-muted">{comparator.shortLabel}</p>
+                    <p className="text-xl font-bold tabular-nums text-cream">{headlineRef ?? 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-gray-muted">Δ</p>
+                    <p
+                      className="text-xl font-bold tabular-nums"
+                      style={{ color: headlineGap >= 0 ? "#10B981" : "#F59E0B" }}
+                    >
+                      {headlineGap >= 0 ? "+" : ""}{headlineGap}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-4">
+                <div className="flex items-start gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: comparator.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-cream truncate">{comparator.label}</p>
+                    <p className="text-[9px] uppercase tracking-wider text-gray-muted">{comparator.kind}</p>
+                    {comparator.description && (
+                      <p className="text-[10px] text-gray-muted/90 mt-2 leading-relaxed line-clamp-5">
+                        {comparator.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/[0.05]">
+
+            <div className="xl:col-span-8 rounded-xl bg-white/[0.025] border border-white/[0.06] p-5 min-h-[520px] flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-cream">Channel maturity radar</h3>
+                {refLoading && <span className="text-[10px] text-gray-muted animate-pulse">loading</span>}
+              </div>
+              <p className="text-[11px] text-gray-muted mb-3">
+                GPSSA&apos;s six channels overlaid against <span className="text-cream">{comparator.label}</span>.
+              </p>
+              <div className="flex-1 flex items-center justify-center">
+                <RangeBandRadar
+                  metrics={metrics}
+                  preset="xl"
+                  referenceColor={comparator.color}
+                  referenceLabel={comparator.shortLabel}
+                  showBand={false}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Per-channel gap table */}
+          <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-cream">Channel-by-channel gap</h3>
+              <span className="text-[10px] uppercase tracking-wider text-gray-muted">
+                GPSSA · {comparator.shortLabel} · Δ
+              </span>
+            </div>
+            <div className="divide-y divide-white/[0.04]">
               {CHANNELS.map((ch) => {
                 const gv = channelMaturity(rows, ch.slug as ChannelSlug);
                 const rv = refMaturity?.[ch.slug] ?? 0;
-                const gap = gv - rv;
+                const gap = Math.round(gv - rv);
                 return (
-                  <div key={ch.slug} className="text-[9px]">
-                    <p className="text-gray-muted truncate">{ch.shortLabel}</p>
-                    <p
-                      className="font-semibold tabular-nums"
-                      style={{ color: gap >= 0 ? "#10B981" : "#F59E0B" }}
-                    >
-                      {gap >= 0 ? "+" : ""}{Math.round(gap)}
-                    </p>
+                  <div key={ch.slug} className="grid grid-cols-12 items-center px-4 py-2.5 text-[11px] hover:bg-white/[0.02]">
+                    <div className="col-span-4 flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: ch.color }} />
+                      <span className="text-cream truncate">{ch.label}</span>
+                      <span className="text-[9px] text-gray-muted truncate hidden md:inline">· {ch.osiPillar}</span>
+                    </div>
+                    <div className="col-span-5 flex items-center gap-3">
+                      <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden relative">
+                        <motion.div
+                          className="absolute left-0 top-0 h-full rounded-full"
+                          style={{ backgroundColor: "#0EA5E9" }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.max(2, gv)}%` }}
+                          transition={{ duration: 0.6 }}
+                        />
+                        <motion.div
+                          className="absolute left-0 top-0 h-full rounded-full mix-blend-screen"
+                          style={{ backgroundColor: comparator.color, opacity: 0.45 }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.max(2, rv)}%` }}
+                          transition={{ duration: 0.6, delay: 0.05 }}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-span-3 flex items-center justify-end gap-3 tabular-nums">
+                      <span className="text-cream w-7 text-right">{gv}</span>
+                      <span className="text-gray-muted w-7 text-right">{rv}</span>
+                      <span
+                        className="font-semibold w-9 text-right"
+                        style={{ color: gap >= 0 ? "#10B981" : "#F59E0B" }}
+                      >
+                        {gap >= 0 ? "+" : ""}{gap}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </motion.div>
-        )}
-      </div>
-
-      <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 min-h-[420px] flex flex-col">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-cream">Channel maturity radar</h3>
-          {refLoading && <span className="text-[9px] text-gray-muted animate-pulse">loading</span>}
-        </div>
-        <p className="text-[10px] text-gray-muted mb-4">
-          GPSSA&apos;s six-channel mix overlaid against {comparator ? comparator.shortLabel : "the chosen comparator"}.
-        </p>
-        <div className="flex-1 flex items-center justify-center">
-          <RangeBandRadar
-            metrics={metrics}
-            referenceColor={comparator?.color ?? "#0EA5E9"}
-            referenceLabel={comparator?.shortLabel ?? "—"}
-            showBand={false}
-          />
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -489,13 +592,17 @@ export default function ChannelCapabilitiesPage() {
   const [serviceMatrix, setServiceMatrix] = useState<ServiceChannelRow[]>(STATIC_SERVICE_MATRIX);
   const [intlServices, setIntlServices] = useState<IntlChannelRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [act, setAct] = useState<Act>("cockpit");
+
   const [activeChannel, setActiveChannel] = useState<ChannelSlug | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [comparator, setComparator] = useState<ComparatorOption | null>(null);
   const [detailModal, setDetailModal] = useState<ServiceChannelRow | null>(null);
 
   const { allOptions, loading: comparatorLoading } = useComparators();
+
+  const overviewRef = useRef<HTMLDivElement>(null);
+  const browseRef = useRef<HTMLDivElement>(null);
+  const benchmarkRef = useRef<HTMLDivElement>(null);
 
   /* ── Data loading ── */
   useEffect(() => {
@@ -513,6 +620,7 @@ export default function ChannelCapabilitiesPage() {
               id: serviceId,
               name: String(svc.name ?? ""),
               category: String(svc.category ?? "General"),
+              description: svc.description ? String(svc.description) : null,
               channels: { portal: "None", mobile: "None", centers: "None", call: "None", partner: "None", api: "None" },
             });
           }
@@ -585,6 +693,15 @@ export default function ChannelCapabilitiesPage() {
     [serviceMatrix]
   );
 
+  const unclassifiedCount = useMemo(
+    () =>
+      serviceMatrix.filter((r) => {
+        const fn = classifyServiceFunction({ name: r.name, description: r.description, category: r.category });
+        return fn.slug === UNCLASSIFIED_FUNCTION.slug;
+      }).length,
+    [serviceMatrix]
+  );
+
   const statBarItems: StatBarItem[] = useMemo(() => {
     const items: StatBarItem[] = [
       { icon: Layers, value: serviceMatrix.length, label: "Services Mapped" },
@@ -598,13 +715,12 @@ export default function ChannelCapabilitiesPage() {
   }, [serviceMatrix.length, fullyDigital, apiReady, omnichannel, comparator]);
 
   const channelDrillRows = useMemo(() => {
-    if (!activeChannel) return [];
     let list = serviceMatrix;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((s) => s.name.toLowerCase().includes(q));
     }
-    // Sort by capability for the active channel: Full > Partial > Planned > None
+    if (!activeChannel) return list;
     const order = { Full: 0, Partial: 1, Planned: 2, None: 3 };
     return [...list].sort(
       (a, b) =>
@@ -613,12 +729,10 @@ export default function ChannelCapabilitiesPage() {
     );
   }, [serviceMatrix, activeChannel, searchQuery]);
 
-  const handleChannelClick = useCallback(
-    (slug: ChannelSlug) => {
-      setActiveChannel((p) => (p === slug ? null : slug));
-    },
-    []
-  );
+  function pickChannel(slug: ChannelSlug) {
+    setActiveChannel((p) => (p === slug ? null : slug));
+    setTimeout(() => browseRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }
 
   if (loading && serviceMatrix.length === 0) {
     return <div className="flex h-full items-center justify-center"><LoadingSpinner size="lg" /></div>;
@@ -630,212 +744,247 @@ export default function ChannelCapabilitiesPage() {
       <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-white/[0.06]">
         <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Channel Capabilities</h1>
         <div className="h-4 w-px bg-white/10" />
-        <div className="flex items-center gap-1">
-          {(
-            [
-              { id: "cockpit" as Act,   label: "Cockpit",  desc: "Channel HUD" },
-              { id: "flow" as Act,      label: "Flow",     desc: "Service ↔ Channel" },
-              { id: "benchmark" as Act, label: "Benchmark", desc: "Compare" },
-            ]
-          ).map((tab, i) => (
+        <nav className="flex items-center gap-1">
+          {[
+            { id: "overview", label: "1. Channel Mix", ref: overviewRef },
+            { id: "browse", label: "2. Coverage", ref: browseRef },
+            { id: "benchmark", label: "3. Compare", ref: benchmarkRef },
+          ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setAct(tab.id)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                act === tab.id
-                  ? "bg-gpssa-green/15 text-gpssa-green border border-gpssa-green/25"
-                  : "text-gray-muted hover:text-cream hover:bg-white/[0.04] border border-transparent"
-              }`}
+              onClick={() => tab.ref.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="px-2.5 py-1 rounded-md text-[11px] font-medium text-gray-muted hover:text-cream hover:bg-white/[0.04] transition-colors"
             >
-              <span className="text-[9px] tabular-nums text-gray-muted/70">{i + 1}</span>
               {tab.label}
             </button>
           ))}
-        </div>
+        </nav>
         <div className="ml-auto flex items-center gap-2">
           <MandateBasisChip screenPath="/dashboard/services/channels" />
-          {act === "cockpit" && activeChannel && (
-            <div className="relative">
-              <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-muted" />
-              <input
-                type="text"
-                placeholder="Filter services…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-40 pl-7 pr-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-cream placeholder:text-gray-muted focus:outline-none focus:border-gpssa-green/30"
-              />
-            </div>
-          )}
-          <ComparatorPicker
-            options={allOptions}
-            selected={comparator}
-            onChange={setComparator}
-            loading={comparatorLoading}
-            variant="inline"
-          />
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-h-0 overflow-hidden p-5">
-        <AnimatePresence mode="wait">
-          {act === "cockpit" && (
-            <motion.div
-              key="act-cockpit"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.3 }}
-              className="h-full overflow-y-auto pr-1"
-            >
-              <div className="mb-4">
-                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">Act I · Cockpit</p>
-                <h2 className="font-playfair text-lg text-cream mb-1">Six channels, one heads-up display.</h2>
-                <p className="text-xs text-gray-muted max-w-2xl leading-relaxed">
-                  Every channel — Portal, Mobile, Centers, Call, Partner, API — lit by current GPSSA maturity.
-                  Stacked bars show the Full / Partial / Planned mix across services.
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="px-5 py-5 space-y-10 max-w-[1480px] mx-auto">
+
+          {/* Section 1 — Channel Mix at a Glance */}
+          <section ref={overviewRef} className="scroll-mt-4">
+            <div className="flex items-end justify-between gap-4 mb-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">
+                  1 · Channel Mix at a Glance
+                </p>
+                <h2 className="font-playfair text-2xl text-cream mb-2">
+                  How does GPSSA reach its customers today?
+                </h2>
+                <p className="text-xs text-gray-muted leading-relaxed max-w-3xl">
+                  Six canonical channels — <span className="text-cream">Portal, Mobile, Service Centers, Call,
+                  Partner and API</span> — assessed across every service. Each tile shows the average maturity
+                  (0–100) and the Full / Partial / Planned mix.
                 </p>
               </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
-                {CHANNELS.map((ch, i) => (
-                  <ChannelCockpitTile
-                    key={ch.slug}
-                    channel={ch}
-                    rows={serviceMatrix}
-                    index={i}
-                    active={activeChannel === ch.slug}
-                    onClick={() => handleChannelClick(ch.slug as ChannelSlug)}
-                  />
-                ))}
+              <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
+                <Scale size={10} />
+                RFI 2.B-2 · Customer &amp; service performance
               </div>
+            </div>
 
-              <AnimatePresence>
-                {activeChannel && (
-                  <motion.div
-                    key={activeChannel}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-4"
-                  >
-                    {(() => {
-                      const ch = CHANNELS.find((c) => c.slug === activeChannel)!;
-                      return (
-                        <>
-                          <div className="flex items-center gap-2 mb-3">
-                            <span
-                              className="inline-flex items-center justify-center w-7 h-7 rounded-lg"
-                              style={{ backgroundColor: `${ch.color}25` }}
-                            >
-                              <Radio size={12} style={{ color: ch.color }} />
-                            </span>
-                            <div>
-                              <h3 className="text-sm font-semibold text-cream">{ch.label}</h3>
-                              <p className="text-[10px] text-gray-muted">{channelDrillRows.length} services</p>
-                            </div>
+            {/* KPI strip */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+              {[
+                { label: "Services mapped", value: serviceMatrix.length, icon: Layers },
+                { label: "Fully digital", value: fullyDigital, icon: Sparkles },
+                { label: "API-ready", value: apiReady, icon: Code2 },
+                { label: "Omnichannel (≥4)", value: omnichannel, icon: CheckCircle2 },
+              ].map((kpi) => {
+                const Icon = kpi.icon;
+                return (
+                  <div key={kpi.label} className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-4">
+                    <div className="flex items-center gap-2 mb-2 text-gray-muted">
+                      <Icon size={12} />
+                      <span className="text-[10px] uppercase tracking-wider">{kpi.label}</span>
+                    </div>
+                    <p className="text-3xl font-bold text-cream tabular-nums leading-none">{kpi.value}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {CHANNELS.map((ch, i) => (
+                <ChannelTile
+                  key={ch.slug}
+                  channel={ch}
+                  rows={serviceMatrix}
+                  index={i}
+                  active={activeChannel === ch.slug}
+                  onClick={() => pickChannel(ch.slug as ChannelSlug)}
+                />
+              ))}
+            </div>
+
+            {unclassifiedCount > 0 && (
+              <p className="mt-4 text-[10px] text-amber-300/80">
+                {unclassifiedCount} services have free-text categories not yet mapped to an ILO branch — they still appear in the coverage matrix as &quot;Other&quot;.
+              </p>
+            )}
+
+            <div className="mt-4 flex items-center justify-center">
+              <button
+                onClick={() => browseRef.current?.scrollIntoView({ behavior: "smooth" })}
+                className="flex items-center gap-1.5 text-[11px] text-gray-muted hover:text-cream transition-colors"
+              >
+                See the service-by-channel coverage matrix <ArrowDown size={11} />
+              </button>
+            </div>
+          </section>
+
+          {/* Section 2 — Coverage matrix + drill */}
+          <section ref={browseRef} className="scroll-mt-4">
+            <div className="flex items-end justify-between gap-4 mb-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">
+                  2 · Service-by-Channel Coverage
+                </p>
+                <h2 className="font-playfair text-2xl text-cream mb-2">
+                  Which services route through which channels?
+                </h2>
+                <p className="text-xs text-gray-muted leading-relaxed max-w-3xl">
+                  Every row is one of the twelve ILO branches; every cell is the average maturity across all services in
+                  that branch for the chosen channel — brighter = stronger.
+                </p>
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
+                <Scale size={10} />
+                RFI 2.E-3 · Process optimisation
+              </div>
+            </div>
+
+            <CoverageMatrix rows={serviceMatrix} />
+
+            {/* Channel drill-in */}
+            {activeChannel && (
+              <div className="mt-5 rounded-xl bg-white/[0.025] border border-white/[0.06] p-4">
+                {(() => {
+                  const ch = CHANNELS.find((c) => c.slug === activeChannel)!;
+                  return (
+                    <>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-lg"
+                          style={{ backgroundColor: `${ch.color}25` }}
+                        >
+                          <Radio size={12} style={{ color: ch.color }} />
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-semibold text-cream">{ch.label}</h3>
+                          <p className="text-[10px] text-gray-muted">{channelDrillRows.length} services</p>
+                        </div>
+                        <div className="ml-auto flex items-center gap-2">
+                          <div className="relative">
+                            <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-muted" />
+                            <input
+                              type="text"
+                              placeholder="Filter services…"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-44 pl-7 pr-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] text-[11px] text-cream placeholder:text-gray-muted focus:outline-none focus:border-gpssa-green/30"
+                            />
+                          </div>
+                          {(searchQuery || activeChannel) && (
                             <button
-                              onClick={() => setActiveChannel(null)}
-                              className="ml-auto text-[10px] text-gray-muted hover:text-cream"
+                              onClick={() => { setActiveChannel(null); setSearchQuery(""); }}
+                              className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-gray-muted hover:text-cream hover:bg-white/[0.05] transition-colors"
                             >
-                              ✕ close
+                              <RotateCcw size={10} />
+                              Reset
                             </button>
-                          </div>
-                          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2">
-                            {channelDrillRows.map((svc) => {
-                              const lvl = svc.channels[activeChannel] ?? "None";
-                              return (
-                                <button
-                                  key={svc.id}
-                                  onClick={() => setDetailModal(svc)}
-                                  className="text-left rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5 hover:bg-white/[0.06] hover:border-white/[0.12] transition-all"
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                        {channelDrillRows.slice(0, 120).map((svc) => {
+                          const lvl = svc.channels[activeChannel] ?? "None";
+                          return (
+                            <button
+                              key={svc.id}
+                              onClick={() => setDetailModal(svc)}
+                              className="text-left rounded-lg bg-white/[0.025] border border-white/[0.06] p-2.5 hover:bg-white/[0.05] hover:border-white/[0.14] transition-colors"
+                            >
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <p className="text-[11px] font-medium text-cream leading-snug truncate">{svc.name}</p>
+                                <Badge
+                                  variant={lvl === "Full" ? "green" : lvl === "Partial" ? "gold" : lvl === "Planned" ? "blue" : "gray"}
+                                  size="sm"
                                 >
-                                  <div className="flex items-start justify-between gap-2 mb-1">
-                                    <p className="text-[11px] font-medium text-cream leading-snug truncate">{svc.name}</p>
-                                    <Badge
-                                      variant={lvl === "Full" ? "green" : lvl === "Partial" ? "gold" : lvl === "Planned" ? "blue" : "gray"}
-                                      size="sm"
-                                    >
-                                      {lvl}
-                                    </Badge>
-                                  </div>
-                                  <p className="text-[9px] text-gray-muted">{svc.category}</p>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
+                                  {lvl}
+                                </Badge>
+                              </div>
+                              <p className="text-[9px] text-gray-muted">{svc.category}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {channelDrillRows.length > 120 && (
+                        <p className="mt-3 text-[10px] text-gray-muted text-center">
+                          Showing first 120 — refine the search to see more.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
 
-          {act === "flow" && (
-            <motion.div
-              key="act-flow"
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -24 }}
-              transition={{ duration: 0.3 }}
-              className="h-full overflow-y-auto pr-1"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">Act II · Flow</p>
-                  <h2 className="font-playfair text-lg text-cream mb-1">How services route through channels.</h2>
-                  <p className="text-xs text-gray-muted max-w-2xl leading-relaxed">
-                    Each row is an ILO C102 service function. Each cell is the average maturity across all
-                    services in that function for the chosen channel — brighter = stronger.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setAct("benchmark")}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gpssa-green/15 border border-gpssa-green/25 text-gpssa-green text-[11px] font-medium hover:bg-gpssa-green/25 transition-colors shrink-0"
-                >
-                  Benchmark <ArrowRight size={11} />
-                </button>
-              </div>
-              <ServiceFlow rows={serviceMatrix} />
-            </motion.div>
-          )}
+            {!activeChannel && (
+              <p className="mt-3 text-[11px] text-gray-muted text-center">
+                <Filter size={10} className="inline mr-1" />
+                Click any channel tile above to drill into the services for that channel.
+              </p>
+            )}
 
-          {act === "benchmark" && (
-            <motion.div
-              key="act-benchmark"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.97 }}
-              transition={{ duration: 0.35 }}
-              className="h-full overflow-hidden flex flex-col"
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">Act III · Benchmark</p>
-                  <h2 className="font-playfair text-lg text-cream mb-1">
-                    {comparator ? `Channels — GPSSA vs ${comparator.label}` : "Pick a comparator to begin"}
-                  </h2>
-                  <p className="text-xs text-gray-muted leading-relaxed max-w-2xl">
-                    Hold GPSSA&apos;s six-channel mix up against an OSI standard, a regional best-practice or a peer.
-                  </p>
-                </div>
-                {!comparator && (
-                  <ComparatorPicker
-                    options={allOptions}
-                    selected={comparator}
-                    onChange={setComparator}
-                    loading={comparatorLoading}
-                  />
-                )}
+            <div className="mt-5 flex items-center justify-center">
+              <button
+                onClick={() => benchmarkRef.current?.scrollIntoView({ behavior: "smooth" })}
+                className="flex items-center gap-1.5 text-[11px] text-gray-muted hover:text-cream transition-colors"
+              >
+                See how our channels compare globally <ArrowDown size={11} />
+              </button>
+            </div>
+          </section>
+
+          {/* Section 3 — Cockpit */}
+          <section ref={benchmarkRef} className="scroll-mt-4 pb-6">
+            <div className="flex items-end justify-between gap-4 mb-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">
+                  3 · How Our Channels Compare
+                </p>
+                <h2 className="font-playfair text-2xl text-cream mb-2">
+                  {comparator ? `Channels — GPSSA vs ${comparator.label}` : "Benchmark our channels against the world."}
+                </h2>
+                <p className="text-xs text-gray-muted leading-relaxed max-w-3xl">
+                  Hold GPSSA&apos;s six-channel mix up against an OSI standard, a regional best-practice or a single peer
+                  country. Each channel is scored 0–100 so gaps are directly comparable.
+                </p>
               </div>
-              <div className="flex-1 min-h-0">
-                <ChannelBenchmark rows={serviceMatrix} comparator={comparator} intl={intlServices} />
+              <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
+                <Scale size={10} />
+                RFI 2.E-5 · Reduce fulfilment timelines
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+
+            <ChannelCockpit
+              rows={serviceMatrix}
+              comparator={comparator}
+              setComparator={setComparator}
+              comparatorOptions={allOptions}
+              comparatorLoading={comparatorLoading}
+              intl={intlServices}
+            />
+          </section>
+        </div>
       </div>
 
       <StatBar items={statBarItems} />
@@ -851,11 +1000,7 @@ export default function ChannelCapabilitiesPage() {
                 return (
                   <div
                     key={ch.slug}
-                    className="rounded-lg p-3 border"
-                    style={{
-                      borderColor: `${ch.color}33`,
-                      backgroundColor: `${ch.color}0c`,
-                    }}
+                    className="rounded-lg p-3 border border-white/[0.06] bg-white/[0.025]"
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[11px] font-semibold text-cream">{ch.shortLabel}</span>
@@ -887,19 +1032,16 @@ export default function ChannelCapabilitiesPage() {
               <button
                 onClick={() => {
                   setDetailModal(null);
-                  setAct("benchmark");
+                  setTimeout(() => benchmarkRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gpssa-green/15 border border-gpssa-green/25 text-gpssa-green text-xs font-medium hover:bg-gpssa-green/25 transition-colors"
               >
-                Benchmark this service <ArrowRight size={11} />
+                Benchmark this service
               </button>
             </div>
           </div>
         )}
       </Modal>
-
-      {/* hidden refs to keep imports happy */}
-      <span className="hidden">{void CountryFlag}{void ArrowLeft}{void Scale}</span>
     </div>
   );
 }

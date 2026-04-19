@@ -5,7 +5,10 @@ import type { ComparatorMetric } from "@/lib/comparator/types";
 
 interface Props {
   metrics: ComparatorMetric[];
+  /** Numeric size in px for the SVG viewBox (advanced). */
   size?: number;
+  /** Preset sizes — overrides `size`. */
+  preset?: "sm" | "md" | "lg" | "xl";
   /** GPSSA series color. */
   gpssaColor?: string;
   /** Comparator series color. */
@@ -16,6 +19,27 @@ interface Props {
   showBand?: boolean;
 }
 
+const PRESET_SIZE: Record<NonNullable<Props["preset"]>, number> = {
+  sm: 280,
+  md: 360,
+  lg: 480,
+  xl: 600,
+};
+
+const PRESET_LABEL_FS: Record<NonNullable<Props["preset"]>, number> = {
+  sm: 9,
+  md: 10,
+  lg: 12,
+  xl: 13,
+};
+
+const PRESET_MAX_W: Record<NonNullable<Props["preset"]>, string> = {
+  sm: "max-w-sm",
+  md: "max-w-md",
+  lg: "max-w-2xl",
+  xl: "max-w-3xl",
+};
+
 /**
  * Radar chart with optional range-band shading.
  *
@@ -25,7 +49,8 @@ interface Props {
  */
 export function RangeBandRadar({
   metrics,
-  size = 320,
+  size,
+  preset,
   gpssaColor = "#22C55E",
   referenceColor = "#0EA5E9",
   referenceLabel = "Reference",
@@ -40,9 +65,13 @@ export function RangeBandRadar({
     );
   }
 
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = (size - 80) / 2;
+  const resolvedSize = size ?? (preset ? PRESET_SIZE[preset] : 320);
+  const labelFontSize = preset ? PRESET_LABEL_FS[preset] : 9;
+  const maxWidthCls = preset ? PRESET_MAX_W[preset] : "max-w-md";
+
+  const cx = resolvedSize / 2;
+  const cy = resolvedSize / 2;
+  const r = (resolvedSize - Math.max(80, resolvedSize * 0.22)) / 2;
   const max = 100;
   const angleStep = (2 * Math.PI) / n;
 
@@ -67,7 +96,7 @@ export function RangeBandRadar({
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-md" style={{ aspectRatio: "1 / 1" }}>
+      <svg viewBox={`0 0 ${resolvedSize} ${resolvedSize}`} className={`w-full ${maxWidthCls}`} style={{ aspectRatio: "1 / 1" }}>
         {/* concentric grid */}
         {[0.25, 0.5, 0.75, 1].map((p) => (
           <polygon
@@ -147,7 +176,7 @@ export function RangeBandRadar({
               x={p.x}
               y={p.y}
               fill="#E5E7EB"
-              fontSize={9}
+              fontSize={labelFontSize}
               textAnchor={halign as "start" | "middle" | "end"}
               dominantBaseline="middle"
               style={{ pointerEvents: "none" }}

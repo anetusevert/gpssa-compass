@@ -1,22 +1,20 @@
 "use client";
 
 /**
- * Service Catalog — 3-Act Cinematic Redesign
+ * Service Catalog — guided three-section narrative
  *
- *   ACT I  — Constellation : a visually striking entry screen showing every
- *            ILO-aligned service function as a glowing tile, animated in.
- *            User picks a function (or audience) to drill into.
+ *   1. The Catalog at a Glance — headline KPIs + 12 ILO branch tiles.
+ *   2. Browse Every Service     — full filterable list with audience + branch chips.
+ *   3. How GPSSA Compares       — full-width benchmark cockpit with comparator rail,
+ *                                 dial, radar and a per-branch gap table.
  *
- *   ACT II — Spine          : the chosen function's GPSSA services rendered
- *            as a vertical "spine" with rich detail cards. Click a card →
- *            full modal with the existing analysis library.
- *
- *   ACT III— Benchmark      : overlay a Comparator (Standard / Computed
- *            Reference / Country) and watch the radar + dial morph in.
+ * This replaces the previous 3-tab "Act I/II/III" pattern. Every service in the
+ * database is classified via `classifyServiceFunction()` so the long tail of
+ * un-mapped categories doesn't disappear.
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { motion } from "framer-motion";
 import {
   Search,
   AlertTriangle,
@@ -26,10 +24,12 @@ import {
   Globe2,
   Scale,
   ArrowRight,
-  ArrowLeft,
-  ChevronRight,
+  ArrowDown,
   CheckCircle2,
   XCircle,
+  Filter,
+  RotateCcw,
+  Telescope,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -41,8 +41,11 @@ import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
 
 import {
   SERVICE_FUNCTIONS,
+  SERVICE_FUNCTIONS_WITH_OTHER,
   SERVICE_AUDIENCES,
-  resolveCategory,
+  UNCLASSIFIED_FUNCTION,
+  classifyServiceFunction,
+  classifyServiceAudience,
   type ServiceFunction,
   type ServiceAudience,
 } from "@/lib/taxonomy";
@@ -95,8 +98,6 @@ interface IntlService {
   channelCapabilities: string | null;
   institution: { id: string; name: string; shortName: string | null; country: string } | null;
 }
-
-type Act = "constellation" | "spine" | "benchmark";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Helpers
@@ -172,7 +173,7 @@ const STATIC_SERVICES: GPSSAService[] = [
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ACT I — Constellation
+   Aggregations
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface FunctionStats {
@@ -181,155 +182,29 @@ interface FunctionStats {
   avgScore: number;
   pains: number;
   opps: number;
+  topPain?: string;
 }
 
-function ConstellationCard({ stat, onPick, index }: { stat: FunctionStats; onPick: () => void; index: number }) {
-  const score = stat.avgScore;
-  return (
-    <motion.button
-      onClick={onPick}
-      initial={{ opacity: 0, y: 18, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.45, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.2 } }}
-      whileTap={{ scale: 0.98 }}
-      className="group relative text-left rounded-2xl p-4 overflow-hidden transition-shadow"
-      style={{
-        background: `linear-gradient(135deg, ${stat.fn.color}1c 0%, rgba(11,18,32,0.6) 60%)`,
-        border: `1px solid ${stat.fn.color}33`,
-        boxShadow: `0 0 0 0 ${stat.fn.color}00`,
-      }}
-    >
-      {/* glow halo */}
-      <div
-        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-25 group-hover:opacity-50 transition-opacity"
-        style={{ background: `radial-gradient(circle, ${stat.fn.color}cc, transparent 70%)` }}
-      />
-
-      <div className="relative z-10">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <span
-            className="inline-flex items-center justify-center w-8 h-8 rounded-lg"
-            style={{ backgroundColor: `${stat.fn.color}25` }}
-          >
-            <Layers size={14} style={{ color: stat.fn.color }} />
-          </span>
-          <span className="text-[10px] tabular-nums font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${stat.fn.color}22`, color: stat.fn.color }}>
-            {stat.count}
-          </span>
-        </div>
-        <h3 className="text-sm font-semibold text-cream mb-0.5 leading-tight">{stat.fn.shortLabel}</h3>
-        <p className="text-[10px] text-gray-muted/90 leading-snug line-clamp-2 mb-3">{stat.fn.description}</p>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-12 h-1 rounded-full overflow-hidden bg-white/[0.06]">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ backgroundColor: stat.fn.color }}
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.max(2, score)}%` }}
-                transition={{ duration: 0.8, delay: 0.2 + index * 0.04 }}
-              />
-            </div>
-            <span className="text-[10px] tabular-nums text-cream/80">{Math.round(score)}</span>
-          </div>
-          <ArrowRight size={12} className="text-gray-muted group-hover:text-cream group-hover:translate-x-1 transition-transform" />
-        </div>
-
-        {stat.fn.iloReference && (
-          <div className="mt-2 pt-2 border-t border-white/[0.05] flex items-center gap-1">
-            <Scale size={9} className="text-gold/80" />
-            <span className="text-[9px] text-gold/80 truncate">{stat.fn.iloReference}</span>
-          </div>
-        )}
-      </div>
-    </motion.button>
-  );
-}
-
-function AudienceChip({ aud, count, active, onClick }: { aud: ServiceAudience; count: number; active: boolean; onClick: () => void }) {
-  return (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[10px] font-medium transition-all ${
-        active
-          ? "bg-gpssa-green/15 border-gpssa-green/40 text-cream"
-          : "bg-white/[0.03] border-white/[0.08] text-cream/80 hover:bg-white/[0.07] hover:text-cream"
-      }`}
-    >
-      {aud.shortLabel}
-      <span className="text-[9px] text-gray-muted tabular-nums">{count}</span>
-    </motion.button>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   ACT II — Spine card
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-function SpineCard({ svc, color, index, onOpen }: { svc: GPSSAService; color: string; index: number; onOpen: () => void }) {
-  const score = svcScore(svc);
-  return (
-    <motion.button
-      onClick={onOpen}
-      initial={{ opacity: 0, x: -16 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.03 }}
-      whileHover={{ x: 4 }}
-      className="w-full text-left rounded-xl bg-white/[0.03] border border-white/[0.07] p-3.5 hover:bg-white/[0.06] hover:border-white/[0.14] transition-all group relative overflow-hidden"
-    >
-      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ backgroundColor: color }} />
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <h3 className="text-xs font-semibold text-cream leading-snug pr-2">{svc.name}</h3>
-        <span className="text-[9px] tabular-nums font-semibold px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: `${color}22`, color }}>
-          {Math.round(score)}
-        </span>
-      </div>
-      {svc.description && <p className="text-[10px] text-gray-muted leading-relaxed mb-2 line-clamp-2">{svc.description}</p>}
-      <div className="flex flex-wrap gap-1">
-        {(svc.painPoints ?? []).slice(0, 2).map((p, i) => (
-          <Badge key={`p-${i}`} variant="red" size="sm">{p}</Badge>
-        ))}
-        {(svc.opportunities ?? []).slice(0, 2).map((o, i) => (
-          <Badge key={`o-${i}`} variant="green" size="sm">{o}</Badge>
-        ))}
-      </div>
-      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-        <ChevronRight size={11} className="text-cream" />
-      </div>
-    </motion.button>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   ACT III — Benchmark
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-interface ReferenceMetricsBundle {
-  /** All metrics keyed by serviceFunction.slug */
-  byFunction: Map<string, { reference: number; min?: number; max?: number; label?: string }>;
-  /** Composite/headline score 0–100. */
-  headline: number;
-  /** Source label e.g. "ILO C102", "GCC Avg", "Singapore". */
-  label: string;
-  /** Color of the reference series. */
-  color: string;
-}
-
-function buildGpssaFunctionMetrics(services: GPSSAService[]): Map<string, { score: number; n: number }> {
-  const out = new Map<string, { score: number; n: number }>();
-  for (const fn of SERVICE_FUNCTIONS) out.set(fn.slug, { score: 0, n: 0 });
+function buildFunctionStats(services: GPSSAService[]): FunctionStats[] {
+  const groups = new Map<string, GPSSAService[]>();
+  for (const fn of SERVICE_FUNCTIONS_WITH_OTHER) groups.set(fn.slug, []);
   for (const svc of services) {
-    const cat = resolveCategory(svc.category);
-    if (cat?.kind !== "function") continue;
-    const cur = out.get(cat.entry.slug)!;
-    cur.score += svcScore(svc);
-    cur.n += 1;
+    const fn = classifyServiceFunction({
+      name: svc.name,
+      description: svc.description,
+      category: svc.category,
+    });
+    groups.get(fn.slug)?.push(svc);
   }
-  return out;
+  return SERVICE_FUNCTIONS_WITH_OTHER.map((fn) => {
+    const matched = groups.get(fn.slug) ?? [];
+    const scores = matched.map(svcScore).filter((v) => v > 0);
+    const avg = scores.length > 0 ? scores.reduce((s, v) => s + v, 0) / scores.length : 0;
+    const pains = matched.reduce((acc, s) => acc + (s.painPoints?.length ?? 0), 0);
+    const opps = matched.reduce((acc, s) => acc + (s.opportunities?.length ?? 0), 0);
+    const topPain = matched.flatMap((s) => s.painPoints ?? []).find(Boolean);
+    return { fn, count: matched.length, avgScore: Math.round(avg), pains, opps, topPain };
+  });
 }
 
 function gpssaHeadline(services: GPSSAService[]): number {
@@ -338,14 +213,206 @@ function gpssaHeadline(services: GPSSAService[]): number {
   return Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
 }
 
-interface BenchmarkPanelProps {
+/* ═══════════════════════════════════════════════════════════════════════════
+   Section 1 — At-a-glance ILO branch tile (flat, single accent bar)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function BranchTile({
+  stat,
+  index,
+  active,
+  onPick,
+}: {
+  stat: FunctionStats;
+  index: number;
+  active: boolean;
+  onPick: () => void;
+}) {
+  const score = stat.avgScore;
+  return (
+    <motion.button
+      onClick={onPick}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.025, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -2 }}
+      className={`group relative text-left rounded-xl bg-white/[0.025] border p-4 overflow-hidden transition-colors ${
+        active
+          ? "border-cream/30 bg-white/[0.05]"
+          : "border-white/[0.06] hover:border-white/[0.14] hover:bg-white/[0.04]"
+      }`}
+    >
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
+        style={{ backgroundColor: stat.fn.color }}
+      />
+      <div className="pl-2">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-cream leading-tight truncate">{stat.fn.shortLabel}</h3>
+            {stat.fn.iloReference ? (
+              <span className="inline-flex items-center gap-1 mt-1 text-[9px] uppercase tracking-wider text-gray-muted">
+                <Scale size={9} className="text-gold/70" />
+                {stat.fn.iloReference}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 mt-1 text-[9px] uppercase tracking-wider text-gray-muted">
+                {stat.fn.slug === UNCLASSIFIED_FUNCTION.slug ? "Long-tail" : "Administrative"}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] tabular-nums font-semibold text-cream bg-white/[0.06] rounded px-1.5 py-0.5 shrink-0">
+            {stat.count}
+          </span>
+        </div>
+
+        <p className="text-[10px] text-gray-muted leading-snug line-clamp-2 mb-3 min-h-[28px]">
+          {stat.fn.description}
+        </p>
+
+        <div className="flex items-center gap-2 mb-2">
+          <div className="flex-1 h-1 rounded-full overflow-hidden bg-white/[0.06]">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: stat.fn.color }}
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max(2, score)}%` }}
+              transition={{ duration: 0.7, delay: 0.15 + index * 0.02 }}
+            />
+          </div>
+          <span className="text-[10px] tabular-nums text-cream/80 w-7 text-right">{score}</span>
+        </div>
+
+        {stat.topPain ? (
+          <p className="text-[9px] text-gray-muted/90 line-clamp-1 italic">
+            <AlertTriangle size={8} className="inline mr-1 text-red-400/70" />
+            {stat.topPain}
+          </p>
+        ) : (
+          <p className="text-[9px] text-gray-muted/60 italic">No pain points logged yet</p>
+        )}
+      </div>
+    </motion.button>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Section 2 — Service card (flat, accent bar, no glow)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function ServiceCard({
+  svc,
+  fn,
+  aud,
+  index,
+  onOpen,
+}: {
+  svc: GPSSAService;
+  fn: ServiceFunction;
+  aud: ServiceAudience | null;
+  index: number;
+  onOpen: () => void;
+}) {
+  const score = svcScore(svc);
+  const topPain = svc.painPoints?.[0];
+  const topOpp = svc.opportunities?.[0];
+  return (
+    <motion.button
+      onClick={onOpen}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: Math.min(index, 12) * 0.02 }}
+      whileHover={{ y: -2 }}
+      className="relative w-full text-left rounded-xl bg-white/[0.025] border border-white/[0.06] p-3.5 hover:bg-white/[0.05] hover:border-white/[0.14] transition-colors overflow-hidden"
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ backgroundColor: fn.color }} />
+      <div className="pl-2">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="text-xs font-semibold text-cream leading-snug pr-2">{svc.name}</h3>
+          <span className="text-[10px] tabular-nums font-semibold text-cream bg-white/[0.06] rounded px-1.5 py-0.5 shrink-0">
+            {Math.round(score)}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider text-gray-muted">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: fn.color }} />
+            {fn.shortLabel}
+          </span>
+          {aud && (
+            <span className="text-[9px] uppercase tracking-wider text-gray-muted">· {aud.shortLabel}</span>
+          )}
+        </div>
+
+        {svc.description && (
+          <p className="text-[10px] text-gray-muted leading-relaxed mb-2 line-clamp-2">{svc.description}</p>
+        )}
+
+        <div className="space-y-1">
+          {topPain && (
+            <p className="text-[10px] text-red-300/80 line-clamp-1">
+              <XCircle size={9} className="inline mr-1" />
+              {topPain}
+            </p>
+          )}
+          {topOpp && (
+            <p className="text-[10px] text-emerald-300/80 line-clamp-1">
+              <Lightbulb size={9} className="inline mr-1" />
+              {topOpp}
+            </p>
+          )}
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Section 3 — Benchmark cockpit
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+interface ReferenceMetricsBundle {
+  byFunction: Map<string, { reference: number; min?: number; max?: number; label?: string }>;
+  headline: number;
+  label: string;
+  color: string;
+}
+
+function buildGpssaFunctionMetrics(services: GPSSAService[]): Map<string, { score: number; n: number }> {
+  const out = new Map<string, { score: number; n: number }>();
+  for (const fn of SERVICE_FUNCTIONS) out.set(fn.slug, { score: 0, n: 0 });
+  for (const svc of services) {
+    const fn = classifyServiceFunction({
+      name: svc.name,
+      description: svc.description,
+      category: svc.category,
+    });
+    if (fn.slug === UNCLASSIFIED_FUNCTION.slug) continue;
+    const cur = out.get(fn.slug);
+    if (!cur) continue;
+    cur.score += svcScore(svc);
+    cur.n += 1;
+  }
+  return out;
+}
+
+function BenchmarkCockpit({
+  services,
+  intl,
+  comparator,
+  setComparator,
+  comparatorOptions,
+  comparatorLoading,
+  loading,
+}: {
   services: GPSSAService[];
   intl: IntlService[];
   comparator: ComparatorOption | null;
+  setComparator: (c: ComparatorOption | null) => void;
+  comparatorOptions: ComparatorOption[];
+  comparatorLoading: boolean;
   loading: boolean;
-}
-
-function BenchmarkPanel({ services, intl, comparator, loading }: BenchmarkPanelProps) {
+}) {
   const [bundle, setBundle] = useState<ReferenceMetricsBundle | null>(null);
   const [bundleLoading, setBundleLoading] = useState(false);
 
@@ -357,7 +424,6 @@ function BenchmarkPanel({ services, intl, comparator, loading }: BenchmarkPanelP
       setBundle(null);
       return;
     }
-
     let cancelled = false;
     async function load() {
       if (!comparator) return;
@@ -384,8 +450,8 @@ function BenchmarkPanel({ services, intl, comparator, loading }: BenchmarkPanelP
           const byFn = new Map<string, { reference: number; min?: number; max?: number; label?: string }>();
           for (const fn of SERVICE_FUNCTIONS) {
             const matches = intlForCountry.filter((s) => {
-              const cat = resolveCategory(s.category);
-              return cat?.kind === "function" && cat.entry.slug === fn.slug;
+              const c = classifyServiceFunction({ name: s.name, description: s.description, category: s.category });
+              return c.slug === fn.slug;
             });
             const scores = matches.map(intlSvcScore).filter((v) => v > 0);
             const ref = scores.length > 0 ? scores.reduce((s, v) => s + v, 0) / scores.length : 0;
@@ -405,16 +471,13 @@ function BenchmarkPanel({ services, intl, comparator, loading }: BenchmarkPanelP
             color: comparator.color,
           });
         } else {
-          // standard
           const res = await fetch(`/api/standards/${comparator.id}`);
           if (!res.ok) throw new Error("std");
-          const std = await res.json();
+          await res.json();
           const byFn = new Map<string, { reference: number; label?: string }>();
-          // For each canonical function, decide whether this standard covers it
-          // (any requirement.pillar containing the function or any function.standardSlugs containing this standard slug).
           for (const fn of SERVICE_FUNCTIONS) {
             const isCovered = fn.standardSlugs.includes(comparator.id);
-            const reference = isCovered ? 80 : 30; // Standard expectation: covered → high bar (80); not addressed → low bar (30)
+            const reference = isCovered ? 80 : 30;
             byFn.set(fn.slug, { reference, label: comparator.shortLabel });
           }
           if (cancelled) return;
@@ -429,7 +492,6 @@ function BenchmarkPanel({ services, intl, comparator, loading }: BenchmarkPanelP
         if (!cancelled) setBundleLoading(false);
       }
     }
-
     load();
     return () => {
       cancelled = true;
@@ -452,79 +514,196 @@ function BenchmarkPanel({ services, intl, comparator, loading }: BenchmarkPanelP
     });
   }, [gpssaByFn, bundle]);
 
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-6 h-full overflow-y-auto pr-1">
-      <div className="space-y-4">
-        <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4">
-          <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-3">Composite</p>
-          <div className="flex justify-center">
-            <ComplianceDial
-              score={gpssaScore}
-              reference={comparator ? bundle?.headline ?? 0 : undefined}
-              label="GPSSA Service Maturity"
-              sublabel={comparator ? `vs ${comparator.shortLabel}` : "Pick a comparator →"}
-              size="md"
-              color="#22C55E"
-              band={bandFor(gpssaScore)}
-            />
-          </div>
-        </div>
+  const refHeadline = comparator ? bundle?.headline ?? 0 : undefined;
+  const headlineGap = comparator ? gpssaScore - (refHeadline ?? 0) : 0;
 
-        {comparator && bundle && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4"
-          >
-            <div className="flex items-start gap-2 mb-2">
-              <span className="inline-block w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: comparator.color }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-cream truncate">{comparator.label}</p>
-                <p className="text-[9px] uppercase tracking-wider text-gray-muted">{comparator.kind}</p>
-                {comparator.description && (
-                  <p className="text-[10px] text-gray-muted/90 mt-2 leading-relaxed line-clamp-4">
-                    {comparator.description}
-                  </p>
-                )}
+  // Quick-pick presets surfaced when nothing is selected
+  const presets = useMemo(() => {
+    const findOpt = (kind: ComparatorOption["kind"], id: string) =>
+      comparatorOptions.find((o) => o.kind === kind && o.id === id);
+    return [
+      findOpt("standard", "ilo-c102"),
+      findOpt("computed", "gcc-average"),
+      findOpt("country", "SGP"),
+    ].filter(Boolean) as ComparatorOption[];
+  }, [comparatorOptions]);
+
+  return (
+    <div className="space-y-4">
+      {/* Comparator rail */}
+      <ComparatorPicker
+        options={comparatorOptions}
+        selected={comparator}
+        onChange={setComparator}
+        loading={comparatorLoading}
+        variant="rail"
+      />
+
+      {!comparator ? (
+        <div className="rounded-2xl bg-white/[0.025] border border-white/[0.06] p-8 text-center">
+          <Telescope size={28} className="text-gpssa-green/60 mx-auto mb-3" />
+          <h3 className="font-playfair text-lg text-cream mb-1">Pick a comparator above to begin</h3>
+          <p className="text-xs text-gray-muted max-w-md mx-auto mb-5">
+            We&apos;ll overlay GPSSA&apos;s twelve service branches against your chosen reference and surface
+            every gap, branch by branch.
+          </p>
+          {presets.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <span className="text-[10px] uppercase tracking-wider text-gray-muted/80 mr-1">Try:</span>
+              {presets.map((opt) => (
+                <button
+                  key={`${opt.kind}-${opt.id}`}
+                  onClick={() => setComparator(opt)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.18] text-[11px] text-cream transition-colors"
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: opt.color }} />
+                  {opt.kind === "country" && opt.iso3 && <CountryFlag code={opt.iso3} size="xs" />}
+                  Compare to {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Cockpit grid */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+            {/* Left rail — composite dial(s) */}
+            <div className="xl:col-span-4 space-y-3">
+              <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-5">
+                <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-4 text-center">
+                  Composite maturity
+                </p>
+                <div className="flex justify-center">
+                  <ComplianceDial
+                    score={gpssaScore}
+                    reference={refHeadline}
+                    label="GPSSA Service Maturity"
+                    sublabel={`vs ${comparator.shortLabel}`}
+                    size="lg"
+                    color="#22C55E"
+                    band={bandFor(gpssaScore)}
+                  />
+                </div>
+                <div className="mt-4 pt-4 border-t border-white/[0.06] flex items-center justify-around text-center">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-gray-muted">GPSSA</p>
+                    <p className="text-xl font-bold tabular-nums text-cream">{gpssaScore}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-gray-muted">{comparator.shortLabel}</p>
+                    <p className="text-xl font-bold tabular-nums text-cream">{refHeadline ?? 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-gray-muted">Δ</p>
+                    <p
+                      className="text-xl font-bold tabular-nums"
+                      style={{ color: headlineGap >= 0 ? "#10B981" : "#F59E0B" }}
+                    >
+                      {headlineGap >= 0 ? "+" : ""}{headlineGap}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-4">
+                <div className="flex items-start gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: comparator.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-cream truncate">{comparator.label}</p>
+                    <p className="text-[9px] uppercase tracking-wider text-gray-muted">{comparator.kind}</p>
+                    {comparator.description && (
+                      <p className="text-[10px] text-gray-muted/90 mt-2 leading-relaxed line-clamp-5">
+                        {comparator.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/[0.05]">
-              {SERVICE_FUNCTIONS.slice(0, 6).map((fn) => {
+
+            {/* Right pane — large radar */}
+            <div className="xl:col-span-8 rounded-xl bg-white/[0.025] border border-white/[0.06] p-5 min-h-[520px] flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-cream">Service-function radar</h3>
+                {(loading || bundleLoading) && (
+                  <span className="text-[10px] text-gray-muted animate-pulse">loading</span>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-muted mb-3">
+                GPSSA&apos;s measured maturity across the twelve service branches, overlaid against{" "}
+                <span className="text-cream">{comparator.label}</span>.
+              </p>
+              <div className="flex-1 flex items-center justify-center">
+                <RangeBandRadar
+                  metrics={metrics}
+                  preset="xl"
+                  referenceColor={comparator.color}
+                  referenceLabel={comparator.shortLabel}
+                  showBand={comparator.kind === "country"}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Per-branch gap table */}
+          <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-cream">Branch-by-branch gap</h3>
+              <span className="text-[10px] uppercase tracking-wider text-gray-muted">
+                GPSSA · {comparator.shortLabel} · Δ
+              </span>
+            </div>
+            <div className="divide-y divide-white/[0.04]">
+              {SERVICE_FUNCTIONS.map((fn) => {
                 const g = gpssaByFn.get(fn.slug);
                 const gv = g && g.n > 0 ? g.score / g.n : 0;
-                const rv = bundle.byFunction.get(fn.slug)?.reference ?? 0;
-                const gap = gv - rv;
+                const rv = bundle?.byFunction.get(fn.slug)?.reference ?? 0;
+                const gap = Math.round(gv - rv);
                 return (
-                  <div key={fn.slug} className="text-[9px]">
-                    <p className="text-gray-muted truncate">{fn.shortLabel}</p>
-                    <p className="font-semibold tabular-nums" style={{ color: gap >= 0 ? "#10B981" : "#F59E0B" }}>
-                      {gap >= 0 ? "+" : ""}{Math.round(gap)}
-                    </p>
+                  <div key={fn.slug} className="grid grid-cols-12 items-center px-4 py-2.5 text-[11px] hover:bg-white/[0.02]">
+                    <div className="col-span-4 flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: fn.color }} />
+                      <span className="text-cream truncate">{fn.shortLabel}</span>
+                      {fn.iloReference && (
+                        <span className="text-[9px] text-gray-muted truncate hidden md:inline">· {fn.iloReference}</span>
+                      )}
+                    </div>
+                    <div className="col-span-5 flex items-center gap-3">
+                      <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden relative">
+                        <motion.div
+                          className="absolute left-0 top-0 h-full rounded-full"
+                          style={{ backgroundColor: "#22C55E" }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.max(2, gv)}%` }}
+                          transition={{ duration: 0.6 }}
+                        />
+                        <motion.div
+                          className="absolute left-0 top-0 h-full rounded-full mix-blend-screen"
+                          style={{ backgroundColor: comparator.color, opacity: 0.45 }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.max(2, rv)}%` }}
+                          transition={{ duration: 0.6, delay: 0.05 }}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-span-3 flex items-center justify-end gap-3 tabular-nums">
+                      <span className="text-cream w-7 text-right">{Math.round(gv)}</span>
+                      <span className="text-gray-muted w-7 text-right">{Math.round(rv)}</span>
+                      <span
+                        className="font-semibold w-9 text-right"
+                        style={{ color: gap >= 0 ? "#10B981" : "#F59E0B" }}
+                      >
+                        {gap >= 0 ? "+" : ""}{gap}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </motion.div>
-        )}
-      </div>
-
-      <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 min-h-[420px] flex flex-col">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-cream">Service-function radar</h3>
-          {(loading || bundleLoading) && <span className="text-[9px] text-gray-muted animate-pulse">loading</span>}
-        </div>
-        <p className="text-[10px] text-gray-muted mb-4">
-          GPSSA&apos;s measured maturity across ILO C102 service branches, overlaid against the chosen comparator.
-        </p>
-        <div className="flex-1 flex items-center justify-center">
-          <RangeBandRadar
-            metrics={metrics}
-            referenceColor={comparator?.color ?? "#0EA5E9"}
-            referenceLabel={comparator?.shortLabel ?? "—"}
-            showBand={comparator?.kind === "country"}
-          />
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -538,7 +717,6 @@ export default function ServiceCatalogPage() {
   const [intlServices, setIntlServices] = useState<IntlService[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [act, setAct] = useState<Act>("constellation");
   const [activeFn, setActiveFn] = useState<ServiceFunction | null>(null);
   const [activeAud, setActiveAud] = useState<ServiceAudience | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -549,6 +727,10 @@ export default function ServiceCatalogPage() {
   const [analysesLoading, setAnalysesLoading] = useState(false);
 
   const { allOptions, loading: comparatorLoading } = useComparators();
+
+  const browseRef = useRef<HTMLDivElement>(null);
+  const benchmarkRef = useRef<HTMLDivElement>(null);
+  const overviewRef = useRef<HTMLDivElement>(null);
 
   /* ── Data loading ── */
   const loadServices = useCallback(async () => {
@@ -580,7 +762,6 @@ export default function ServiceCatalogPage() {
               iloAlignment: apiMatch.iloAlignment ? String(apiMatch.iloAlignment) : null,
             };
           });
-          // Append any API services that aren't in the static seed
           const staticNames = new Set(STATIC_SERVICES.map((s) => s.name.toLowerCase()));
           for (const apiRow of data) {
             const name = String(apiRow.name ?? "");
@@ -620,7 +801,7 @@ export default function ServiceCatalogPage() {
     onComplete: () => loadServices(),
   });
 
-  /* ── Comparator-driven international load (countries + computed-ref aggregates use intl too for context) ── */
+  /* ── Comparator-driven international load ── */
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -637,7 +818,6 @@ export default function ServiceCatalogPage() {
         const data = await res.json();
         if (Array.isArray(data)) setIntlServices(data);
       } else {
-        // for non-country comparators we don't need country-level intl data
         setIntlServices([]);
       }
     }
@@ -674,46 +854,41 @@ export default function ServiceCatalogPage() {
   }, [detailModal]);
 
   /* ── Derived ── */
-  const fnStats: FunctionStats[] = useMemo(() => {
-    return SERVICE_FUNCTIONS.map((fn) => {
-      const matched = services.filter((s) => {
-        const r = resolveCategory(s.category);
-        return r?.kind === "function" && r.entry.slug === fn.slug;
-      });
-      const scores = matched.map(svcScore).filter((v) => v > 0);
-      const avg = scores.length > 0 ? scores.reduce((s, v) => s + v, 0) / scores.length : 0;
-      return {
-        fn,
-        count: matched.length,
-        avgScore: Math.round(avg),
-        pains: matched.reduce((acc, s) => acc + (s.painPoints?.length ?? 0), 0),
-        opps: matched.reduce((acc, s) => acc + (s.opportunities?.length ?? 0), 0),
-      };
-    }).sort((a, b) => b.count - a.count);
-  }, [services]);
+  const fnStats = useMemo(() => buildFunctionStats(services), [services]);
+  const fnStatsBySlug = useMemo(() => new Map(fnStats.map((s) => [s.fn.slug, s])), [fnStats]);
 
   const audStats = useMemo(() => {
     return SERVICE_AUDIENCES.map((aud) => {
       const matched = services.filter((s) => {
-        const r = resolveCategory(s.category);
-        return r?.kind === "audience" && r.entry.slug === aud.slug;
+        const r = classifyServiceAudience({
+          name: s.name,
+          description: s.description,
+          category: s.category,
+          userTypes: s.userTypes,
+        });
+        return r?.slug === aud.slug;
       });
       return { aud, count: matched.length };
     });
   }, [services]);
 
-  const spineServices = useMemo(() => {
+  const filteredServices = useMemo(() => {
     let list = services;
     if (activeFn) {
       list = list.filter((s) => {
-        const r = resolveCategory(s.category);
-        return r?.kind === "function" && r.entry.slug === activeFn.slug;
+        const fn = classifyServiceFunction({ name: s.name, description: s.description, category: s.category });
+        return fn.slug === activeFn.slug;
       });
     }
     if (activeAud) {
       list = list.filter((s) => {
-        const r = resolveCategory(s.category);
-        return r?.kind === "audience" && r.entry.slug === activeAud.slug;
+        const aud = classifyServiceAudience({
+          name: s.name,
+          description: s.description,
+          category: s.category,
+          userTypes: s.userTypes,
+        });
+        return aud?.slug === activeAud.slug;
       });
     }
     if (searchQuery.trim()) {
@@ -723,35 +898,33 @@ export default function ServiceCatalogPage() {
     return list;
   }, [services, activeFn, activeAud, searchQuery]);
 
-  /* ── Stat bar ── */
+  /* ── KPIs ── */
+  const totalPains = useMemo(() => services.reduce((a, s) => a + (s.painPoints?.length ?? 0), 0), [services]);
+  const totalOpps = useMemo(() => services.reduce((a, s) => a + (s.opportunities?.length ?? 0), 0), [services]);
+  const headline = useMemo(() => gpssaHeadline(services), [services]);
+  const unclassifiedCount = useMemo(() => fnStatsBySlug.get(UNCLASSIFIED_FUNCTION.slug)?.count ?? 0, [fnStatsBySlug]);
+
   const statBarItems: StatBarItem[] = useMemo(() => {
-    const totalPains = services.reduce((a, s) => a + (s.painPoints?.length ?? 0), 0);
-    const totalOpps = services.reduce((a, s) => a + (s.opportunities?.length ?? 0), 0);
-    const avgScore = gpssaHeadline(services);
     const items: StatBarItem[] = [
       { icon: Layers, value: services.length, label: "Services" },
-      { icon: Sparkles, value: avgScore, label: "Avg. Maturity" },
+      { icon: Sparkles, value: headline, label: "Avg. Maturity" },
       { icon: AlertTriangle, value: totalPains, label: "Pain Points" },
       { icon: Lightbulb, value: totalOpps, label: "Opportunities" },
     ];
     if (comparator) items.push({ icon: Globe2, value: 1, label: `vs ${comparator.shortLabel}` });
     return items;
-  }, [services, comparator]);
+  }, [services.length, headline, totalPains, totalOpps, comparator]);
 
-  /* ── Act controls ── */
-  function gotoSpine(fn: ServiceFunction) {
-    setActiveFn(fn);
+  /* ── Navigation ── */
+  function pickBranch(fn: ServiceFunction) {
+    setActiveFn((prev) => (prev?.slug === fn.slug ? null : fn));
     setActiveAud(null);
-    setAct("spine");
+    setTimeout(() => browseRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   }
-  function gotoConstellation() {
+  function resetFilters() {
     setActiveFn(null);
     setActiveAud(null);
     setSearchQuery("");
-    setAct("constellation");
-  }
-  function gotoBenchmark() {
-    setAct("benchmark");
   }
 
   if (loading && services.length === 0) {
@@ -765,227 +938,293 @@ export default function ServiceCatalogPage() {
         <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Service Catalog</h1>
         <div className="h-4 w-px bg-white/10" />
 
-        {/* Act tabs */}
-        <div className="flex items-center gap-1">
-          {(
-            [
-              { id: "constellation" as Act, label: "Overview", desc: "Constellation" },
-              { id: "spine" as Act,         label: "Explore",  desc: "Spine" },
-              { id: "benchmark" as Act,     label: "Benchmark", desc: "Compare" },
-            ]
-          ).map((tab, i) => (
+        {/* Section navigation chips */}
+        <nav className="flex items-center gap-1">
+          {[
+            { id: "overview", label: "1. At a Glance", ref: overviewRef },
+            { id: "browse", label: "2. Browse Services", ref: browseRef },
+            { id: "benchmark", label: "3. Compare", ref: benchmarkRef },
+          ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setAct(tab.id)}
-              className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                act === tab.id
-                  ? "bg-gpssa-green/15 text-gpssa-green border border-gpssa-green/25"
-                  : "text-gray-muted hover:text-cream hover:bg-white/[0.04] border border-transparent"
-              }`}
+              onClick={() => tab.ref.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="px-2.5 py-1 rounded-md text-[11px] font-medium text-gray-muted hover:text-cream hover:bg-white/[0.04] transition-colors"
             >
-              <span className="text-[9px] tabular-nums text-gray-muted/70">{i + 1}</span>
               {tab.label}
             </button>
           ))}
-        </div>
+        </nav>
 
         <div className="ml-auto flex items-center gap-2">
           <MandateBasisChip
             screenPath="/dashboard/services/catalog"
             entityIds={services.map((s) => s.id)}
           />
-          {act === "spine" && (
-            <div className="relative">
-              <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-muted" />
-              <input
-                type="text"
-                placeholder="Filter…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-36 pl-7 pr-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-cream placeholder:text-gray-muted focus:outline-none focus:border-gpssa-green/30 transition-colors"
-              />
-            </div>
-          )}
-          <ComparatorPicker
-            options={allOptions}
-            selected={comparator}
-            onChange={setComparator}
-            loading={comparatorLoading}
-            variant="inline"
-          />
         </div>
       </div>
 
-      {/* ─── Content ─── */}
-      <div className="flex-1 min-h-0 overflow-hidden p-5">
-        <AnimatePresence mode="wait">
-          {act === "constellation" && (
-            <motion.div
-              key="act-constellation"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.3 }}
-              className="h-full overflow-y-auto pr-1"
-            >
-              <div className="mb-5">
-                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">Act I · Constellation</p>
-                <h2 className="font-playfair text-lg text-cream mb-1">Every GPSSA service, mapped to ILO branches.</h2>
-                <p className="text-xs text-gray-muted max-w-2xl leading-relaxed">
-                  Twelve canonical service functions — nine ILO C102 branches plus three administrative & digital functions —
-                  each glowing tile sized by service count and lit by current maturity. Pick any to explore.
+      {/* ─── Content (single scroll) ─── */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="px-5 py-5 space-y-10 max-w-[1480px] mx-auto">
+
+          {/* ╔════ Section 1 — At a Glance ════╗ */}
+          <section ref={overviewRef} className="scroll-mt-4">
+            <div className="flex items-end justify-between gap-4 mb-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">
+                  1 · The Catalog at a Glance
+                </p>
+                <h2 className="font-playfair text-2xl text-cream mb-2">
+                  What does GPSSA actually deliver today?
+                </h2>
+                <p className="text-xs text-gray-muted leading-relaxed max-w-3xl">
+                  Every service we run, mapped to the twelve canonical social-security branches —
+                  nine from <span className="text-cream">ILO Convention 102</span> plus three administrative
+                  &amp; digital functions. Counts are sized by how many GPSSA services live in each branch,
+                  bars by current digital maturity. Click a branch to drill in.
                 </p>
               </div>
+              <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
+                <Scale size={10} />
+                RFI 2.B-1 · Assess current portfolio
+              </div>
+            </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-6">
-                {fnStats.map((stat, i) => (
-                  <ConstellationCard key={stat.fn.slug} stat={stat} index={i} onPick={() => gotoSpine(stat.fn)} />
+            {/* Headline KPI strip — flat numbers */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+              {[
+                { label: "Total services", value: services.length, icon: Layers },
+                { label: "Avg. maturity", value: headline, icon: Sparkles, suffix: "/100" },
+                { label: "Pain points logged", value: totalPains, icon: AlertTriangle },
+                { label: "Opportunities surfaced", value: totalOpps, icon: Lightbulb },
+              ].map((kpi) => {
+                const Icon = kpi.icon;
+                return (
+                  <div key={kpi.label} className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-4">
+                    <div className="flex items-center gap-2 mb-2 text-gray-muted">
+                      <Icon size={12} />
+                      <span className="text-[10px] uppercase tracking-wider">{kpi.label}</span>
+                    </div>
+                    <p className="text-3xl font-bold text-cream tabular-nums leading-none">
+                      {kpi.value}
+                      {kpi.suffix && <span className="text-base text-gray-muted ml-1">{kpi.suffix}</span>}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 12 ILO branch tiles + Other */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {fnStats.map((stat, i) => (
+                <BranchTile
+                  key={stat.fn.slug}
+                  stat={stat}
+                  index={i}
+                  active={activeFn?.slug === stat.fn.slug}
+                  onPick={() => pickBranch(stat.fn)}
+                />
+              ))}
+            </div>
+
+            <p className="mt-4 text-[10px] text-gray-muted/80 leading-relaxed max-w-3xl">
+              <span className="text-cream/80">What is an ILO branch?</span> The International Labour Organization&apos;s
+              Convention 102 defines the nine recognised branches of social security every modern scheme should cover.
+              GPSSA&apos;s services are mapped onto these branches plus three operational categories (Registration, Contributions
+              and Digital) so they can be measured against any global standard or peer.
+              {unclassifiedCount > 0 && (
+                <span className="block mt-1 text-amber-300/80">
+                  {unclassifiedCount} services have free-text categories not yet mapped to a branch — visible in the &quot;Other&quot; tile and on the Browse list.
+                </span>
+              )}
+            </p>
+
+            {/* Jump CTA */}
+            <div className="mt-4 flex items-center justify-center">
+              <button
+                onClick={() => browseRef.current?.scrollIntoView({ behavior: "smooth" })}
+                className="flex items-center gap-1.5 text-[11px] text-gray-muted hover:text-cream transition-colors"
+              >
+                Browse every service <ArrowDown size={11} />
+              </button>
+            </div>
+          </section>
+
+          {/* ╔════ Section 2 — Browse ════╗ */}
+          <section ref={browseRef} className="scroll-mt-4">
+            <div className="flex items-end justify-between gap-4 mb-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">
+                  2 · Browse Every Service
+                </p>
+                <h2 className="font-playfair text-2xl text-cream mb-2">
+                  Filter, search and inspect any service.
+                </h2>
+                <p className="text-xs text-gray-muted leading-relaxed max-w-3xl">
+                  Combine an ILO branch with an audience to scope the list. Click any card for the full analyst briefing —
+                  current state, pain points, opportunities and prior senior-analyst notes.
+                </p>
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
+                <Scale size={10} />
+                RFI 2.C-1 · Current-state diagnostic
+              </div>
+            </div>
+
+            {/* Sticky filter rail */}
+            <div className="sticky top-0 z-10 -mx-5 px-5 py-3 mb-4 bg-navy/90 backdrop-blur-md border-y border-white/[0.06]">
+              <div className="flex flex-wrap items-center gap-2">
+                <Filter size={11} className="text-gray-muted" />
+                <span className="text-[10px] uppercase tracking-wider text-gray-muted mr-1">Branch</span>
+                {fnStats.map((stat) => (
+                  <button
+                    key={stat.fn.slug}
+                    onClick={() => setActiveFn((prev) => (prev?.slug === stat.fn.slug ? null : stat.fn))}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium transition-colors ${
+                      activeFn?.slug === stat.fn.slug
+                        ? "bg-cream/10 border-cream/30 text-cream"
+                        : "bg-white/[0.03] border-white/[0.08] text-cream/80 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stat.fn.color }} />
+                    {stat.fn.shortLabel}
+                    <span className="text-[9px] text-gray-muted tabular-nums">{stat.count}</span>
+                  </button>
                 ))}
               </div>
-
-              <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-4">
-                <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-2">Or filter by audience</p>
-                <div className="flex flex-wrap gap-2">
-                  {audStats.map(({ aud, count }) => (
-                    <AudienceChip
-                      key={aud.slug}
-                      aud={aud}
-                      count={count}
-                      active={activeAud?.slug === aud.slug}
-                      onClick={() => {
-                        setActiveAud((prev) => (prev?.slug === aud.slug ? null : aud));
-                        setActiveFn(null);
-                        setAct("spine");
-                      }}
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="text-[10px] uppercase tracking-wider text-gray-muted ml-4 mr-1">Audience</span>
+                {audStats.map(({ aud, count }) => (
+                  <button
+                    key={aud.slug}
+                    onClick={() => setActiveAud((prev) => (prev?.slug === aud.slug ? null : aud))}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium transition-colors ${
+                      activeAud?.slug === aud.slug
+                        ? "bg-cream/10 border-cream/30 text-cream"
+                        : "bg-white/[0.03] border-white/[0.08] text-cream/80 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    {aud.shortLabel}
+                    <span className="text-[9px] text-gray-muted tabular-nums">{count}</span>
+                  </button>
+                ))}
+                <div className="ml-auto flex items-center gap-2">
+                  <div className="relative">
+                    <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-muted" />
+                    <input
+                      type="text"
+                      placeholder="Search services…"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-44 pl-7 pr-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] text-[11px] text-cream placeholder:text-gray-muted focus:outline-none focus:border-gpssa-green/30"
                     />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {act === "spine" && (
-            <motion.div
-              key="act-spine"
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -24 }}
-              transition={{ duration: 0.3 }}
-              className="h-full grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5 overflow-hidden"
-            >
-              <aside className="overflow-y-auto pr-1">
-                <button onClick={gotoConstellation} className="flex items-center gap-1 text-[10px] text-gray-muted hover:text-cream mb-3 transition-colors">
-                  <ArrowLeft size={11} />
-                  Back to constellation
-                </button>
-                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">Act II · Spine</p>
-                {activeFn && (
-                  <div className="rounded-xl p-3 mb-3" style={{ backgroundColor: `${activeFn.color}15`, border: `1px solid ${activeFn.color}30` }}>
-                    <h3 className="text-sm font-semibold text-cream mb-1">{activeFn.label}</h3>
-                    <p className="text-[10px] text-gray-muted leading-relaxed">{activeFn.description}</p>
-                    {activeFn.iloReference && (
-                      <div className="mt-2 pt-2 border-t border-white/[0.06] flex items-center gap-1.5">
-                        <Scale size={10} className="text-gold" />
-                        <span className="text-[10px] text-gold">{activeFn.iloReference}</span>
-                      </div>
-                    )}
                   </div>
-                )}
-                {activeAud && (
-                  <div className="rounded-xl p-3 mb-3 bg-white/[0.04] border border-white/[0.08]">
-                    <h3 className="text-sm font-semibold text-cream mb-1">{activeAud.label}</h3>
-                    <p className="text-[10px] text-gray-muted leading-relaxed">{activeAud.description}</p>
-                  </div>
-                )}
-                <p className="text-[9px] uppercase tracking-wider text-gray-muted mb-1.5 mt-4">Other functions</p>
-                <div className="space-y-1">
-                  {fnStats.filter((s) => s.fn.slug !== activeFn?.slug).map((s) => (
+                  {(activeFn || activeAud || searchQuery) && (
                     <button
-                      key={s.fn.slug}
-                      onClick={() => setActiveFn(s.fn)}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-white/[0.04] transition-colors group"
+                      onClick={resetFilters}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-gray-muted hover:text-cream hover:bg-white/[0.05] transition-colors"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.fn.color }} />
-                      <span className="text-[11px] text-cream/80 group-hover:text-cream flex-1 truncate">{s.fn.shortLabel}</span>
-                      <span className="text-[9px] tabular-nums text-gray-muted">{s.count}</span>
+                      <RotateCcw size={10} />
+                      Reset
                     </button>
-                  ))}
+                  )}
                 </div>
-              </aside>
-
-              <main className="overflow-y-auto pr-1">
-                {spineServices.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-center">
-                    <Search size={20} className="text-gray-muted mb-2" />
-                    <p className="text-xs text-gray-muted">No services found in this view.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="text-xs text-cream font-medium">{spineServices.length} services</p>
-                        <p className="text-[10px] text-gray-muted">Click any service for analyst briefing</p>
-                      </div>
-                      <button
-                        onClick={gotoBenchmark}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gpssa-green/15 border border-gpssa-green/25 text-gpssa-green text-[11px] font-medium hover:bg-gpssa-green/25 transition-colors"
-                      >
-                        Benchmark
-                        <ArrowRight size={11} />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
-                      {spineServices.map((svc, i) => (
-                        <SpineCard
-                          key={svc.id}
-                          svc={svc}
-                          color={activeFn?.color ?? "#22C55E"}
-                          index={i}
-                          onOpen={() => setDetailModal(svc)}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </main>
-            </motion.div>
-          )}
-
-          {act === "benchmark" && (
-            <motion.div
-              key="act-benchmark"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.97 }}
-              transition={{ duration: 0.35 }}
-              className="h-full overflow-hidden flex flex-col"
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">Act III · Benchmark</p>
-                  <h2 className="font-playfair text-lg text-cream mb-1">
-                    {comparator ? `GPSSA vs ${comparator.label}` : "Pick a comparator to begin"}
-                  </h2>
-                  <p className="text-xs text-gray-muted leading-relaxed max-w-2xl">
-                    Hold GPSSA up against a global standard, a regional best-practice, or a single peer country —
-                    one comparator at a time, every dimension audited.
-                  </p>
-                </div>
-                {!comparator && (
-                  <ComparatorPicker
-                    options={allOptions}
-                    selected={comparator}
-                    onChange={setComparator}
-                    loading={comparatorLoading}
-                  />
-                )}
               </div>
-              <div className="flex-1 min-h-0">
-                <BenchmarkPanel services={services} intl={intlServices} comparator={comparator} loading={loading} />
+            </div>
+
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] text-gray-muted">
+                Showing <span className="text-cream font-semibold tabular-nums">{filteredServices.length}</span> of{" "}
+                <span className="text-cream tabular-nums">{services.length}</span> services
+                {activeFn && <span> · branch <span className="text-cream">{activeFn.shortLabel}</span></span>}
+                {activeAud && <span> · audience <span className="text-cream">{activeAud.shortLabel}</span></span>}
+              </p>
+            </div>
+
+            {filteredServices.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Search size={20} className="text-gray-muted mb-2" />
+                <p className="text-xs text-gray-muted">No services match these filters.</p>
+                <button
+                  onClick={resetFilters}
+                  className="mt-3 text-[11px] text-gpssa-green hover:underline"
+                >
+                  Clear filters
+                </button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredServices.slice(0, 240).map((svc, i) => {
+                  const fn = classifyServiceFunction({ name: svc.name, description: svc.description, category: svc.category });
+                  const aud = classifyServiceAudience({
+                    name: svc.name,
+                    description: svc.description,
+                    category: svc.category,
+                    userTypes: svc.userTypes,
+                  });
+                  return (
+                    <ServiceCard
+                      key={svc.id}
+                      svc={svc}
+                      fn={fn}
+                      aud={aud}
+                      index={i}
+                      onOpen={() => setDetailModal(svc)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            {filteredServices.length > 240 && (
+              <p className="mt-3 text-[10px] text-gray-muted text-center">
+                Showing the first 240 results — narrow the filters to see more.
+              </p>
+            )}
+
+            <div className="mt-5 flex items-center justify-center">
+              <button
+                onClick={() => benchmarkRef.current?.scrollIntoView({ behavior: "smooth" })}
+                className="flex items-center gap-1.5 text-[11px] text-gray-muted hover:text-cream transition-colors"
+              >
+                See how GPSSA compares globally <ArrowDown size={11} />
+              </button>
+            </div>
+          </section>
+
+          {/* ╔════ Section 3 — Benchmark cockpit ════╗ */}
+          <section ref={benchmarkRef} className="scroll-mt-4 pb-6">
+            <div className="flex items-end justify-between gap-4 mb-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">
+                  3 · How GPSSA Compares
+                </p>
+                <h2 className="font-playfair text-2xl text-cream mb-2">
+                  {comparator ? `GPSSA vs ${comparator.label}` : "Benchmark GPSSA against the world."}
+                </h2>
+                <p className="text-xs text-gray-muted leading-relaxed max-w-3xl">
+                  Hold the catalog up against a global standard (ILO, ISSA, World Bank), a computed reference (GCC average,
+                  global best-practice) or a single peer country. Every branch is scored on the same 0–100 scale, so gaps
+                  are directly comparable.
+                </p>
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
+                <Scale size={10} />
+                RFI 2.E-6 · TDRA-aligned measures
+              </div>
+            </div>
+
+            <BenchmarkCockpit
+              services={services}
+              intl={intlServices}
+              comparator={comparator}
+              setComparator={setComparator}
+              comparatorOptions={allOptions}
+              comparatorLoading={comparatorLoading}
+              loading={loading}
+            />
+          </section>
+        </div>
       </div>
 
       {/* ─── Stat Bar ─── */}
@@ -1033,7 +1272,7 @@ export default function ServiceCatalogPage() {
             )}
             {detailModal.strengths && detailModal.strengths.length > 0 && (
               <div>
-                <span className="text-xs font-medium text-cream block mb-2 flex items-center gap-1.5"><CheckCircle2 size={11} className="text-gpssa-green" />Strengths</span>
+                <span className="text-xs font-medium text-cream mb-2 flex items-center gap-1.5"><CheckCircle2 size={11} className="text-gpssa-green" />Strengths</span>
                 <div className="flex flex-wrap gap-1.5">
                   {detailModal.strengths.map((s, i) => <Badge key={i} variant="green" size="sm">{s}</Badge>)}
                 </div>
@@ -1041,7 +1280,7 @@ export default function ServiceCatalogPage() {
             )}
             {detailModal.painPoints && detailModal.painPoints.length > 0 && (
               <div>
-                <span className="text-xs font-medium text-cream block mb-2 flex items-center gap-1.5"><XCircle size={11} className="text-red-400" />Pain Points</span>
+                <span className="text-xs font-medium text-cream mb-2 flex items-center gap-1.5"><XCircle size={11} className="text-red-400" />Pain Points</span>
                 <div className="flex flex-wrap gap-1.5">
                   {detailModal.painPoints.map((pp, i) => <Badge key={i} variant="red" size="sm">{pp}</Badge>)}
                 </div>
@@ -1049,7 +1288,7 @@ export default function ServiceCatalogPage() {
             )}
             {detailModal.opportunities && detailModal.opportunities.length > 0 && (
               <div>
-                <span className="text-xs font-medium text-cream block mb-2 flex items-center gap-1.5"><Lightbulb size={11} className="text-gpssa-green" />Opportunities</span>
+                <span className="text-xs font-medium text-cream mb-2 flex items-center gap-1.5"><Lightbulb size={11} className="text-gpssa-green" />Opportunities</span>
                 <div className="flex flex-wrap gap-1.5">
                   {detailModal.opportunities.map((opp, i) => <Badge key={i} variant="green" size="sm">{opp}</Badge>)}
                 </div>
@@ -1103,11 +1342,8 @@ export default function ServiceCatalogPage() {
             <div className="flex justify-end pt-2 border-t border-white/[0.05]">
               <button
                 onClick={() => {
-                  if (!comparator) {
-                    setAct("benchmark");
-                  }
                   setDetailModal(null);
-                  setAct("benchmark");
+                  setTimeout(() => benchmarkRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gpssa-green/15 border border-gpssa-green/25 text-gpssa-green text-xs font-medium hover:bg-gpssa-green/25 transition-colors"
               >
@@ -1121,6 +1357,3 @@ export default function ServiceCatalogPage() {
     </div>
   );
 }
-
-/** Avoid unused-import warning on `CountryFlag` (kept for potential future use). */
-void CountryFlag;
