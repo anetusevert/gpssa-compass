@@ -1,7 +1,5 @@
 import { prisma } from "@/lib/db";
 
-const MAX_DIMENSION = 256;
-
 export class UploadService {
   async saveAvatar(userId: string, file: File): Promise<string> {
     const buffer = Buffer.from(await file.arrayBuffer());

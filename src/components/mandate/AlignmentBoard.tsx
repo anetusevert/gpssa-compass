@@ -253,14 +253,14 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
         buckets.delete(p);
       }
     }
-    for (const [pillar, items] of buckets) {
+    Array.from(buckets.entries()).forEach(([pillar, items]) => {
       ordered.push({
         pillar,
         label: SCREEN_PILLAR_LABELS[pillar] ?? pillar,
         color: SCREEN_COLOR[pillar] ?? "#FFFFFF",
         items,
       });
-    }
+    });
     return ordered;
   }, [payload]);
 

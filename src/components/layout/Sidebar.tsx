@@ -200,7 +200,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 pt-2 pb-1 scrollbar-none">
-        {NAV_SECTIONS.map((section, sectionIndex) => {
+        {NAV_SECTIONS.map((section) => {
           if (section.adminOnly && userRole !== "admin") return null;
 
           return (
