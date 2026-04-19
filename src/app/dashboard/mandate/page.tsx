@@ -22,7 +22,6 @@ import {
   Scale,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { MandateHero } from "@/components/mandate/MandateHero";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -229,14 +228,9 @@ export default function MandateHubPage() {
         </motion.p>
       </header>
 
-      {/* Slim count strip */}
-      <div className="shrink-0 px-4 md:px-6">
-        <MandateHero counts={counts} />
-      </div>
-
       {/* Centered 4-tile grid (home-page PillarTile style) */}
-      <div className="min-h-0 flex-1 px-4 pb-4 pt-4 md:px-6 md:pb-6">
-        <div className="mx-auto grid h-full max-w-6xl grid-cols-2 items-stretch justify-items-stretch gap-3 sm:grid-cols-4">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-4 pb-4 pt-2 md:px-6 md:pb-6">
+        <div className="mx-auto grid w-full max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {tiles.map((tile, i) => (
             <PillarTile key={tile.href} tile={tile} index={i} />
           ))}
@@ -257,7 +251,7 @@ function PillarTile({ tile, index }: { tile: TileDef; index: number }) {
 
   return (
     <motion.div
-      className="relative h-full min-h-[320px] md:min-h-[360px]"
+      className="relative aspect-[3/4] w-full"
       initial={{ opacity: 0, y: 24, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.55, ease: EASE, delay: 0.1 + index * 0.08 }}
@@ -270,7 +264,7 @@ function PillarTile({ tile, index }: { tile: TileDef; index: number }) {
         onFocus={() => setHovered(true)}
         onBlur={() => setHovered(false)}
         aria-label={`${tile.title} — ${tile.preview.headline}`}
-        className="glass-pillar group relative h-full w-full overflow-hidden rounded-[20px] text-left"
+        className="glass-pillar group absolute inset-0 overflow-hidden rounded-[20px] text-left"
         whileHover={reduceMotion ? undefined : { y: -6, scale: 1.02 }}
         whileTap={reduceMotion ? undefined : { scale: 0.98 }}
       >
@@ -309,28 +303,28 @@ function PillarTile({ tile, index }: { tile: TileDef; index: number }) {
 
         {/* Resting content — dims when hovered so the overlay reads cleanly */}
         <motion.div
-          className="relative z-10 flex h-full flex-col items-center justify-between gap-3 px-5 py-7 text-center"
+          className="relative z-10 flex h-full flex-col items-center justify-between gap-2 px-4 py-5 text-center"
           animate={{ opacity: hovered ? 0.18 : 1 }}
           transition={{ duration: overlayDuration, ease: EASE }}
         >
           {/* Icon + title block */}
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center gap-2.5">
             <motion.div
-              className="flex h-14 w-14 items-center justify-center rounded-2xl"
+              className="flex h-12 w-12 items-center justify-center rounded-2xl"
               style={{
                 background: `linear-gradient(135deg, ${tile.accent}28, ${tile.accent}08)`,
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.2)",
               }}
             >
               <Icon
-                size={28}
+                size={22}
                 style={{ color: tile.accent }}
                 strokeWidth={1.4}
               />
             </motion.div>
 
             <div>
-              <h3 className="font-playfair text-xl font-bold text-cream">
+              <h3 className="font-playfair text-lg font-bold text-cream">
                 {tile.title}
               </h3>
               <p className="mt-0.5 line-clamp-2 text-[11px] text-white/40">
