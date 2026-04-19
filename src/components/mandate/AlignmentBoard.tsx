@@ -320,7 +320,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
   // "N involved" badge on collapsed pillar headers.
   const pillarInvolvement = useMemo(() => {
     const m = new Map<string, Set<string>>();
-    for (const id of highlight.articles) {
+    for (const id of Array.from(highlight.articles)) {
       const a = articleById.get(id);
       if (!a) continue;
       const key = a.pillar ?? "other";
