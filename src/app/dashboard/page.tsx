@@ -149,14 +149,10 @@ function MandateBar() {
           <Scale size={18} className="text-[#00A86B]" strokeWidth={1.6} />
         </div>
 
-        <div className="flex flex-1 items-center gap-3">
+        <div className="flex flex-1 items-center">
           <h3 className="font-playfair text-lg font-bold text-cream">
             Mandate
           </h3>
-          <span className="hidden sm:inline-block h-4 w-px bg-white/10" />
-          <p className="hidden sm:block text-xs text-white/40">
-            The legal foundation, decoded and aligned to RFI&nbsp;-02-2026
-          </p>
         </div>
 
         <div className="hidden md:flex items-center gap-1.5 mr-2">
@@ -227,14 +223,10 @@ function AtlasBar() {
           <Globe size={18} className="text-[#00A86B]" strokeWidth={1.6} />
         </div>
 
-        <div className="flex flex-1 items-center gap-3">
+        <div className="flex flex-1 items-center">
           <h3 className="font-playfair text-lg font-bold text-cream">
             Global Atlas
           </h3>
-          <span className="hidden sm:inline-block h-4 w-px bg-white/10" />
-          <p className="hidden sm:block text-xs text-white/40">
-            Worldwide intelligence across 196 nations
-          </p>
         </div>
 
         <div className="hidden md:flex items-center gap-1.5 mr-2">
