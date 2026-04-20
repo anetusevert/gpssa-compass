@@ -211,15 +211,15 @@ model ScoringWeight {
 }
 
 model Institution {
-  id                    String                      @id @default(cuid())
-  name                  String                      @unique
+  id                    String                         @id @default(cuid())
+  name                  String                         @unique
   shortName             String?
   country               String
   countryCode           String
   region                String
   countryId             String?
-  countryRef            Country?                    @relation(fields: [countryId], references: [id])
-  isBenchmarkTarget     Boolean                     @default(false)
+  countryRef            Country?                       @relation(fields: [countryId], references: [id])
+  isBenchmarkTarget     Boolean                        @default(false)
   description           String?
   services              String?
   digitalMaturity       String?
@@ -229,15 +229,16 @@ model Institution {
   strengths             String?
   gaps                  String?
   transferablePractices String?
-  createdAt             DateTime                    @default(now())
-  updatedAt             DateTime                    @updatedAt
-  benchmarksAs          BenchmarkReport[]           @relation("BenchmarkTarget")
-  benchmarksOf          BenchmarkReport[]           @relation("BenchmarkComparison")
-  benchmarkDatasets     BenchmarkDataset[]          @relation("BenchmarkTargetInstitution")
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
+  benchmarksAs          BenchmarkReport[]              @relation("BenchmarkTarget")
+  benchmarksOf          BenchmarkReport[]              @relation("BenchmarkComparison")
+  benchmarkDatasets     BenchmarkDataset[]             @relation("BenchmarkTargetInstitution")
   benchmarkScores       BenchmarkInstitutionScore[]
   sourceCitations       InstitutionSourceCitation[]
   internationalServices InternationalService[]
   internationalProducts InternationalProduct[]
+  internationalChannels InternationalDeliveryChannel[]
 
   @@index([countryCode])
   @@index([countryId])
@@ -539,22 +540,25 @@ model DataSource {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  serviceCitations       ServiceSourceCitation[]
-  institutionCitations   InstitutionSourceCitation[]
-  opportunityCitations   OpportunitySourceCitation[]
-  requirementCitations   RequirementSourceCitation[]
-  productCitations       ProductSourceCitation[]
-  segmentCitations       SegmentSourceCitation[]
-  innovationCitations    InnovationSourceCitation[]
-  channelCitations       ChannelSourceCitation[]
-  personaCitations       PersonaSourceCitation[]
-  deliveryModelCitations DeliveryModelSourceCitation[]
-  intlServiceCitations   IntlServiceCitation[]
-  intlProductCitations   IntlProductCitation[]
-  intlSegmentCitations   IntlSegmentCitation[]
-  countryCitations       CountrySourceCitation[]
-  standardCitations      StandardSourceCitation[]
-  complianceCitations    StandardComplianceSourceCitation[]
+  serviceCitations           ServiceSourceCitation[]
+  institutionCitations       InstitutionSourceCitation[]
+  opportunityCitations       OpportunitySourceCitation[]
+  requirementCitations       RequirementSourceCitation[]
+  productCitations           ProductSourceCitation[]
+  segmentCitations           SegmentSourceCitation[]
+  innovationCitations        InnovationSourceCitation[]
+  channelCitations           ChannelSourceCitation[]
+  personaCitations           PersonaSourceCitation[]
+  deliveryModelCitations     DeliveryModelSourceCitation[]
+  intlServiceCitations       IntlServiceCitation[]
+  intlProductCitations       IntlProductCitation[]
+  intlSegmentCitations       IntlSegmentCitation[]
+  intlChannelCitations       IntlChannelCitation[]
+  intlPersonaCitations       IntlPersonaCitation[]
+  intlDeliveryModelCitations IntlDeliveryModelCitation[]
+  countryCitations           CountrySourceCitation[]
+  standardCitations          StandardSourceCitation[]
+  complianceCitations        StandardComplianceSourceCitation[]
 }
 
 model CountrySourceCitation {
@@ -974,6 +978,122 @@ model IntlSegmentCitation {
   source       DataSource                   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@unique([segmentId, sourceId])
+  @@index([sourceId])
+}
+
+// ── International Delivery Models (per-country mirrors of the GPSSA Delivery pillar) ──
+
+model InternationalDeliveryChannel {
+  id                  String                @id @default(cuid())
+  countryIso3         String
+  institutionId       String?
+  institution         Institution?          @relation(fields: [institutionId], references: [id])
+  name                String
+  channelType         String
+  maturity            Float                 @default(0)
+  servicesAvailable   Int                   @default(0)
+  servicesTotal       Int                   @default(0)
+  status              String                @default("Active")
+  capabilities        String?
+  strengths           String?
+  gaps                String?
+  benchmarkComparison String?
+  researchStatus      String                @default("pending")
+  researchSource      String?
+  sourceCitations     IntlChannelCitation[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@unique([countryIso3, name])
+  @@index([countryIso3])
+  @@index([institutionId])
+}
+
+model InternationalCustomerPersona {
+  id                String                @id @default(cuid())
+  countryIso3       String
+  name              String
+  headline          String?
+  ageRange          String?
+  city              String?
+  occupation        String?
+  incomeRange       String?
+  description       String?
+  needs             String?
+  coverageMap       String?
+  segment           String?
+  journeyHighlights String?
+  channelPreference String?
+  researchStatus    String                @default("pending")
+  researchSource    String?
+  sourceCitations   IntlPersonaCitation[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@unique([countryIso3, name])
+  @@index([countryIso3])
+}
+
+model InternationalDeliveryModel {
+  id                String                      @id @default(cuid())
+  countryIso3       String
+  name              String
+  description       String?
+  channelMix        String?
+  targetSegments    String?
+  maturity          Float                       @default(0)
+  enablers          String?
+  risks             String?
+  benchmarkExamples String?
+  researchStatus    String                      @default("pending")
+  researchSource    String?
+  sourceCitations   IntlDeliveryModelCitation[]
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  @@unique([countryIso3, name])
+  @@index([countryIso3])
+}
+
+model IntlChannelCitation {
+  id           String                       @id @default(cuid())
+  channelId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime                     @default(now())
+  channel      InternationalDeliveryChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  source       DataSource                   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, sourceId])
+  @@index([sourceId])
+}
+
+model IntlPersonaCitation {
+  id           String                       @id @default(cuid())
+  personaId    String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime                     @default(now())
+  persona      InternationalCustomerPersona @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  source       DataSource                   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([personaId, sourceId])
+  @@index([sourceId])
+}
+
+model IntlDeliveryModelCitation {
+  id              String                     @id @default(cuid())
+  deliveryModelId String
+  sourceId        String
+  citation        String?
+  evidenceNote    String?
+  createdAt       DateTime                   @default(now())
+  deliveryModel   InternationalDeliveryModel @relation(fields: [deliveryModelId], references: [id], onDelete: Cascade)
+  source          DataSource                 @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([deliveryModelId, sourceId])
   @@index([sourceId])
 }
 

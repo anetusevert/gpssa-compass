@@ -1,6 +1,30 @@
 import { prisma } from "@/lib/db";
 import type { ScreenType, ResearchSource } from "../types";
 import { createSourcesAndCitations } from "./sources";
+import { LABOR_SEGMENTS, resolveSegment } from "@/lib/taxonomy/segments";
+
+// One-shot legacy migration: any SegmentCoverage row whose `segment` matches
+// a known legacyAlias gets renamed to its canonical label. Idempotent — once
+// rows are migrated, subsequent calls find no matches.
+let __legacyMigrated = false;
+async function migrateLegacySegmentLabels() {
+  if (__legacyMigrated) return;
+  __legacyMigrated = true;
+  for (const seg of LABOR_SEGMENTS) {
+    if (seg.legacyAliases.length === 0) continue;
+    try {
+      await prisma.segmentCoverage.updateMany({
+        where: { segment: { in: seg.legacyAliases } },
+        data: { segment: seg.label },
+      });
+    } catch (err) {
+      // Tolerate unique-constraint conflicts when both old + new rows exist;
+      // they'll be reconciled on next research run via upsert-by-(segment,coverageType).
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`[migrateLegacySegmentLabels] skipped ${seg.slug}:`, message);
+    }
+  }
+}
 
 export async function writeProductsPortfolio(
   results: Record<string, unknown>[],
@@ -49,11 +73,18 @@ export async function writeProductsSegments(
   results: Record<string, unknown>[],
   agentLabel: string
 ): Promise<number> {
+  await migrateLegacySegmentLabels();
+
   let written = 0;
   for (const r of results) {
-    const segment = String(r.segment ?? "");
+    const rawSegment = String(r.segment ?? "");
     const coverageType = String(r.coverageType ?? "");
-    if (!segment || !coverageType) continue;
+    if (!rawSegment || !coverageType) continue;
+
+    // Force canonical label so any "Saudi —" output from the LLM is rewritten
+    // to "National —" / "Expat —" / etc. before persistence.
+    const canonical = resolveSegment(rawSegment);
+    const segment = canonical?.label ?? rawSegment;
 
     const existing = await prisma.segmentCoverage.findFirst({
       where: { segment: { equals: segment, mode: "insensitive" }, coverageType },

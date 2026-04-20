@@ -9,6 +9,7 @@ import { servicesCatalogPrompt } from "./services-catalog";
 import { servicesChannelsPrompt } from "./services-channels";
 import { productsPortfolioPrompt } from "./products-portfolio";
 import { productsSegmentsPrompt } from "./products-segments";
+import { productsInnovationPrompt } from "./products-innovation";
 import { deliveryChannelsPrompt } from "./delivery-channels";
 import { deliveryPersonasPrompt } from "./delivery-personas";
 import { deliveryModelsPrompt } from "./delivery-models";
@@ -16,6 +17,9 @@ import { intlServicesCatalogPrompt } from "./intl-services-catalog";
 import { intlServicesChannelsPrompt } from "./intl-services-channels";
 import { intlProductsPortfolioPrompt } from "./intl-products-portfolio";
 import { intlProductsSegmentsPrompt } from "./intl-products-segments";
+import { intlDeliveryChannelsPrompt } from "./intl-delivery-channels";
+import { intlDeliveryPersonasPrompt } from "./intl-delivery-personas";
+import { intlDeliveryModelsPrompt } from "./intl-delivery-models";
 import { iloStandardsPrompt } from "./ilo-standards";
 import { standardsAuditorPrompt } from "./standards-auditor";
 
@@ -30,6 +34,7 @@ export const PROMPT_MODULES: Partial<Record<ScreenType, PromptModule>> = {
   "services-channels": servicesChannelsPrompt,
   "products-portfolio": productsPortfolioPrompt,
   "products-segments": productsSegmentsPrompt,
+  "products-innovation": productsInnovationPrompt,
   "delivery-channels": deliveryChannelsPrompt,
   "delivery-personas": deliveryPersonasPrompt,
   "delivery-models": deliveryModelsPrompt,
@@ -37,6 +42,9 @@ export const PROMPT_MODULES: Partial<Record<ScreenType, PromptModule>> = {
   "intl-services-channels": intlServicesChannelsPrompt,
   "intl-products-portfolio": intlProductsPortfolioPrompt,
   "intl-products-segments": intlProductsSegmentsPrompt,
+  "intl-delivery-channels": intlDeliveryChannelsPrompt,
+  "intl-delivery-personas": intlDeliveryPersonasPrompt,
+  "intl-delivery-models": intlDeliveryModelsPrompt,
   "ilo-standards": iloStandardsPrompt,
   "standards-auditor": standardsAuditorPrompt,
 };

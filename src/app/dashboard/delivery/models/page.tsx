@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Cpu,
   Building2,
@@ -13,6 +13,7 @@ import {
   Users2,
   Layers,
   TrendingUp,
+  ArrowLeftRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
@@ -21,6 +22,8 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 import { StandardChips } from "@/components/comparator/StandardChips";
+import { CountrySelector } from "@/components/comparison/CountrySelector";
+import { COUNTRIES } from "@/lib/countries/catalog";
 
 type MaturityLevel = "High" | "Medium" | "Low";
 
@@ -115,10 +118,46 @@ function safeParse(raw: unknown): string[] {
   return [];
 }
 
+interface IntlDeliveryModel {
+  id: string;
+  countryIso3: string;
+  name: string;
+  description: string | null;
+  channelMix: string | null;
+  targetSegments: string | null;
+  maturity: number;
+  enablers: string | null;
+  risks: string | null;
+  benchmarkExamples: string | null;
+}
+
 export default function DeliveryModelsPage() {
   const [models, setModels] = useState<DeliveryModelRecord[]>(STATIC_MODELS);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<DeliveryModelRecord | null>(null);
+  const [comparisonCountries, setComparisonCountries] = useState<string[]>([]);
+  const [intlModels, setIntlModels] = useState<IntlDeliveryModel[]>([]);
+  const comparisonCountry = comparisonCountries[0] ?? null;
+  const comparisonCountryName = comparisonCountry
+    ? COUNTRIES.find((c) => c.iso3 === comparisonCountry)?.name ?? null
+    : null;
+
+  const loadIntlModels = useCallback(() => {
+    if (!comparisonCountry) {
+      setIntlModels([]);
+      return;
+    }
+    fetch(`/api/international/delivery/models?countries=${comparisonCountry}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setIntlModels(data as IntlDeliveryModel[]);
+      })
+      .catch(() => setIntlModels([]));
+  }, [comparisonCountry]);
+
+  useEffect(() => {
+    loadIntlModels();
+  }, [loadIntlModels]);
 
   const loadModels = useCallback(() => {
     fetch("/api/delivery/models", { cache: "no-store" })
@@ -149,6 +188,10 @@ export default function DeliveryModelsPage() {
   useResearchUpdates({
     targetScreens: ["delivery-models"],
     onComplete: () => loadModels(),
+  });
+  useResearchUpdates({
+    targetScreens: ["intl-delivery-models"],
+    onComplete: () => loadIntlModels(),
   });
 
   if (loading) {
@@ -181,6 +224,12 @@ export default function DeliveryModelsPage() {
         <div className="ml-auto hidden md:flex items-center gap-2">
           <span className="text-[9px] uppercase tracking-[0.2em] text-gray-muted">Mapped to</span>
           <StandardChips slugs={["wb-govtech-maturity", "issa-good-governance"]} size="xs" />
+          <CountrySelector
+            selected={comparisonCountries}
+            onChange={setComparisonCountries}
+            maxSelections={1}
+            variant="inline"
+          />
         </div>
       </div>
 
@@ -244,6 +293,61 @@ export default function DeliveryModelsPage() {
             );
           })}
         </div>
+
+        <AnimatePresence>
+          {comparisonCountry && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              className="mt-4 glass-card rounded-xl p-4 border border-white/10"
+            >
+              <div className="flex items-center gap-2 mb-3 text-xs text-gray-muted">
+                <ArrowLeftRight className="w-3.5 h-3.5 text-gpssa-green" />
+                <span className="font-medium text-cream/90">
+                  Comparator delivery models — {comparisonCountryName ?? comparisonCountry}
+                </span>
+                <span className="opacity-60">{intlModels.length} models</span>
+              </div>
+              {intlModels.length === 0 ? (
+                <div className="text-xs text-gray-muted py-4 text-center">
+                  No data yet — run the International Delivery Models agent to populate this country.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {intlModels.map((m) => {
+                    const lvl = maturityLevel(Number(m.maturity ?? 0));
+                    return (
+                      <div key={m.id} className="rounded-lg p-3 bg-navy-light/40 border border-white/10">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div className="font-medium text-sm text-cream">{m.name}</div>
+                          <Badge variant={maturityVariant(lvl)} size="sm" dot>
+                            {lvl}
+                          </Badge>
+                        </div>
+                        {m.description && (
+                          <p className="text-[11px] text-gray-muted line-clamp-3 mb-2">{m.description}</p>
+                        )}
+                        {m.channelMix && (
+                          <p className="text-[10px] text-cream/70">
+                            <span className="text-adl-blue">Channels: </span>
+                            {m.channelMix}
+                          </p>
+                        )}
+                        {m.benchmarkExamples && (
+                          <p className="text-[10px] text-cream/60 mt-1 line-clamp-2">
+                            <span className="text-gpssa-green">Benchmarks: </span>
+                            {m.benchmarkExamples}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <StatBar items={stats} />

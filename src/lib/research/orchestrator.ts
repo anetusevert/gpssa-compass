@@ -42,6 +42,9 @@ export const PILLAR_SCREENS: Record<PillarKey, ScreenName[]> = {
     "intl-services-channels",
     "intl-products-portfolio",
     "intl-products-segments",
+    "intl-delivery-channels",
+    "intl-delivery-personas",
+    "intl-delivery-models",
   ],
   ilo: ["ilo-standards"],
 };

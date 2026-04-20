@@ -1,11 +1,54 @@
 import { prisma } from "@/lib/db";
 import { COUNTRIES } from "@/lib/countries/catalog";
+import { LABOR_SEGMENTS } from "@/lib/taxonomy/segments";
 import type { ScreenType } from "./types";
+
+// Coverage columns must mirror products/segments page COVERAGE_COLUMNS.
+const COVERAGE_COLUMNS = [
+  "Retirement Coverage",
+  "Occupational Hazard",
+  "Unemployment",
+  "Housing Security",
+  "Health Security",
+  "Maternity",
+  "Disability",
+  "Survivors",
+] as const;
+
+// Labor-market spine for the GPSSA segment matrix. Cross-cutting cohorts
+// (youth, gig, retirees, guardians) are excluded — they're surfaced via
+// Personas, not the coverage matrix.
+const MATRIX_SEGMENT_SLUGS = [
+  "national-formal",
+  "national-self-employed",
+  "national-informal",
+  "expat-formal",
+  "expat-domestic",
+  "expat-other",
+  "gcc-mobile",
+  "military-security",
+] as const;
 
 export interface DispatchItem {
   key: string;
   label: string;
   context?: string;
+}
+
+/**
+ * Idempotent: seeds the Country table with the canonical catalog if empty.
+ * Used by every screen that fans out per-country.
+ */
+async function ensureCountryCatalog(): Promise<void> {
+  const total = await prisma.country.count();
+  if (total > 0) return;
+  for (const c of COUNTRIES) {
+    await prisma.country.upsert({
+      where: { iso3: c.iso3 },
+      update: {},
+      create: { iso3: c.iso3, iso2: c.iso2, name: c.name, flag: c.flag, region: c.region, subRegion: c.subRegion },
+    });
+  }
 }
 
 async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]> {
@@ -52,17 +95,7 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
               ? "insightsStatus"
               : "researchStatus";
 
-      // Ensure full catalog is upserted before dispatching
-      const total = await prisma.country.count();
-      if (total === 0) {
-        for (const c of COUNTRIES) {
-          await prisma.country.upsert({
-            where: { iso3: c.iso3 },
-            update: {},
-            create: { iso3: c.iso3, iso2: c.iso2, name: c.name, flag: c.flag, region: c.region, subRegion: c.subRegion },
-          });
-        }
-      }
+      await ensureCountryCatalog();
 
       const countries = await prisma.country.findMany({
         where: { [statusField]: { in: ["pending", "failed"] } } as Record<string, unknown>,
@@ -92,16 +125,7 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
 
     case "services-catalog":
     case "services-channels": {
-      const total = await prisma.country.count();
-      if (total === 0) {
-        for (const c of COUNTRIES) {
-          await prisma.country.upsert({
-            where: { iso3: c.iso3 },
-            update: {},
-            create: { iso3: c.iso3, iso2: c.iso2, name: c.name, flag: c.flag, region: c.region, subRegion: c.subRegion },
-          });
-        }
-      }
+      await ensureCountryCatalog();
       const allCountries = await prisma.country.findMany({
         select: { iso3: true, name: true },
         orderBy: { name: "asc" },
@@ -133,12 +157,46 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
       return DEFAULT_PRODUCTS.map((p) => ({ key: p.name, label: p.name, context: p.tier }));
     }
 
-    case "products-segments": {
-      return DEFAULT_SEGMENTS.map((s) => ({
-        key: `${s.segment}::${s.coverageType}`,
-        label: s.segment,
-        context: s.coverageType,
+    case "products-innovation": {
+      // Re-research existing innovations first (so iterative refinement works);
+      // fall back to the canonical theme list when the table is empty.
+      const existing = await prisma.productInnovation.findMany({
+        where: { researchStatus: { in: ["pending", "failed"] } },
+        select: { id: true, title: true, innovationType: true },
+        orderBy: { title: "asc" },
+      });
+      if (existing.length > 0) {
+        return existing.map((i) => ({
+          key: i.id,
+          label: i.title,
+          context: i.innovationType ?? undefined,
+        }));
+      }
+      return DEFAULT_INNOVATION_THEMES.map((t) => ({
+        key: t.title,
+        label: t.title,
+        context: t.focus,
       }));
+    }
+
+    case "products-segments": {
+      // Build a full Emirati matrix: every spine segment x every coverage column.
+      // The agent gets one item per (segment, coverageType) pair so the matrix
+      // is comprehensive rather than the previous 9-cell partial.
+      const items: DispatchItem[] = [];
+      const matrixSegments = LABOR_SEGMENTS.filter((s) =>
+        (MATRIX_SEGMENT_SLUGS as readonly string[]).includes(s.slug)
+      ).sort((a, b) => a.sortOrder - b.sortOrder);
+      for (const seg of matrixSegments) {
+        for (const col of COVERAGE_COLUMNS) {
+          items.push({
+            key: `${seg.label}::${col}`,
+            label: seg.label,
+            context: col,
+          });
+        }
+      }
+      return items;
     }
 
     case "delivery-channels": {
@@ -178,8 +236,7 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
     }
 
     case "intl-services-catalog":
-    case "intl-services-channels":
-    case "intl-products-portfolio": {
+    case "intl-services-channels": {
       const institutions = await prisma.institution.findMany({
         select: { id: true, name: true, country: true, countryCode: true },
         orderBy: { name: "asc" },
@@ -190,8 +247,110 @@ async function getItemsForScreen(screenType: ScreenType): Promise<DispatchItem[]
       return DEFAULT_INTL_INSTITUTIONS.map((i) => ({ key: i.key, label: i.label, context: i.country }));
     }
 
+    case "intl-products-portfolio": {
+      // Fan out across all 193 UN countries. Prefer institution-driven items
+      // when an institution is on file for the country (gives the LLM a
+      // concrete entity to research); otherwise dispatch the country itself
+      // and let the LLM pick the principal social-security institution.
+      // Pending-only filter: skip countries that already have InternationalProduct rows.
+      await ensureCountryCatalog();
+      const allCountries = await prisma.country.findMany({
+        select: { iso3: true, name: true },
+        orderBy: { name: "asc" },
+      });
+      const completedRows = await prisma.internationalProduct.groupBy({
+        by: ["countryIso3"],
+        where: { researchStatus: "completed" },
+        _count: { _all: true },
+      });
+      const completedSet = new Set(completedRows.map((r) => r.countryIso3));
+      const pendingCountries = allCountries.filter((c) => !completedSet.has(c.iso3));
+      const target = pendingCountries.length > 0 ? pendingCountries : allCountries;
+
+      const institutions = await prisma.institution.findMany({
+        select: { id: true, name: true, country: true, countryCode: true },
+      });
+      const instByCountry = new Map<string, { id: string; name: string; country: string }>();
+      for (const i of institutions) {
+        if (i.countryCode) instByCountry.set(i.countryCode, i);
+      }
+
+      return target.map((c) => {
+        const inst = instByCountry.get(c.iso3);
+        return inst
+          ? { key: inst.id, label: inst.name, context: c.name }
+          : { key: c.iso3, label: c.name, context: c.name };
+      });
+    }
+
     case "intl-products-segments": {
-      return DEFAULT_INTL_COUNTRIES.map((c) => ({ key: c.iso3, label: c.name, context: c.region }));
+      // Fan out across all 193 UN countries. One LLM call per country produces
+      // the full segment x coverage-type matrix for that country.
+      await ensureCountryCatalog();
+      const allCountries = await prisma.country.findMany({
+        select: { iso3: true, name: true, region: true },
+        orderBy: { name: "asc" },
+      });
+      const completedRows = await prisma.internationalSegmentCoverage.groupBy({
+        by: ["countryIso3"],
+        where: { researchStatus: "completed" },
+        _count: { _all: true },
+      });
+      const completedSet = new Set(completedRows.map((r) => r.countryIso3));
+      const pending = allCountries.filter((c) => !completedSet.has(c.iso3));
+      const target = pending.length > 0 ? pending : allCountries;
+      return target.map((c) => ({ key: c.iso3, label: c.name, context: c.region ?? undefined }));
+    }
+
+    case "intl-delivery-channels": {
+      await ensureCountryCatalog();
+      const allCountries = await prisma.country.findMany({
+        select: { iso3: true, name: true, region: true },
+        orderBy: { name: "asc" },
+      });
+      const completedRows = await prisma.internationalDeliveryChannel.groupBy({
+        by: ["countryIso3"],
+        where: { researchStatus: "completed" },
+        _count: { _all: true },
+      });
+      const completedSet = new Set(completedRows.map((r) => r.countryIso3));
+      const pending = allCountries.filter((c) => !completedSet.has(c.iso3));
+      const target = pending.length > 0 ? pending : allCountries;
+      return target.map((c) => ({ key: c.iso3, label: c.name, context: c.region ?? undefined }));
+    }
+
+    case "intl-delivery-personas": {
+      await ensureCountryCatalog();
+      const allCountries = await prisma.country.findMany({
+        select: { iso3: true, name: true, region: true },
+        orderBy: { name: "asc" },
+      });
+      const completedRows = await prisma.internationalCustomerPersona.groupBy({
+        by: ["countryIso3"],
+        where: { researchStatus: "completed" },
+        _count: { _all: true },
+      });
+      const completedSet = new Set(completedRows.map((r) => r.countryIso3));
+      const pending = allCountries.filter((c) => !completedSet.has(c.iso3));
+      const target = pending.length > 0 ? pending : allCountries;
+      return target.map((c) => ({ key: c.iso3, label: c.name, context: c.region ?? undefined }));
+    }
+
+    case "intl-delivery-models": {
+      await ensureCountryCatalog();
+      const allCountries = await prisma.country.findMany({
+        select: { iso3: true, name: true, region: true },
+        orderBy: { name: "asc" },
+      });
+      const completedRows = await prisma.internationalDeliveryModel.groupBy({
+        by: ["countryIso3"],
+        where: { researchStatus: "completed" },
+        _count: { _all: true },
+      });
+      const completedSet = new Set(completedRows.map((r) => r.countryIso3));
+      const pending = allCountries.filter((c) => !completedSet.has(c.iso3));
+      const target = pending.length > 0 ? pending : allCountries;
+      return target.map((c) => ({ key: c.iso3, label: c.name, context: c.region ?? undefined }));
     }
 
     case "ilo-standards": {
@@ -297,6 +456,25 @@ const DEFAULT_SERVICES = [
   { name: "Submit Inquiry / Suggestion", category: "General" },
 ];
 
+// Canonical innovation themes for the GPSSA Product Innovation agent.
+// These are deliberately broad starter themes — the agent translates each
+// into a concrete, scored innovation idea (auto-enrolment wallet, parametric
+// occupational insurance, etc.) on the products-innovation screen.
+const DEFAULT_INNOVATION_THEMES = [
+  { title: "Digital pension wallet for nationals & expats", focus: "digital" },
+  { title: "Gig & platform-economy worker coverage", focus: "product" },
+  { title: "Voluntary defined-contribution top-up", focus: "product" },
+  { title: "Caregiver / non-working spouse coverage", focus: "product" },
+  { title: "Self-employed Emirati onboarding flow", focus: "experience" },
+  { title: "Long-term care benefit", focus: "product" },
+  { title: "Parametric occupational injury insurance", focus: "product" },
+  { title: "Pension-backed home financing", focus: "ecosystem" },
+  { title: "Retiree health wallet", focus: "product" },
+  { title: "Behavioural financial-wellness coaching", focus: "experience" },
+];
+
+// Mirrors STATIC_PRODUCTS in src/app/dashboard/products/portfolio/page.tsx
+// so the agent researches exactly the products the screen renders.
 const DEFAULT_PRODUCTS = [
   { name: "Retirement / Pension Coverage", tier: "Core" },
   { name: "Occupational Hazard Insurance", tier: "Core" },
@@ -308,18 +486,6 @@ const DEFAULT_PRODUCTS = [
   { name: "Savings & Investment Products", tier: "Non-Core" },
   { name: "Credit & Debt Counseling", tier: "Non-Core" },
   { name: "Financial Literacy Programs", tier: "Non-Core" },
-];
-
-const DEFAULT_SEGMENTS = [
-  { segment: "Saudi — Formal employment", coverageType: "Retirement Coverage" },
-  { segment: "Saudi — Formal employment", coverageType: "Occupational Hazard" },
-  { segment: "Saudi — Formal employment", coverageType: "Unemployment" },
-  { segment: "Saudi — Self-employed", coverageType: "Retirement Coverage" },
-  { segment: "Saudi — Self-employed", coverageType: "Health Security" },
-  { segment: "Saudi — Informal employment", coverageType: "Retirement Coverage" },
-  { segment: "Non-Saudi — Formal employment", coverageType: "Retirement Coverage" },
-  { segment: "Non-Saudi — Formal employment", coverageType: "Occupational Hazard" },
-  { segment: "Non-Saudi — Others", coverageType: "Retirement Coverage" },
 ];
 
 const DEFAULT_CHANNELS = [
@@ -360,19 +526,6 @@ const DEFAULT_INTL_INSTITUTIONS = [
   { key: "dwp", label: "Department for Work and Pensions (DWP)", country: "United Kingdom" },
   { key: "skais", label: "Social Insurance Board (SKAIS)", country: "Estonia" },
   { key: "bpjs", label: "BPJS Ketenagakerjaan", country: "Indonesia" },
-];
-
-const DEFAULT_INTL_COUNTRIES = [
-  { iso3: "SAU", name: "Saudi Arabia", region: "GCC" },
-  { iso3: "BHR", name: "Bahrain", region: "GCC" },
-  { iso3: "KWT", name: "Kuwait", region: "GCC" },
-  { iso3: "OMN", name: "Oman", region: "GCC" },
-  { iso3: "QAT", name: "Qatar", region: "GCC" },
-  { iso3: "SGP", name: "Singapore", region: "Asia-Pacific" },
-  { iso3: "AUS", name: "Australia", region: "Asia-Pacific" },
-  { iso3: "GBR", name: "United Kingdom", region: "Europe" },
-  { iso3: "EST", name: "Estonia", region: "Europe" },
-  { iso3: "IDN", name: "Indonesia", region: "Asia-Pacific" },
 ];
 
 const DEFAULT_ILO_STANDARDS = [

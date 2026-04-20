@@ -17,6 +17,9 @@ export type ScreenType =
   | "intl-services-channels"
   | "intl-products-portfolio"
   | "intl-products-segments"
+  | "intl-delivery-channels"
+  | "intl-delivery-personas"
+  | "intl-delivery-models"
   | "ilo-standards"
   | "standards-auditor";
 
@@ -39,6 +42,9 @@ export const ALL_SCREEN_TYPES: ScreenType[] = [
   "intl-services-channels",
   "intl-products-portfolio",
   "intl-products-segments",
+  "intl-delivery-channels",
+  "intl-delivery-personas",
+  "intl-delivery-models",
   "ilo-standards",
   "standards-auditor",
 ];
@@ -62,6 +68,9 @@ export const SCREEN_LABELS: Record<ScreenType, string> = {
   "intl-services-channels": "International — Channel Capabilities",
   "intl-products-portfolio": "International — Product Portfolios",
   "intl-products-segments": "International — Segment Coverage",
+  "intl-delivery-channels": "International — Delivery Channels",
+  "intl-delivery-personas": "International — Customer Personas",
+  "intl-delivery-models": "International — Delivery Models",
   "ilo-standards": "ILO & Global Standards",
   "standards-auditor": "Standards Auditor (GPSSA × Standards Library)",
 };
@@ -85,6 +94,9 @@ export const SCREEN_PILLAR: Record<ScreenType, string> = {
   "intl-services-channels": "international",
   "intl-products-portfolio": "international",
   "intl-products-segments": "international",
+  "intl-delivery-channels": "international",
+  "intl-delivery-personas": "international",
+  "intl-delivery-models": "international",
   "ilo-standards": "international",
   "standards-auditor": "standards",
 };

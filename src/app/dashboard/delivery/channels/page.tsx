@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutGrid,
   Smartphone,
@@ -12,6 +12,7 @@ import {
   Cpu,
   Share2,
   Megaphone,
+  ArrowLeftRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { KPIStrip, ChannelTile, DynamicPanel } from "@/components/delivery";
@@ -19,6 +20,8 @@ import type { ChannelData, DeliveryModelData } from "@/components/delivery";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 import { StandardChips } from "@/components/comparator/StandardChips";
 import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
+import { CountrySelector } from "@/components/comparison/CountrySelector";
+import { COUNTRIES } from "@/lib/countries/catalog";
 
 type ChannelStatus = "Active" | "Developing" | "Pilot" | "Planned";
 type MaturityLevel = "High" | "Medium" | "Low";
@@ -170,6 +173,49 @@ export default function DeliveryChannelsPage() {
   const [channels, setChannels] = useState<ChannelData[]>(STATIC_CHANNELS);
   const [models, setModels] = useState<DeliveryModelData[]>(STATIC_MODELS);
   const [selectedChannel, setSelectedChannel] = useState<ChannelData | null>(null);
+  const [comparisonCountries, setComparisonCountries] = useState<string[]>([]);
+  const [intlChannels, setIntlChannels] = useState<Record<string, unknown>[]>([]);
+  const comparisonCountry = comparisonCountries[0] ?? null;
+  const comparisonCountryName = comparisonCountry
+    ? COUNTRIES.find((c) => c.iso3 === comparisonCountry)?.name ?? null
+    : null;
+
+  const loadIntlChannels = useCallback(() => {
+    if (!comparisonCountry) {
+      setIntlChannels([]);
+      return;
+    }
+    fetch(`/api/international/delivery/channels?countries=${comparisonCountry}`, {
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setIntlChannels(data);
+      })
+      .catch(() => setIntlChannels([]));
+  }, [comparisonCountry]);
+
+  useEffect(() => {
+    loadIntlChannels();
+  }, [loadIntlChannels]);
+
+  const intlChannelTiles = useMemo<ChannelData[]>(() => {
+    if (!comparisonCountry || intlChannels.length === 0) return [];
+    return intlChannels.map((d) => ({
+      id: String(d.id),
+      name: String(d.name ?? ""),
+      subtitle: String(d.channelType ?? ""),
+      icon: ICON_MAP[String(d.name)] ?? LayoutGrid,
+      maturity: Number(d.maturity ?? 0),
+      servicesAvailable: Number(d.servicesAvailable ?? 0),
+      servicesTotal: Number(d.servicesTotal ?? 0),
+      status: (String(d.status ?? "Active") as ChannelStatus),
+      capabilities: String(d.capabilities ?? ""),
+      strengths: typeof d.strengths === "string" ? [d.strengths] : Array.isArray(d.strengths) ? d.strengths.map(String) : [],
+      gaps: typeof d.gaps === "string" ? [d.gaps] : Array.isArray(d.gaps) ? d.gaps.map(String) : [],
+      benchmarkComparison: d.benchmarkComparison ? String(d.benchmarkComparison) : null,
+    }));
+  }, [intlChannels, comparisonCountry]);
 
   const loadChannels = useCallback(() => {
     fetch("/api/delivery/channels", { cache: "no-store" })
@@ -239,6 +285,10 @@ export default function DeliveryChannelsPage() {
     targetScreens: ["delivery-models"],
     onComplete: () => loadModels(),
   });
+  useResearchUpdates({
+    targetScreens: ["intl-delivery-channels"],
+    onComplete: () => loadIntlChannels(),
+  });
 
   const handleSelect = useCallback(
     (channel: ChannelData) => {
@@ -277,6 +327,12 @@ export default function DeliveryChannelsPage() {
               screenPath="/dashboard/delivery/channels"
               entityIds={channels.map((c) => c.id)}
             />
+            <CountrySelector
+              selected={comparisonCountries}
+              onChange={setComparisonCountries}
+              maxSelections={1}
+              variant="inline"
+            />
           </div>
         </div>
         <KPIStrip
@@ -293,8 +349,8 @@ export default function DeliveryChannelsPage() {
       {/* Main content: grid + panel */}
       <div className="flex-1 min-h-0 flex gap-4 pt-4">
         {/* Channel grid */}
-        <div className="flex-[3] min-w-0">
-          <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 h-full auto-rows-fr">
+        <div className="flex-[3] min-w-0 flex flex-col gap-3">
+          <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 auto-rows-fr">
             {channels.map((channel, index) => (
               <ChannelTile
                 key={channel.id}
@@ -305,6 +361,42 @@ export default function DeliveryChannelsPage() {
               />
             ))}
           </div>
+
+          <AnimatePresence>
+            {comparisonCountry && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="glass-card rounded-xl p-3 border border-white/10"
+              >
+                <div className="flex items-center gap-2 mb-2 text-[11px] text-gray-muted">
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-gpssa-green" />
+                  <span className="font-medium text-cream/90">
+                    Comparator — {comparisonCountryName ?? comparisonCountry}
+                  </span>
+                  <span className="opacity-60">{intlChannelTiles.length} channels</span>
+                </div>
+                {intlChannelTiles.length === 0 ? (
+                  <div className="text-[11px] text-gray-muted py-3 text-center">
+                    No data yet — run the International Delivery Channels agent to populate this country.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">
+                    {intlChannelTiles.map((c, i) => (
+                      <ChannelTile
+                        key={c.id}
+                        channel={c}
+                        index={i}
+                        selected={false}
+                        onSelect={() => {}}
+                      />
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Dynamic panel */}

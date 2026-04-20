@@ -9,6 +9,8 @@ import {
   XCircle,
   Globe2,
   Sparkles,
+  ArrowLeftRight,
+  MapPin,
 } from "lucide-react";
 import { personas, getCoverageStatus, getCoverageLabel, type Persona } from "@/data/personas";
 import { PersonaCard, PersonaDetailModal } from "@/components/personas";
@@ -16,6 +18,8 @@ import type { ResearchedPersona } from "@/components/personas/PersonaDetailModal
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 import { StandardChips } from "@/components/comparator/StandardChips";
 import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
+import { CountrySelector } from "@/components/comparison/CountrySelector";
+import { COUNTRIES } from "@/lib/countries/catalog";
 
 const pageVariants = {
   initial: { opacity: 0 },
@@ -48,9 +52,48 @@ function normalizeName(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+interface IntlPersona {
+  id: string;
+  countryIso3: string;
+  name: string;
+  headline: string | null;
+  ageRange: string | null;
+  city: string | null;
+  occupation: string | null;
+  description: string | null;
+  needs: string | null;
+  segment: string | null;
+  channelPreference: string | null;
+  journeyHighlights: string | null;
+  coverageMap: string | null;
+}
+
 export default function CustomerPersonasPage() {
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [researched, setResearched] = useState<ResearchedPersona[]>([]);
+  const [comparisonCountries, setComparisonCountries] = useState<string[]>([]);
+  const [intlPersonas, setIntlPersonas] = useState<IntlPersona[]>([]);
+  const comparisonCountry = comparisonCountries[0] ?? null;
+  const comparisonCountryName = comparisonCountry
+    ? COUNTRIES.find((c) => c.iso3 === comparisonCountry)?.name ?? null
+    : null;
+
+  const loadIntlPersonas = useCallback(() => {
+    if (!comparisonCountry) {
+      setIntlPersonas([]);
+      return;
+    }
+    fetch(`/api/international/delivery/personas?countries=${comparisonCountry}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setIntlPersonas(data as IntlPersona[]);
+      })
+      .catch(() => setIntlPersonas([]));
+  }, [comparisonCountry]);
+
+  useEffect(() => {
+    loadIntlPersonas();
+  }, [loadIntlPersonas]);
 
   const loadPersonas = useCallback(() => {
     fetch("/api/delivery/personas", { cache: "no-store" })
@@ -82,6 +125,10 @@ export default function CustomerPersonasPage() {
   useResearchUpdates({
     targetScreens: ["delivery-personas"],
     onComplete: () => loadPersonas(),
+  });
+  useResearchUpdates({
+    targetScreens: ["intl-delivery-personas"],
+    onComplete: () => loadIntlPersonas(),
   });
 
   const researchedByName = useMemo(() => {
@@ -117,11 +164,17 @@ export default function CustomerPersonasPage() {
               <p className="text-[9px] sm:text-[10px] text-gray-muted truncate">
                 Ten segments aligned to ILO labor taxonomy — from full GPSSA pension to zero coverage.
               </p>
-              <div className="mt-1 hidden sm:flex sm:items-center sm:gap-2">
+              <div className="mt-1 hidden sm:flex sm:items-center sm:gap-2 sm:flex-wrap">
                 <StandardChips slugs={["ilo-c102", "ilo-r202"]} size="xs" max={2} />
                 <MandateBasisChip
                   screenPath="/dashboard/delivery/personas"
                   entityIds={personas.map((p) => p.id)}
+                />
+                <CountrySelector
+                  selected={comparisonCountries}
+                  onChange={setComparisonCountries}
+                  maxSelections={1}
+                  variant="inline"
                 />
               </div>
             </div>
@@ -148,7 +201,7 @@ export default function CustomerPersonasPage() {
       </header>
 
       {/* Cards Grid — fills remaining space */}
-      <main className="flex-1 min-h-0 flex items-center justify-center p-3 sm:p-4 lg:p-6 overflow-hidden">
+      <main className="flex-1 min-h-0 flex flex-col items-center justify-start p-3 sm:p-4 lg:p-6 overflow-auto gap-4">
         <motion.div
           variants={gridVariants}
           className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 w-full max-w-[1600px]"
@@ -162,6 +215,66 @@ export default function CustomerPersonasPage() {
             />
           ))}
         </motion.div>
+
+        <AnimatePresence>
+          {comparisonCountry && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              className="w-full max-w-[1600px] glass-card rounded-xl p-4 border border-white/10"
+            >
+              <div className="flex items-center gap-2 mb-3 text-xs text-gray-muted">
+                <ArrowLeftRight className="w-3.5 h-3.5 text-gpssa-green" />
+                <span className="font-medium text-cream/90">
+                  Comparator personas — {comparisonCountryName ?? comparisonCountry}
+                </span>
+                <span className="opacity-60">{intlPersonas.length} personas</span>
+              </div>
+              {intlPersonas.length === 0 ? (
+                <div className="text-xs text-gray-muted py-4 text-center">
+                  No data yet — run the International Customer Personas agent to populate this country.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {intlPersonas.map((p) => (
+                    <div
+                      key={p.id}
+                      className="rounded-lg p-3 bg-navy-light/40 border border-white/10 hover:border-teal/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="font-medium text-sm text-cream truncate">{p.name}</div>
+                        {p.ageRange && (
+                          <span className="text-[10px] text-gray-muted whitespace-nowrap">{p.ageRange}</span>
+                        )}
+                      </div>
+                      {p.headline && (
+                        <p className="text-[11px] text-cream/80 italic mb-2 line-clamp-2">{p.headline}</p>
+                      )}
+                      {(p.occupation || p.city) && (
+                        <div className="flex items-center gap-2 text-[10px] text-gray-muted mb-2">
+                          {p.occupation && <span className="truncate">{p.occupation}</span>}
+                          {p.city && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-2.5 h-2.5" />
+                              {p.city}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {p.description && (
+                        <p className="text-[11px] text-gray-muted line-clamp-3 mb-2">{p.description}</p>
+                      )}
+                      {p.segment && (
+                        <div className="text-[10px] text-teal/80 truncate">{p.segment}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Modal */}
