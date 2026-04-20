@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
+import { useCompassTourStore } from "@/components/tour/tour-store";
 import Image from "next/image";
 import {
   Globe, GitCompare, Layers, Radio,
@@ -63,6 +64,9 @@ export function PageTransitionLoader() {
     }
     if (pathname !== prevPath.current) {
       prevPath.current = pathname;
+      if (useCompassTourStore.getState().suppressTransitionLoader) {
+        return;
+      }
       setRoute(getRoute(pathname));
       setVisible(true);
       const t = setTimeout(() => setVisible(false), 750);

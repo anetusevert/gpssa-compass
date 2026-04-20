@@ -194,12 +194,17 @@ export function Sidebar() {
         </AnimatePresence>
       </Link>
 
-      <BriefingTrigger collapsed={collapsed} />
+      <div data-tour="compass-briefing">
+        <BriefingTrigger collapsed={collapsed} />
+      </div>
 
       <div className="mx-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 pt-2 pb-1 scrollbar-none">
+      <nav
+        data-tour="compass-sidebar-nav"
+        className="flex-1 overflow-y-auto px-2 pt-2 pb-1 scrollbar-none"
+      >
         {NAV_SECTIONS.map((section) => {
           if (section.adminOnly && userRole !== "admin") return null;
 

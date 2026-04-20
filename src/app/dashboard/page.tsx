@@ -18,8 +18,10 @@ import {
   ArrowRight,
   X,
   Scale,
+  Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useCompassTourStore } from "@/components/tour/tour-store";
 
 function greetingFor(date: Date): string {
   const h = date.getHours();
@@ -109,6 +111,8 @@ function MandateBar() {
 
   return (
     <motion.button
+      type="button"
+      data-tour="compass-mandate-bar"
       onClick={() => router.push("/dashboard/mandate")}
       className="shimmer-border glass-bar group relative w-full overflow-hidden rounded-2xl text-left"
       initial={{ opacity: 0, y: -20, scale: 0.98 }}
@@ -192,6 +196,8 @@ function AtlasBar() {
 
   return (
     <motion.button
+      type="button"
+      data-tour="compass-atlas-bar"
       onClick={() => router.push("/dashboard/atlas")}
       className="shimmer-border glass-bar group relative w-full overflow-hidden rounded-2xl text-left"
       initial={{ opacity: 0, y: -20, scale: 0.98 }}
@@ -545,6 +551,7 @@ function PillarModal({
 
 export default function DashboardHome() {
   const { data: session } = useSession();
+  const replayTour = useCompassTourStore((s) => s.replay);
   const rawName = (session?.user?.name ?? "there").split(" ")[0];
   const userName = rawName.split(".")[0];
   const [openPillar, setOpenPillar] = useState<string | null>(null);
@@ -608,6 +615,18 @@ export default function DashboardHome() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, ease: EASE }}
       >
+        <div className="mb-3 flex justify-center">
+          <motion.button
+            type="button"
+            onClick={() => replayTour()}
+            className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45 transition-colors hover:border-[var(--gpssa-green)]/35 hover:bg-white/[0.07] hover:text-white/75"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Sparkles size={11} className="text-[var(--gpssa-green)]/90" strokeWidth={2} />
+            Guided tour
+          </motion.button>
+        </div>
         <p className="mb-1 text-[11px] font-medium tracking-[0.24em] text-white/30 uppercase">
           {dateString}
         </p>
@@ -623,7 +642,10 @@ export default function DashboardHome() {
       <div className="relative z-10 w-full max-w-3xl px-6 space-y-3">
         <AtlasBar />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-3">
+        <div
+          className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-3"
+          data-tour="compass-pillar-grid"
+        >
           {PILLARS.map((pillar, i) => (
             <PillarTile
               key={pillar.id}

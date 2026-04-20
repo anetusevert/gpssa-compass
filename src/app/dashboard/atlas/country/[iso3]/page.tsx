@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -258,15 +258,18 @@ function SubAgentStatusBanner({
   systemStatus,
   performanceStatus,
   insightsStatus,
+  autoDispatched,
 }: {
   systemStatus?: string;
   performanceStatus?: string;
   insightsStatus?: string;
+  autoDispatched?: string[];
 }) {
+  const dispatchedSet = new Set(autoDispatched ?? []);
   const items = [
-    { label: "System", status: systemStatus ?? "pending" },
-    { label: "Performance", status: performanceStatus ?? "pending" },
-    { label: "Insights", status: insightsStatus ?? "pending" },
+    { label: "System", status: systemStatus ?? "pending", screen: "atlas-system" },
+    { label: "Performance", status: performanceStatus ?? "pending", screen: "atlas-performance" },
+    { label: "Insights", status: insightsStatus ?? "pending", screen: "atlas-insights" },
   ];
   const completed = items.filter((i) => i.status === "completed").length;
   if (completed === 3) return null;
@@ -279,23 +282,31 @@ function SubAgentStatusBanner({
       <div className="flex items-center gap-3">
         {items.map((i) => {
           const ok = i.status === "completed";
+          const auto = !ok && dispatchedSet.has(i.screen);
           return (
             <span key={i.label} className="flex items-center gap-1.5">
               {ok ? (
                 <CheckCircle2 size={11} className="text-gpssa-green" />
               ) : i.status === "failed" ? (
                 <AlertCircle size={11} className="text-red-400" />
+              ) : auto ? (
+                <Loader2 size={11} className="text-amber-400 animate-spin" />
               ) : (
                 <Circle size={11} className="text-white/30" />
               )}
-              <span className={ok ? "text-white/70" : "text-white/40"}>{i.label}</span>
+              <span className={ok ? "text-white/70" : auto ? "text-amber-300" : "text-white/40"}>
+                {i.label}
+                {auto && <span className="ml-1 text-[9px] uppercase tracking-wider text-amber-400/70">researching</span>}
+              </span>
             </span>
           );
         })}
       </div>
       {completed < 3 && (
         <span className="text-white/30 ml-auto hidden sm:inline">
-          Some tiles will populate as the remaining sub-agents finish researching this country.
+          {autoDispatched && autoDispatched.length > 0
+            ? "Sub-agents are running now — tiles will populate live as research completes."
+            : "Some tiles will populate as the remaining sub-agents finish researching this country."}
         </span>
       )}
     </div>
@@ -312,6 +323,62 @@ function MetricSnippet({ label, value }: { label: string; value?: string | null 
   );
 }
 
+type TilePendingState = "running" | "pending" | "failed" | "completed";
+
+function TilePending({
+  state,
+  message,
+  onResearch,
+  isResearching = false,
+}: {
+  state: TilePendingState;
+  message?: string;
+  onResearch?: () => void;
+  isResearching?: boolean;
+}) {
+  const isRunning = state === "running" || isResearching;
+  const isFailed = state === "failed";
+  const Icon = isRunning ? Loader2 : isFailed ? AlertCircle : Clock;
+  const iconClass = isRunning
+    ? "text-amber-400 animate-spin"
+    : isFailed
+      ? "text-red-400"
+      : "text-white/30";
+  const label = isRunning
+    ? "Sub-agent researching..."
+    : isFailed
+      ? "Research failed"
+      : "Awaiting research";
+  const fallback = isRunning
+    ? "Tile will populate as soon as the agent finishes."
+    : isFailed
+      ? "The previous run failed. Re-run the agent to fill this tile."
+      : "No data yet for this country.";
+
+  return (
+    <div className="flex h-full flex-col items-start justify-center gap-2 py-2">
+      <div className="flex items-center gap-2">
+        <Icon size={13} className={iconClass} />
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/55">{label}</p>
+      </div>
+      <p className="text-xs text-white/40 leading-snug line-clamp-3">{message ?? fallback}</p>
+      {onResearch && !isRunning && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onResearch();
+          }}
+          className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-amber-400/30 bg-amber-400/[0.08] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-300 hover:bg-amber-400/15 transition-colors"
+        >
+          <Sparkles size={10} />
+          Research now
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ─── Main page ─── */
 
 export default function CountryDetailPage() {
@@ -323,6 +390,8 @@ export default function CountryDetailPage() {
   const [dbData, setDbData] = useState<DbCountry | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<InsightCategory | null>(null);
+  const [autoDispatched, setAutoDispatched] = useState<string[]>([]);
+  const autoDispatchRef = useRef<string | null>(null);
 
   const loadCountry = useCallback(async (silent = false) => {
     if (!iso3) return;
@@ -332,6 +401,34 @@ export default function CountryDetailPage() {
       const res = await fetch(`/api/countries/${iso3}`, { cache: "no-store" });
       if (!res.ok) throw new Error("not found");
       let data: DbCountry = await res.json();
+
+      const missingScreens: string[] = [];
+      if (data.systemStatus !== "completed") missingScreens.push("atlas-system");
+      if (data.performanceStatus !== "completed") missingScreens.push("atlas-performance");
+      if (data.insightsStatus !== "completed") missingScreens.push("atlas-insights");
+      if (data.researchStatus !== "completed") missingScreens.push("atlas-worldmap");
+
+      if (missingScreens.length > 0 && autoDispatchRef.current !== iso3) {
+        autoDispatchRef.current = iso3;
+        try {
+          const dispatchRes = await fetch(`/api/research/screen-jobs/by-country`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ iso3, screenTypes: missingScreens }),
+          });
+          if (dispatchRes.ok) {
+            const result = await dispatchRes.json();
+            const dispatchedScreens: string[] = (result?.dispatched ?? []).map(
+              (d: { screenType: string }) => d.screenType
+            );
+            if (dispatchedScreens.length > 0) {
+              setAutoDispatched(dispatchedScreens);
+            }
+          }
+        } catch (err) {
+          console.warn("[country-page] auto-dispatch failed", err);
+        }
+      }
 
       const needsRewrite =
         data.maturityScore == null &&
@@ -396,16 +493,35 @@ export default function CountryDetailPage() {
   const institutions = dbData?.institutions ?? [];
   const accentColor = profile ? maturityBadgeColor(profile.maturityLabel) : "#4A9EFF";
   const isGPSSA = iso3 === "ARE";
-  const summaryMetrics = [
-    { label: "Maturity", value: profile.maturityScore.toFixed(1), sub: "/4", color: maturityBadgeColor(profile.maturityLabel) },
-    { label: "Coverage", value: `${profile.coverageRate}%`, sub: "", color: scoreColor(profile.coverageRate, 100) },
-    { label: "Replacement", value: `${profile.replacementRate}%`, sub: "", color: scoreColor(profile.replacementRate, 100) },
-    { label: "Sustainability", value: profile.sustainability.toFixed(1), sub: "/4", color: scoreColor(profile.sustainability, 4) },
-  ];
 
   const handleBack = useCallback(() => {
     router.push("/dashboard/atlas");
   }, [router]);
+
+  const triggerResearch = useCallback(
+    async (screens: string[]) => {
+      if (!iso3) return;
+      try {
+        const res = await fetch(`/api/research/screen-jobs/by-country`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ iso3, screenTypes: screens, force: true }),
+        });
+        if (res.ok) {
+          const result = await res.json();
+          const dispatchedScreens: string[] = (result?.dispatched ?? []).map(
+            (d: { screenType: string }) => d.screenType
+          );
+          if (dispatchedScreens.length > 0) {
+            setAutoDispatched((prev) => Array.from(new Set([...prev, ...dispatchedScreens])));
+          }
+        }
+      } catch (err) {
+        console.warn("[country-page] manual research dispatch failed", err);
+      }
+    },
+    [iso3]
+  );
 
   if (loading) {
     return (
@@ -432,6 +548,13 @@ export default function CountryDetailPage() {
       </div>
     );
   }
+
+  const summaryMetrics = [
+    { label: "Maturity", value: profile.maturityScore.toFixed(1), sub: "/4", color: maturityBadgeColor(profile.maturityLabel) },
+    { label: "Coverage", value: `${profile.coverageRate}%`, sub: "", color: scoreColor(profile.coverageRate, 100) },
+    { label: "Replacement", value: `${profile.replacementRate}%`, sub: "", color: scoreColor(profile.replacementRate, 100) },
+    { label: "Sustainability", value: profile.sustainability.toFixed(1), sub: "/4", color: scoreColor(profile.sustainability, 4) },
+  ];
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -478,6 +601,7 @@ export default function CountryDetailPage() {
         systemStatus={dbData?.systemStatus}
         performanceStatus={dbData?.performanceStatus}
         insightsStatus={dbData?.insightsStatus}
+        autoDispatched={autoDispatched}
       />
 
       {/* Main content — 3 rows */}
@@ -592,7 +716,11 @@ export default function CountryDetailPage() {
               ) : dbData?.insightsStatus === "completed" ? (
                 <p className="text-xs text-white/25 italic">No distinctive insights captured yet.</p>
               ) : (
-                <p className="text-xs text-white/25 italic">Insights agent has not run for this country yet.</p>
+                <TilePending
+                  state={(dbData?.insightsStatus as TilePendingState) ?? "pending"}
+                  isResearching={autoDispatched.includes("atlas-insights")}
+                  onResearch={() => triggerResearch(["atlas-insights"])}
+                />
               )}
             </div>
           </Tile>
@@ -601,10 +729,20 @@ export default function CountryDetailPage() {
           <Tile onClick={() => setSelectedCategory("reforms")} delay={0.25}>
             <TileHeader icon={RefreshCw} label="Latest Reforms" color="text-adl-blue/70" />
             <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
-              {profile.legislativeFramework && (
-                <p className="text-[10px] text-white/30 mb-2 line-clamp-1">{profile.legislativeFramework}</p>
+              {(profile.recentReforms?.length ?? 0) > 0 ? (
+                <>
+                  {profile.legislativeFramework && (
+                    <p className="text-[10px] text-white/30 mb-2 line-clamp-1">{profile.legislativeFramework}</p>
+                  )}
+                  <BulletList items={profile.recentReforms ?? []} max={3} color="#4A9EFF" />
+                </>
+              ) : (
+                <TilePending
+                  state={(dbData?.systemStatus as TilePendingState) ?? "pending"}
+                  isResearching={autoDispatched.includes("atlas-system")}
+                  onResearch={() => triggerResearch(["atlas-system"])}
+                />
               )}
-              <BulletList items={profile.recentReforms ?? []} max={3} color="#4A9EFF" />
             </div>
           </Tile>
 
@@ -620,9 +758,19 @@ export default function CountryDetailPage() {
           <Tile onClick={() => setSelectedCategory("fiscal")} delay={0.35}>
             <TileHeader icon={BarChart3} label="Fiscal & Demographics" color="text-teal-400/70" />
             <div className="flex-1 p-3.5 xl:p-4 overflow-hidden space-y-2">
-              <MetricSnippet label="Social Protection Expenditure" value={profile.socialProtectionExpenditure} />
-              <MetricSnippet label="Dependency Ratio" value={profile.dependencyRatio} />
-              <MetricSnippet label="Pension Fund Assets" value={profile.pensionFundAssets} />
+              {profile.socialProtectionExpenditure || profile.dependencyRatio || profile.pensionFundAssets ? (
+                <>
+                  <MetricSnippet label="Social Protection Expenditure" value={profile.socialProtectionExpenditure} />
+                  <MetricSnippet label="Dependency Ratio" value={profile.dependencyRatio} />
+                  <MetricSnippet label="Pension Fund Assets" value={profile.pensionFundAssets} />
+                </>
+              ) : (
+                <TilePending
+                  state={(dbData?.performanceStatus as TilePendingState) ?? "pending"}
+                  isResearching={autoDispatched.includes("atlas-performance")}
+                  onResearch={() => triggerResearch(["atlas-performance"])}
+                />
+              )}
             </div>
           </Tile>
         </div>
@@ -634,9 +782,19 @@ export default function CountryDetailPage() {
           <Tile onClick={() => setSelectedCategory("benefit")} delay={0.4}>
             <TileHeader icon={Calculator} label="Benefit Design" color="text-purple-400/70" />
             <div className="flex-1 p-3.5 xl:p-4 overflow-hidden space-y-2">
-              <MetricSnippet label="Benefit Formula" value={profile.benefitCalculation} />
-              <MetricSnippet label="Vesting Period" value={profile.vestingPeriod} />
-              <MetricSnippet label="Indexation" value={profile.indexationMechanism} />
+              {profile.benefitCalculation || profile.vestingPeriod || profile.indexationMechanism ? (
+                <>
+                  <MetricSnippet label="Benefit Formula" value={profile.benefitCalculation} />
+                  <MetricSnippet label="Vesting Period" value={profile.vestingPeriod} />
+                  <MetricSnippet label="Indexation" value={profile.indexationMechanism} />
+                </>
+              ) : (
+                <TilePending
+                  state={(dbData?.systemStatus as TilePendingState) ?? "pending"}
+                  isResearching={autoDispatched.includes("atlas-system")}
+                  onResearch={() => triggerResearch(["atlas-system"])}
+                />
+              )}
             </div>
           </Tile>
 
@@ -647,7 +805,11 @@ export default function CountryDetailPage() {
               {profile.fundManagement ? (
                 <p className="text-xs text-white/55 line-clamp-6 leading-relaxed">{profile.fundManagement}</p>
               ) : (
-                <p className="text-xs text-white/25 italic">Fund management data pending</p>
+                <TilePending
+                  state={(dbData?.systemStatus as TilePendingState) ?? "pending"}
+                  isResearching={autoDispatched.includes("atlas-system")}
+                  onResearch={() => triggerResearch(["atlas-system"])}
+                />
               )}
             </div>
           </Tile>
@@ -678,7 +840,11 @@ export default function CountryDetailPage() {
                   )}
                 </>
               ) : (
-                <p className="text-xs text-white/25 italic">Rankings data pending</p>
+                <TilePending
+                  state={(dbData?.performanceStatus as TilePendingState) ?? "pending"}
+                  isResearching={autoDispatched.includes("atlas-performance")}
+                  onResearch={() => triggerResearch(["atlas-performance"])}
+                />
               )}
             </div>
           </Tile>

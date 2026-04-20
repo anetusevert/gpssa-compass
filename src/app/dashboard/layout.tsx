@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar, useSidebarStore } from "@/components/layout/Sidebar";
 import { PageTransitionLoader } from "@/components/ui/PageTransitionLoader";
 import { BriefingDeck } from "@/components/briefing/BriefingDeck";
+import { CompassTour } from "@/components/tour/CompassTour";
 
 const SIDEBAR_EXPANDED = 260;
 const SIDEBAR_COLLAPSED = 56;
@@ -53,6 +54,7 @@ export default function DashboardLayout({
       </motion.main>
       <PageTransitionLoader />
       <BriefingDeck />
+      <CompassTour />
     </div>
   );
 }

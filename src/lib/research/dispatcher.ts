@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { COUNTRIES } from "@/lib/countries/catalog";
 import type { ScreenType } from "./types";
 
-interface DispatchItem {
+export interface DispatchItem {
   key: string;
   label: string;
   context?: string;
@@ -233,6 +233,25 @@ export async function createScreenResearchJob(
   if (items.length === 0) {
     throw new Error(`No items to research for screen: ${screenType}`);
   }
+
+  return createScreenResearchJobForItems(agentConfigId, items, model);
+}
+
+export async function createScreenResearchJobForItems(
+  agentConfigId: string,
+  items: DispatchItem[],
+  model?: string
+): Promise<string> {
+  const agent = await prisma.agentConfig.findUnique({ where: { id: agentConfigId } });
+  if (!agent || !agent.targetScreen) {
+    throw new Error("Agent not found or has no targetScreen assigned");
+  }
+
+  if (items.length === 0) {
+    throw new Error(`No items provided for screen: ${agent.targetScreen}`);
+  }
+
+  const screenType = agent.targetScreen as ScreenType;
 
   const job = await prisma.researchJob.create({
     data: {

@@ -409,6 +409,7 @@ export default function GlobalAtlasPage() {
 
       {/* ── CINEMATIC MAP CONTAINER ── */}
       <div
+        data-tour="compass-atlas-map"
         className="relative w-full h-full rounded-2xl overflow-hidden"
         style={{ background: "rgba(8,18,38,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}
       >

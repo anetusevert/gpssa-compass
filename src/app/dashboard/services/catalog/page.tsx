@@ -968,7 +968,11 @@ export default function ServiceCatalogPage() {
         <div className="px-5 py-5 space-y-10 max-w-[1480px] mx-auto">
 
           {/* ╔════ Section 1 — At a Glance ════╗ */}
-          <section ref={overviewRef} className="scroll-mt-4">
+          <section
+            ref={overviewRef}
+            className="scroll-mt-4"
+            data-tour="compass-catalog-glance"
+          >
             <div className="flex items-end justify-between gap-4 mb-4">
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">
