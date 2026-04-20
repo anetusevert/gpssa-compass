@@ -621,7 +621,6 @@ export default function DashboardHome() {
 
       {/* Main content */}
       <div className="relative z-10 w-full max-w-3xl px-6 space-y-3">
-        <MandateBar />
         <AtlasBar />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-3">
@@ -634,6 +633,8 @@ export default function DashboardHome() {
             />
           ))}
         </div>
+
+        <MandateBar />
       </div>
 
       {/* Footer */}

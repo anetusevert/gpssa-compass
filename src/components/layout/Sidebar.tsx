@@ -56,16 +56,6 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: "MANDATE",
-    prefix: "/dashboard/mandate",
-    color: "var(--gpssa-green)",
-    glow: "rgba(0,168,107,0.14)",
-    items: [
-      { label: "Mandate", href: "/dashboard/mandate", icon: Scale },
-      { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
-    ],
-  },
-  {
     title: "GLOBAL ATLAS",
     prefix: "/dashboard/atlas",
     color: "var(--gpssa-green)",
@@ -103,6 +93,16 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Channels", href: "/dashboard/delivery/channels", icon: Truck },
       { label: "Personas", href: "/dashboard/delivery/personas", icon: UserCircle },
+    ],
+  },
+  {
+    title: "MANDATE",
+    prefix: "/dashboard/mandate",
+    color: "var(--gpssa-green)",
+    glow: "rgba(0,168,107,0.14)",
+    items: [
+      { label: "Mandate", href: "/dashboard/mandate", icon: Scale },
+      { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
     ],
   },
   {
