@@ -77,7 +77,7 @@ export function Slide02_Outline({ total }: Slide02Props) {
         >
           <Sparkles size={13} className="shrink-0 text-[#33C490]/80" />
           <p className="text-[12.5px] uppercase tracking-[0.22em] text-white/55">
-            GPSSA's ambition · deliver social security at global benchmark quality
+            GPSSA&apos;s ambition · deliver social security at global benchmark quality
           </p>
           <Sparkles size={13} className="shrink-0 text-[#33C490]/80" />
         </motion.div>
@@ -171,7 +171,7 @@ export function Slide02_Outline({ total }: Slide02Props) {
 
                   <div className="relative z-10 mt-1 text-[11px] text-white/55">
                     <div className="text-[9px] uppercase tracking-[0.22em] text-white/40">
-                      What you'll see
+                      What you&apos;ll see
                     </div>
                     <p className="mt-1 leading-snug">{c.preview}</p>
                   </div>
