@@ -107,13 +107,8 @@ export function BriefingTrigger({ collapsed }: BriefingTriggerProps) {
           />
         </span>
 
-        <span className="relative z-10 flex flex-col leading-tight">
-          <span className="text-[12px] font-semibold text-cream">
-            Executive Briefing
-          </span>
-          <span className="text-[9px] uppercase tracking-[0.18em] text-white/45">
-            10-slide story
-          </span>
+        <span className="relative z-10 text-[12px] font-semibold leading-tight text-cream">
+          Executive Briefing
         </span>
 
         <Sparkles
