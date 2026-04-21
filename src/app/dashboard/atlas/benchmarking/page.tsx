@@ -9,17 +9,19 @@ export default async function BenchmarkingPage() {
 
   if (!workspace) {
     return (
-      <Card variant="glass" padding="lg">
-        <div className="flex min-h-[320px] flex-col items-center justify-center text-center">
-          <h2 className="font-playfair text-2xl font-semibold text-cream">
-            Benchmark dataset unavailable
-          </h2>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-gray-muted">
-            Seed the benchmark dataset to render the redesigned benchmarking stage and its
-            evidence-backed comparison views.
-          </p>
-        </div>
-      </Card>
+      <div data-tour="compass-benchmark-workspace">
+        <Card variant="glass" padding="lg">
+          <div className="flex min-h-[320px] flex-col items-center justify-center text-center">
+            <h2 className="font-playfair text-2xl font-semibold text-cream">
+              Benchmark dataset unavailable
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-gray-muted">
+              Seed the benchmark dataset to render the redesigned benchmarking stage and its
+              evidence-backed comparison views.
+            </p>
+          </div>
+        </Card>
+      </div>
     );
   }
 

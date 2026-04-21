@@ -149,6 +149,7 @@ export default function CustomerPersonasPage() {
       initial="initial"
       animate="animate"
       className="h-full flex flex-col overflow-hidden"
+      data-tour="compass-personas-surface"
     >
       {/* Compact Header */}
       <header className="flex-shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 border-b border-white/10 bg-navy/50 backdrop-blur-sm">

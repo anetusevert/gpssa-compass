@@ -673,6 +673,7 @@ export function BenchmarkingWorkspace({ workspace }: { workspace: BenchmarkWorks
 
       <motion.div
         key={viewMode}
+        data-tour="compass-benchmark-workspace"
         initial={{ opacity: 0, y: 12, scale: 0.99 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: EASE }}

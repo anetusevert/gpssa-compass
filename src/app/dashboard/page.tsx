@@ -641,7 +641,7 @@ export default function DashboardHome() {
         </h1>
         <p className="mt-2 text-sm text-white/35">
           {isDemo
-            ? "Welcome to the GPSSA Compass — explore the platform freely."
+            ? "Welcome to GPSSA Intelligence — explore the platform freely."
             : "Social Insurance & Pension Knowledge Intelligence"}
         </p>
       </motion.header>

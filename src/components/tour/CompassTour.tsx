@@ -12,12 +12,22 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Sparkles } from "lucide-react";
+import { useBriefingStore } from "@/components/briefing/store";
 import { useCompassTourStore } from "./tour-store";
 import { COMPASS_TOUR_STEPS, COMPASS_TOUR_STEP_COUNT } from "./tour-steps";
 import { shouldAutoStartTour } from "./tour-storage";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const PAD = 10;
+
+const SELECTOR_REMOUNT_PATHS = new Set([
+  "/dashboard/atlas",
+  "/dashboard/services/catalog",
+  "/dashboard/atlas/benchmarking",
+  "/dashboard/products/portfolio",
+  "/dashboard/delivery/personas",
+  "/dashboard/mandate/rfi-alignment",
+]);
 
 function pathMatches(stepPath: string, pathname: string): boolean {
   if (stepPath === "/dashboard") return pathname === "/dashboard";
@@ -75,10 +85,11 @@ export function CompassTour() {
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const primaryBtnRef = useRef<HTMLButtonElement>(null);
+  const finaleBriefingRef = useRef<HTMLButtonElement>(null);
   const autoOfferedRef = useRef(false);
 
   const step = COMPASS_TOUR_STEPS[stepIndex] ?? COMPASS_TOUR_STEPS[0];
-  const isLast = stepIndex >= COMPASS_TOUR_STEP_COUNT - 1;
+  const isFinale = Boolean(step.finale);
 
   useEffect(() => {
     setMounted(true);
@@ -142,16 +153,11 @@ export function CompassTour() {
     };
   }, [active, remeasure]);
 
-  /* Atlas / catalog paint heavy content after route — re-measure briefly */
+  /* Heavy pages paint after route — re-measure briefly */
   useEffect(() => {
     if (!active) return;
     if (step.target.kind !== "selector") return;
-    if (
-      pathname !== "/dashboard/services/catalog" &&
-      pathname !== "/dashboard/atlas"
-    ) {
-      return;
-    }
+    if (!SELECTOR_REMOUNT_PATHS.has(pathname)) return;
     const id = window.setInterval(remeasure, 400);
     const stop = window.setTimeout(() => window.clearInterval(id), 6000);
     return () => {
@@ -174,15 +180,26 @@ export function CompassTour() {
 
   useEffect(() => {
     if (!active) return;
-    const t = window.setTimeout(() => primaryBtnRef.current?.focus(), 80);
+    const t = window.setTimeout(() => {
+      if (isFinale) finaleBriefingRef.current?.focus();
+      else primaryBtnRef.current?.focus();
+    }, 80);
     return () => window.clearTimeout(t);
-  }, [active, stepIndex]);
+  }, [active, isFinale, stepIndex]);
+
+  const openBriefingAndFinish = useCallback(() => {
+    complete();
+    queueMicrotask(() => {
+      useBriefingStore.getState().openDeck();
+    });
+  }, [complete]);
+
+  const exploreApplication = useCallback(() => {
+    complete();
+  }, [complete]);
 
   const goNext = useCallback(() => {
-    if (isLast) {
-      complete();
-      return;
-    }
+    if (step.finale) return;
     const next = stepIndex + 1;
     const nxt = COMPASS_TOUR_STEPS[next];
     if (!pathMatches(nxt.path, pathname)) {
@@ -193,12 +210,11 @@ export function CompassTour() {
     }
     setStepIndex(next);
   }, [
-    complete,
-    isLast,
     pathname,
     router,
     setStepIndex,
     setSuppressTransitionLoader,
+    step.finale,
     stepIndex,
   ]);
 
@@ -352,7 +368,7 @@ export function CompassTour() {
                 />
                 <div className="relative flex items-center justify-between gap-3 mb-4">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
-                    Guided tour · {String(stepIndex + 1).padStart(2, "0")} /{" "}
+                    GPSSA Intelligence · {String(stepIndex + 1).padStart(2, "0")} /{" "}
                     {String(COMPASS_TOUR_STEP_COUNT).padStart(2, "0")}
                   </span>
                   <Sparkles
@@ -380,36 +396,66 @@ export function CompassTour() {
                     </p>
                   </motion.div>
                 </AnimatePresence>
-                <div className="relative flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={closeSkip}
-                    className="text-[11px] font-medium uppercase tracking-wider text-white/35 hover:text-white/55 transition-colors mr-auto"
-                  >
-                    Skip tour · Esc
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goPrev}
-                    disabled={stepIndex === 0 || pendingStep !== null}
-                    className="rounded-xl border border-white/[0.1] px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/[0.06] disabled:opacity-35 disabled:pointer-events-none transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    ref={primaryBtnRef}
-                    type="button"
-                    onClick={goNext}
-                    disabled={pendingStep !== null}
-                    className="rounded-xl px-4 py-2 text-xs font-semibold text-[#071322] disabled:opacity-40 disabled:pointer-events-none transition-transform active:scale-[0.98]"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, var(--gpssa-green), color-mix(in srgb, var(--gpssa-green) 70%, #0a2840))",
-                      boxShadow: "0 8px 24px rgba(0,168,107,0.25)",
-                    }}
-                  >
-                    {isLast ? "Finish" : "Next"}
-                  </button>
+                <div className="relative flex flex-col gap-3">
+                  {isFinale ? (
+                    <div className="flex flex-col gap-2">
+                      <button
+                        ref={finaleBriefingRef}
+                        type="button"
+                        onClick={openBriefingAndFinish}
+                        disabled={pendingStep !== null}
+                        className="w-full rounded-xl px-4 py-3 text-xs font-semibold text-[#071322] disabled:opacity-40 disabled:pointer-events-none transition-transform active:scale-[0.98]"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, var(--gpssa-green), color-mix(in srgb, var(--gpssa-green) 70%, #0a2840))",
+                          boxShadow: "0 8px 24px rgba(0,168,107,0.25)",
+                        }}
+                      >
+                        Open Executive Briefing
+                      </button>
+                      <button
+                        type="button"
+                        onClick={exploreApplication}
+                        disabled={pendingStep !== null}
+                        className="w-full rounded-xl border border-white/[0.12] px-4 py-3 text-xs font-semibold text-cream/90 hover:bg-white/[0.06] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                      >
+                        Explore the application
+                      </button>
+                    </div>
+                  ) : null}
+                  <div className="relative flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={closeSkip}
+                      className="text-[11px] font-medium uppercase tracking-wider text-white/35 hover:text-white/55 transition-colors mr-auto"
+                    >
+                      Skip tour · Esc
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goPrev}
+                      disabled={stepIndex === 0 || pendingStep !== null}
+                      className="rounded-xl border border-white/[0.1] px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/[0.06] disabled:opacity-35 disabled:pointer-events-none transition-colors"
+                    >
+                      Back
+                    </button>
+                    {!isFinale ? (
+                      <button
+                        ref={primaryBtnRef}
+                        type="button"
+                        onClick={goNext}
+                        disabled={pendingStep !== null}
+                        className="rounded-xl px-4 py-2 text-xs font-semibold text-[#071322] disabled:opacity-40 disabled:pointer-events-none transition-transform active:scale-[0.98]"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, var(--gpssa-green), color-mix(in srgb, var(--gpssa-green) 70%, #0a2840))",
+                          boxShadow: "0 8px 24px rgba(0,168,107,0.25)",
+                        }}
+                      >
+                        Next
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </motion.div>
             </div>
@@ -420,13 +466,15 @@ export function CompassTour() {
     );
   }, [
     active,
+    closeSkip,
+    exploreApplication,
     goNext,
     goPrev,
-    closeSkip,
     handleDialogPointerDown,
     hole,
-    isLast,
+    isFinale,
     mounted,
+    openBriefingAndFinish,
     pendingStep,
     reduceMotion,
     step.id,

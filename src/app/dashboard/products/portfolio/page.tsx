@@ -562,7 +562,10 @@ export default function ProductPortfolioPage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div
+      className="flex h-full flex-col overflow-hidden"
+      data-tour="compass-products-portfolio"
+    >
       {/* Header */}
       <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-white/[0.06]">
         <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Product Portfolio</h1>
