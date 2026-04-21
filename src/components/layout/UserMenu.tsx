@@ -42,10 +42,12 @@ export function UserMenu({ collapsed }: UserMenuProps) {
 
   const isDemo = user?.userType === "demo";
   // For demo accounts the always-visible identity stays neutral so we can
-  // hand the same login to multiple client viewers without leaking a name.
-  const displayName = isDemo ? "Demo Account" : user?.name || "User";
-  const displayEmail = isDemo ? "Client preview" : user?.email;
-  const avatarInitial = isDemo ? "D" : (user?.name || "U").charAt(0).toUpperCase();
+  // hand the same login to multiple client viewers without leaking a name
+  // or inbox. The avatar is hardwired to the GPSSA logo.
+  const displayName = isDemo ? "GPSSA" : user?.name || "User";
+  const displayEmail = isDemo ? "" : user?.email;
+  const avatarInitial = isDemo ? "G" : (user?.name || "U").charAt(0).toUpperCase();
+  const DEMO_AVATAR_SRC = "/images/gpssa-logo.png";
 
   useEffect(() => {
     if (user?.name) setName(user.name);
@@ -140,7 +142,13 @@ export function UserMenu({ collapsed }: UserMenuProps) {
           collapsed ? "justify-center px-1 py-1.5" : "gap-2.5 px-2.5 py-1.5"
         }`}
       >
-        {user?.avatar && !isDemo ? (
+        {isDemo ? (
+          <img
+            src={DEMO_AVATAR_SRC}
+            alt="GPSSA"
+            className="w-7 h-7 rounded-full object-contain bg-white shrink-0 ring-1 ring-white/10"
+          />
+        ) : user?.avatar ? (
           <img
             src={user.avatar}
             alt={displayName}
@@ -157,9 +165,11 @@ export function UserMenu({ collapsed }: UserMenuProps) {
               <p className="text-sm font-medium text-cream truncate">
                 {displayName}
               </p>
-              <p className="text-[11px] text-gray-muted truncate">
-                {displayEmail}
-              </p>
+              {displayEmail && (
+                <p className="text-[11px] text-gray-muted truncate">
+                  {displayEmail}
+                </p>
+              )}
             </div>
             <ChevronUp
               size={14}
@@ -183,40 +193,62 @@ export function UserMenu({ collapsed }: UserMenuProps) {
             style={{ width: collapsed ? 280 : undefined, minWidth: 260 }}
           >
             <div className="p-4">
-              {/* Avatar */}
-              <div className="flex justify-center mb-4">
-                <label className="relative cursor-pointer group">
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleAvatarUpload(f);
-                    }}
-                  />
-                  {user?.avatar && !isDemo ? (
-                    <img
-                      src={user.avatar}
-                      alt={displayName}
-                      className="w-16 h-16 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gpssa-green/30 to-adl-blue/30 flex items-center justify-center text-cream text-xl font-bold">
-                      {avatarInitial}
+              {/* Avatar — demo accounts get a hardwired GPSSA logo with no
+                  upload affordance, name, or email. */}
+              <div className="flex flex-col items-center mb-4">
+                {isDemo ? (
+                  <>
+                    <div className="w-16 h-16 rounded-full bg-white p-1 ring-1 ring-white/10 flex items-center justify-center">
+                      <img
+                        src={DEMO_AVATAR_SRC}
+                        alt="GPSSA"
+                        className="w-full h-full rounded-full object-contain"
+                      />
                     </div>
-                  )}
-                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    {uploadingAvatar ? (
-                      <Loader2 size={18} className="text-cream animate-spin" />
+                    <p className="mt-3 text-sm font-medium text-cream">
+                      GPSSA
+                    </p>
+                    <p className="text-[11px] text-gray-muted uppercase tracking-wider">
+                      General Pension &amp; Social Security Authority
+                    </p>
+                  </>
+                ) : (
+                  <label className="relative cursor-pointer group">
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleAvatarUpload(f);
+                      }}
+                    />
+                    {user?.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={displayName}
+                        className="w-16 h-16 rounded-full object-cover"
+                      />
                     ) : (
-                      <Camera size={18} className="text-cream" />
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gpssa-green/30 to-adl-blue/30 flex items-center justify-center text-cream text-xl font-bold">
+                        {avatarInitial}
+                      </div>
                     )}
-                  </div>
-                </label>
+                    <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {uploadingAvatar ? (
+                        <Loader2 size={18} className="text-cream animate-spin" />
+                      ) : (
+                        <Camera size={18} className="text-cream" />
+                      )}
+                    </div>
+                  </label>
+                )}
               </div>
 
-              {/* Tabs */}
+              {/* Tabs + profile/password forms — hidden for the shared demo
+                  account, which only exposes a sign-out button. */}
+              {!isDemo && (
+              <>
               <div className="flex gap-1 mb-3">
                 <button
                   onClick={() => setTab("profile")}
@@ -320,9 +352,17 @@ export function UserMenu({ collapsed }: UserMenuProps) {
                   </button>
                 </div>
               )}
+              </>
+              )}
 
               {/* Divider + Sign out */}
-              <div className="mt-4 pt-3 border-t border-[var(--border)]">
+              <div
+                className={
+                  isDemo
+                    ? "mt-2"
+                    : "mt-4 pt-3 border-t border-[var(--border)]"
+                }
+              >
                 <button
                   onClick={() => signOut({ callbackUrl: "/" })}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-red-400 hover:bg-red-400/10 transition-colors"

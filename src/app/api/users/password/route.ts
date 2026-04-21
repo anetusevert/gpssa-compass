@@ -6,6 +6,15 @@ export async function PUT(req: NextRequest) {
   const { error, session } = await requireAuth();
   if (error) return error;
 
+  // The shared demo account is read-only: blocking server-side prevents the
+  // password from being rotated out from under other concurrent demo viewers.
+  if ((session!.user as any).userType === "demo") {
+    return NextResponse.json(
+      { error: "Demo accounts cannot change their password" },
+      { status: 403 }
+    );
+  }
+
   try {
     const userId = (session!.user as any).id;
     const body = await req.json();

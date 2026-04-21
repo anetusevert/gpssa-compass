@@ -6,6 +6,15 @@ export async function POST(req: NextRequest) {
   const { error, session } = await requireAuth();
   if (error) return error;
 
+  // The demo account's avatar is hardwired to the GPSSA logo; uploads from this
+  // shared session are rejected so it can't be repainted for other viewers.
+  if ((session!.user as any).userType === "demo") {
+    return NextResponse.json(
+      { error: "Demo accounts cannot change their avatar" },
+      { status: 403 }
+    );
+  }
+
   try {
     const userId = (session!.user as any).id;
     const formData = await req.formData();

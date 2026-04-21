@@ -26,6 +26,15 @@ export async function PUT(req: NextRequest) {
   const { error, session } = await requireAuth();
   if (error) return error;
 
+  // The shared demo account stays neutral; mutations are rejected so concurrent
+  // viewers always see the same identity.
+  if ((session!.user as any).userType === "demo") {
+    return NextResponse.json(
+      { error: "Demo accounts cannot edit their profile" },
+      { status: 403 }
+    );
+  }
+
   try {
     const userId = (session!.user as any).id;
     const body = await req.json();
