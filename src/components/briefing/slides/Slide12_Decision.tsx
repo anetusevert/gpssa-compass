@@ -83,7 +83,7 @@ const EXAMPLES: ScriptedExample[] = [
   },
 ];
 
-export function Slide09_Opportunities({ snapshot }: Props) {
+export function Slide12_Decision({ snapshot }: Props) {
   const [exampleIdx, setExampleIdx] = useState(0);
   const [stage, setStage] = useState(0); // 0..STAGES.length
 

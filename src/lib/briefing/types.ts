@@ -256,6 +256,40 @@ export interface SourcesSection {
   publishers: number;
 }
 
+// ── Mandate ──────────────────────────────────────────────────────────────
+
+export interface MandateFeaturedStandard {
+  id: string;
+  code: string | null;
+  title: string;
+  category: string;
+  requirementCount: number;
+}
+
+export interface MandateLatestMilestone {
+  id: string;
+  year: number;
+  title: string;
+  kind: string;
+}
+
+export interface MandateSection {
+  /** Standards in the UAE mandate corpus (legal-mandate / circular / policy, region AE). */
+  statutoryInstruments: number;
+  /** Requirements (articles / obligations) on those standards. */
+  articles: number;
+  /** Recorded GPSSA milestones. */
+  milestones: number;
+  /** Pages in the GPSSA mandate page corpus. */
+  sourcePages: number;
+  /** Subset of sourcePages that are PDFs. */
+  pdfPages: number;
+  /** Compliance rows produced by the mandate-corpus agent. */
+  obligationLinks: number;
+  featuredStandards: MandateFeaturedStandard[];
+  latestMilestones: MandateLatestMilestone[];
+}
+
 // ── Root ─────────────────────────────────────────────────────────────────
 
 export interface BriefingSnapshot {
@@ -269,4 +303,5 @@ export interface BriefingSnapshot {
   benchmarks: BenchmarksSection;
   opportunities: OpportunitiesSection;
   sources: SourcesSection;
+  mandate: MandateSection;
 }

@@ -15,7 +15,10 @@ import { useComparatorStore } from "./store";
 import type { BriefingSnapshot } from "@/lib/briefing/types";
 
 interface SlideEngineProps {
-  slides: ((args: { snapshot: BriefingSnapshot | null }) => ReactNode)[];
+  slides: ((args: {
+    snapshot: BriefingSnapshot | null;
+    total: number;
+  }) => ReactNode)[];
   snapshot: BriefingSnapshot | null;
   onClose: () => void;
 }
@@ -300,7 +303,7 @@ export function SlideEngine({ slides, snapshot, onClose }: SlideEngineProps) {
             exit={{ opacity: 0, y: -16, scale: 0.99 }}
             transition={{ duration: 0.55, ease: EASE }}
           >
-            {renderSlide({ snapshot })}
+            {renderSlide({ snapshot, total })}
           </motion.div>
         </AnimatePresence>
       </SlideChrome>

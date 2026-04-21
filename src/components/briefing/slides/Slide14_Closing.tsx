@@ -109,7 +109,7 @@ function AmbientBackdrop() {
   );
 }
 
-export function Slide10_Closing({ snapshot }: Props) {
+export function Slide14_Closing({ snapshot }: Props) {
   const router = useRouter();
   const closeDeck = useBriefingStore((s) => s.closeDeck);
 

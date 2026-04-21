@@ -50,8 +50,8 @@ export function Slide03_Compass({ snapshot }: Props) {
 
   return (
     <SlideLayout
-      eyebrow="The Compass"
-      title="Five pillars. One source of truth."
+      eyebrow="Foundation · The Compass"
+      title="Five pillars. One operating picture."
       subtitle="Every fact in this deck flows from these five canonical pillars — refreshed continuously by autonomous research agents."
     >
       <div className="flex h-full items-center justify-center">

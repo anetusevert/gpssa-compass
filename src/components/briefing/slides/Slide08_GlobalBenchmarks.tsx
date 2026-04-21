@@ -9,7 +9,7 @@ interface Props {
   snapshot: BriefingSnapshot;
 }
 
-export function Slide06_GlobalBenchmarks({ snapshot }: Props) {
+export function Slide08_GlobalBenchmarks({ snapshot }: Props) {
   const evaluated = snapshot.standards.rows.filter(
     (r) =>
       r.gpssaScore != null ||

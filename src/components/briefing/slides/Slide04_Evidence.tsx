@@ -8,10 +8,13 @@ import {
   BookOpen,
   Cpu,
   Sparkles,
+  ScrollText,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { SlideLayout } from "./SlideLayout";
 import { Counter } from "../charts/Counter";
+import { personas } from "@/data/personas";
 import type { BriefingSnapshot } from "@/lib/briefing/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -63,6 +66,22 @@ export function Slide04_Evidence({ snapshot }: Props) {
       color: "rgba(45,212,191,0.85)",
     },
     {
+      id: "instruments",
+      label: "Statutory instruments",
+      sub: `${snapshot.mandate.articles} articles indexed`,
+      value: snapshot.mandate.statutoryInstruments,
+      icon: ScrollText,
+      color: "rgba(255,200,120,0.85)",
+    },
+    {
+      id: "personas",
+      label: "Personas mapped",
+      sub: "with full GPSSA journeys",
+      value: personas.length,
+      icon: Users,
+      color: "rgba(125,185,164,0.85)",
+    },
+    {
       id: "sources",
       label: "Sources cited",
       sub: `${snapshot.sources.publishers} publishers`,
@@ -91,11 +110,11 @@ export function Slide04_Evidence({ snapshot }: Props) {
 
   return (
     <SlideLayout
-      eyebrow="The Evidence Base"
-      title="Built on a thousand verified data points."
-      subtitle="The Compass is not opinion. It's an aggregation of structured research, scored against canonical standards, every claim traceable to source."
+      eyebrow="Foundation · Evidence base"
+      title="Every chart on this deck has a citation behind it."
+      subtitle="No opinion, no guesswork — structured research scored against canonical standards, every claim traceable to source."
     >
-      <div className="grid h-full max-w-5xl mx-auto grid-cols-3 grid-rows-2 gap-4">
+      <div className="grid h-full max-w-6xl mx-auto grid-cols-4 grid-rows-2 gap-3">
         {stats.map((s, i) => {
           const Icon = s.icon;
           return (
@@ -108,7 +127,7 @@ export function Slide04_Evidence({ snapshot }: Props) {
                 delay: 0.3 + i * 0.08,
                 ease: EASE,
               }}
-              className="relative overflow-hidden rounded-2xl px-6 py-5 ring-1 ring-white/[0.05]"
+              className="relative overflow-hidden rounded-2xl px-5 py-4 ring-1 ring-white/[0.05]"
               style={{
                 background:
                   "linear-gradient(160deg, rgba(17,34,64,0.55), rgba(7,17,34,0.85))",
@@ -149,7 +168,7 @@ export function Slide04_Evidence({ snapshot }: Props) {
                     value={s.value}
                     format={s.format}
                     duration={1.8}
-                    className="font-playfair text-5xl font-bold text-cream tabular-nums leading-none"
+                    className="font-playfair text-4xl font-bold text-cream tabular-nums leading-none"
                   />
                   <div className="mt-2 text-[12px] font-medium text-cream/85">
                     {s.label}

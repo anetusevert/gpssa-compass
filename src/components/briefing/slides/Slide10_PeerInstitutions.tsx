@@ -51,7 +51,7 @@ const DEFAULT_PEER_NAMES = [
 
 type ViewMode = "race" | "spider";
 
-export function Slide07_PeerInstitutions({ snapshot }: Props) {
+export function Slide10_PeerInstitutions({ snapshot }: Props) {
   const allPeers = snapshot.benchmarks.allPeers;
   const dimensions = snapshot.benchmarks.dimensionList;
 
@@ -185,7 +185,7 @@ export function Slide07_PeerInstitutions({ snapshot }: Props) {
   // Dynamic title and gap subline
   const leaderRow = raceRows[0];
   const gpssaRow = raceRows.find((r) => r.id === gpssa?.id);
-  let title = "GPSSA in the global frontier.";
+  let title = "Against the world's leading pension institutions, this is how GPSSA scores.";
   let subline = `Average score across ${snapshot.benchmarks.dimensions} benchmark dimensions. Higher is better.`;
 
   if (validResolved.length === 1) {
@@ -223,7 +223,7 @@ export function Slide07_PeerInstitutions({ snapshot }: Props) {
   }
 
   return (
-    <SlideLayout eyebrow="vs. Peer Institutions" title={title} subtitle={subline}>
+    <SlideLayout eyebrow="Compare · Peer institutions" title={title} subtitle={subline}>
       <div className="flex h-full flex-col items-stretch justify-center gap-6 max-w-5xl mx-auto">
         {/* Toggle row */}
         <div className="flex items-center justify-between gap-3">

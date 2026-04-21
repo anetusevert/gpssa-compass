@@ -8,6 +8,7 @@ import type {
   BriefingSnapshot,
   ChannelCapabilityCell,
   DeliverySection,
+  MandateSection,
   OpportunitiesSection,
   PeerInstitutionRow,
   ProductsSection,
@@ -16,6 +17,8 @@ import type {
   StandardAggregate,
   StandardsSection,
 } from "./types";
+
+const MANDATE_CATEGORIES = ["legal-mandate", "circular", "policy"] as const;
 
 const DIGITAL_LEVEL_TO_SCORE: Record<string, number> = {
   "AI-Integrated": 95,
@@ -721,6 +724,74 @@ async function buildOpportunities(): Promise<OpportunitiesSection> {
   };
 }
 
+async function buildMandate(): Promise<MandateSection> {
+  const [
+    statutoryInstruments,
+    articles,
+    milestones,
+    sourcePages,
+    pdfPages,
+    obligationLinks,
+    featuredStandards,
+    latestMilestones,
+  ] = await Promise.all([
+    prisma.standard.count({
+      where: { category: { in: [...MANDATE_CATEGORIES] }, region: "AE" },
+    }),
+    prisma.standardRequirement.count({
+      where: {
+        standard: { category: { in: [...MANDATE_CATEGORIES] }, region: "AE" },
+      },
+    }),
+    prisma.gpssaMilestone.count(),
+    prisma.gpssaPage.count(),
+    prisma.gpssaPage.count({ where: { contentType: "pdf" } }),
+    prisma.standardCompliance.count({
+      where: { computedBy: "agent:mandate-corpus" },
+    }),
+    prisma.standard.findMany({
+      where: {
+        category: { in: [...MANDATE_CATEGORIES] },
+        region: "AE",
+        isActive: true,
+      },
+      orderBy: [
+        { category: "asc" },
+        { publishedAt: "desc" },
+        { title: "asc" },
+      ],
+      take: 6,
+      include: { _count: { select: { requirements: true } } },
+    }),
+    prisma.gpssaMilestone.findMany({
+      orderBy: [{ year: "desc" }, { sortOrder: "asc" }],
+      take: 6,
+    }),
+  ]);
+
+  return {
+    statutoryInstruments,
+    articles,
+    milestones,
+    sourcePages,
+    pdfPages,
+    obligationLinks,
+    featuredStandards: featuredStandards.map((s) => ({
+      id: s.id,
+      code: s.code,
+      title: s.title,
+      category: s.category,
+      requirementCount: s._count.requirements,
+    })),
+    latestMilestones: latestMilestones.map((m) => ({
+      id: m.id,
+      year: m.year,
+      title: m.title,
+      kind: m.kind,
+    })),
+  };
+}
+
 async function buildSources(): Promise<SourcesSection> {
   const [count, allPubs] = await Promise.all([
     prisma.dataSource.count(),
@@ -751,6 +822,7 @@ export async function buildBriefingSnapshot(): Promise<BriefingSnapshot> {
     benchmarks,
     opportunities,
     sources,
+    mandate,
   ] = await Promise.all([
     buildMeta(),
     buildCompleteness(),
@@ -762,6 +834,7 @@ export async function buildBriefingSnapshot(): Promise<BriefingSnapshot> {
     buildBenchmarks(),
     buildOpportunities(),
     buildSources(),
+    buildMandate(),
   ]);
 
   return {
@@ -775,5 +848,6 @@ export async function buildBriefingSnapshot(): Promise<BriefingSnapshot> {
     benchmarks,
     opportunities,
     sources,
+    mandate,
   };
 }

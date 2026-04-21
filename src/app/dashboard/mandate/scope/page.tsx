@@ -9,17 +9,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Briefcase,
-  Globe2,
-  Heart,
-  HeartHandshake,
-  HeartPulse,
-  Network as NetworkIcon,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Network as NetworkIcon, ShieldCheck, Users } from "lucide-react";
+import { BRANCHES, COVERAGE_CLASSES } from "@/data/mandateScope";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -37,80 +28,6 @@ interface StandardDetail {
   scope: string | null;
   requirements: { id: string; pillar: string | null; title: string }[];
 }
-
-interface BranchInfo {
-  id: string;
-  label: string;
-  pillar: string;
-  ilo: string;
-  description: string;
-  Icon: LucideIcon;
-  accent: string;
-}
-
-const BRANCHES: BranchInfo[] = [
-  {
-    id: "old-age",
-    label: "Old-age pension",
-    pillar: "pension",
-    ilo: "ILO C102 · Part V",
-    description: "Lifetime income for insured Emiratis on reaching the legal pension age.",
-    Icon: HeartPulse,
-    accent: "#1B7A4A",
-  },
-  {
-    id: "end-of-service",
-    label: "End-of-service",
-    pillar: "end-of-service",
-    ilo: "GCC Unified Insurance Extension Law",
-    description: "Lump-sum / pension on separation for civil and military insured persons.",
-    Icon: ShieldCheck,
-    accent: "#E7B02E",
-  },
-  {
-    id: "injury",
-    label: "Workplace injury",
-    pillar: "injury",
-    ilo: "ILO C102 · Part VI",
-    description: "Medical care, temporary incapacity, permanent disability and rehabilitation.",
-    Icon: HeartHandshake,
-    accent: "#E76363",
-  },
-  {
-    id: "death",
-    label: "Survivor benefits",
-    pillar: "death",
-    ilo: "ILO C102 · Part X",
-    description: "Pensions and lump-sums for the family of a deceased insured person.",
-    Icon: Heart,
-    accent: "#9696AA",
-  },
-  {
-    id: "registration",
-    label: "Registration & contributions",
-    pillar: "registration",
-    ilo: "FL 57/2023 — coverage articles",
-    description: "Mandatory enrolment of employers and insured persons; monthly contributions.",
-    Icon: Briefcase,
-    accent: "#4899FF",
-  },
-  {
-    id: "gcc",
-    label: "GCC mobility",
-    pillar: "gcc",
-    ilo: "GCC Unified Insurance Extension",
-    description: "Cross-border continuity of insurance for GCC nationals working in the UAE.",
-    Icon: Globe2,
-    accent: "#CA63D5",
-  },
-];
-
-const COVERAGE_CLASSES = [
-  { id: "uae-civil", label: "Emirati nationals — civil sector", note: "Federal & local government, semi-public, private sector employers", accent: "#1B7A4A" },
-  { id: "uae-military", label: "Emirati nationals — military sector", note: "Specialised handling under sectoral regulations", accent: "#E7B02E" },
-  { id: "gcc-nationals", label: "GCC nationals", note: "Insurance extension across the GCC unified law", accent: "#CA63D5" },
-  { id: "voluntary", label: "Voluntary insurance", note: "Self-employed, sabbatical and overseas workers under specific articles", accent: "#7DB9A4" },
-];
 
 export default function MandateScopePage() {
   const [, setStandards] = useState<StandardSummary[]>([]);

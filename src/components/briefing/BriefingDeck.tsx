@@ -9,21 +9,28 @@ import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 import type { BriefingSnapshot } from "@/lib/briefing/types";
 
 import { Slide01_Cover } from "./slides/Slide01_Cover";
-import { Slide02_Brief } from "./slides/Slide02_Brief";
+import { Slide02_Outline } from "./slides/Slide02_Outline";
 import { Slide03_Compass } from "./slides/Slide03_Compass";
 import { Slide04_Evidence } from "./slides/Slide04_Evidence";
-import { Slide05_WhereWeStand } from "./slides/Slide05_WhereWeStand";
-import { Slide06_GlobalBenchmarks } from "./slides/Slide06_GlobalBenchmarks";
-import { Slide07_PeerInstitutions } from "./slides/Slide07_PeerInstitutions";
-import { Slide08_ServiceChannelHeatmap } from "./slides/Slide08_ServiceChannelHeatmap";
-import { Slide09_Opportunities } from "./slides/Slide09_Opportunities";
-import { Slide10_Closing } from "./slides/Slide10_Closing";
+import { Slide05_UAEToday } from "./slides/Slide05_UAEToday";
+import { Slide06_Personas } from "./slides/Slide06_Personas";
+import { Slide07_Atlas } from "./slides/Slide07_Atlas";
+import { Slide08_GlobalBenchmarks } from "./slides/Slide08_GlobalBenchmarks";
+import { Slide09_Quadrant } from "./slides/Slide09_Quadrant";
+import { Slide10_PeerInstitutions } from "./slides/Slide10_PeerInstitutions";
+import { Slide11_ServiceChannelHeatmap } from "./slides/Slide11_ServiceChannelHeatmap";
+import { Slide12_Decision } from "./slides/Slide12_Decision";
+import { Slide13_Roadmap } from "./slides/Slide13_Roadmap";
+import { Slide14_Closing } from "./slides/Slide14_Closing";
 import { SlidePlaceholder } from "./SlidePlaceholder";
 import { ComparatorPicker } from "./ComparatorPicker";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-type SlideRenderer = (args: { snapshot: BriefingSnapshot | null }) => React.ReactNode;
+type SlideRenderer = (args: {
+  snapshot: BriefingSnapshot | null;
+  total: number;
+}) => React.ReactNode;
 
 function dataReadySlide(
   Component: (props: { snapshot: BriefingSnapshot }) => React.ReactNode,
@@ -47,30 +54,46 @@ function dataReadySlide(
 
 const SLIDES: SlideRenderer[] = [
   () => <Slide01_Cover />,
-  () => <Slide02_Brief />,
+  ({ total }) => <Slide02_Outline total={total} />,
   dataReadySlide(({ snapshot }) => <Slide03_Compass snapshot={snapshot} />, "Compass"),
   dataReadySlide(({ snapshot }) => <Slide04_Evidence snapshot={snapshot} />, "Evidence Base"),
   dataReadySlide(
-    ({ snapshot }) => <Slide05_WhereWeStand snapshot={snapshot} />,
-    "Atlas & Standards"
+    ({ snapshot }) => <Slide05_UAEToday snapshot={snapshot} />,
+    "UAE Today"
   ),
   dataReadySlide(
-    ({ snapshot }) => <Slide06_GlobalBenchmarks snapshot={snapshot} />,
+    ({ snapshot }) => <Slide06_Personas snapshot={snapshot} />,
+    "Personas & Journeys"
+  ),
+  dataReadySlide(
+    ({ snapshot }) => <Slide07_Atlas snapshot={snapshot} />,
+    "Global Atlas"
+  ),
+  dataReadySlide(
+    ({ snapshot }) => <Slide08_GlobalBenchmarks snapshot={snapshot} />,
     "Standards & Compliance"
   ),
   dataReadySlide(
-    ({ snapshot }) => <Slide07_PeerInstitutions snapshot={snapshot} />,
+    ({ snapshot }) => <Slide09_Quadrant snapshot={snapshot} />,
+    "Quadrant View"
+  ),
+  dataReadySlide(
+    ({ snapshot }) => <Slide10_PeerInstitutions snapshot={snapshot} />,
     "Peer Benchmarking"
   ),
   dataReadySlide(
-    ({ snapshot }) => <Slide08_ServiceChannelHeatmap snapshot={snapshot} />,
+    ({ snapshot }) => <Slide11_ServiceChannelHeatmap snapshot={snapshot} />,
     "Service x Channel"
   ),
   dataReadySlide(
-    ({ snapshot }) => <Slide09_Opportunities snapshot={snapshot} />,
-    "Strategic Opportunities"
+    ({ snapshot }) => <Slide12_Decision snapshot={snapshot} />,
+    "Decision Walkthrough"
   ),
-  dataReadySlide(({ snapshot }) => <Slide10_Closing snapshot={snapshot} />, "Closing"),
+  dataReadySlide(
+    ({ snapshot }) => <Slide13_Roadmap snapshot={snapshot} />,
+    "12-Month Roadmap"
+  ),
+  dataReadySlide(({ snapshot }) => <Slide14_Closing snapshot={snapshot} />, "Closing"),
 ];
 
 export function BriefingDeck() {

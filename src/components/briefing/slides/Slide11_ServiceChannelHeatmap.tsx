@@ -26,7 +26,7 @@ const LEVEL_WEIGHT: Record<string, number> = {
   None: 0,
 };
 
-export function Slide08_ServiceChannelHeatmap({ snapshot }: Props) {
+export function Slide11_ServiceChannelHeatmap({ snapshot }: Props) {
   const { channelCapabilities, channelNames, count, capabilityLevelCounts } =
     snapshot.services;
 

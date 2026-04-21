@@ -13,16 +13,12 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   ArrowUpRight,
-  Building2,
-  Eye,
-  FileText,
   Landmark,
   Loader2,
   ScrollText,
-  ShieldCheck,
   Sparkles,
-  UserCheck,
 } from "lucide-react";
+import { ARCHITECTURE, CONTROL_PILLARS } from "@/data/mandateScope";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -37,61 +33,6 @@ interface StandardSummary {
   requirementCount: number;
   sources?: { id: string; title: string; url: string }[];
 }
-
-const ARCHITECTURE = [
-  {
-    id: "council-of-ministers",
-    label: "UAE Council of Ministers",
-    note: "Approves federal pension legislation & regulations.",
-    Icon: Landmark,
-    accent: "#1B7A4A",
-  },
-  {
-    id: "moca",
-    label: "Ministry overseeing GPSSA",
-    note: "Sectoral oversight and policy coordination.",
-    Icon: Building2,
-    accent: "#7DB9A4",
-  },
-  {
-    id: "board",
-    label: "GPSSA Board of Directors",
-    note: "Strategic direction, investment policy, regulations.",
-    Icon: ShieldCheck,
-    accent: "#4899FF",
-  },
-  {
-    id: "dg",
-    label: "Director General",
-    note: "Day-to-day administration of the mandate.",
-    Icon: UserCheck,
-    accent: "#C5A572",
-  },
-] as const;
-
-const CONTROL_PILLARS = [
-  {
-    id: "transparency",
-    label: "Transparency",
-    description: "Publication of laws, regulations, circulars and annual reports on gpssa.gov.ae.",
-    Icon: Eye,
-    accent: "#4899FF",
-  },
-  {
-    id: "audit",
-    label: "Audit & supervision",
-    description: "Internal audit, statutory external audit and parliamentary oversight.",
-    Icon: ShieldCheck,
-    accent: "#1B7A4A",
-  },
-  {
-    id: "redress",
-    label: "Complaints & redress",
-    description: "Insured complaint pathways and ombudsman-style escalation.",
-    Icon: FileText,
-    accent: "#E7B02E",
-  },
-] as const;
 
 export default function MandateGovernancePage() {
   const [standards, setStandards] = useState<StandardSummary[]>([]);
