@@ -14,26 +14,18 @@ export const authOptions: AuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        let user = await authService.findUserByEmail(credentials.email);
+        // Only seeded users (the shared demo account and any pre-provisioned
+        // admins) may sign in. Unknown emails are rejected outright -- the
+        // landing UI never exposes a sign-up path, so silently auto-creating
+        // accounts would just mask configuration errors.
+        const user = await authService.findUserByEmail(credentials.email);
+        if (!user) return null;
 
-        if (user) {
-          const valid = await authService.verifyPassword(
-            credentials.password,
-            user.password
-          );
-          if (!valid) return null;
-        } else {
-          const userType = authService.detectUserType(credentials.email);
-          const role = authService.detectRole(credentials.email);
-          user = await authService.createUser({
-            email: credentials.email,
-            password: credentials.password,
-            name: credentials.email.split("@")[0],
-            role,
-            userType,
-            hasCompletedProfile: role === "admin",
-          });
-        }
+        const valid = await authService.verifyPassword(
+          credentials.password,
+          user.password
+        );
+        if (!valid) return null;
 
         return {
           id: user.id,

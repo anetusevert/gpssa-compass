@@ -89,6 +89,25 @@ async function main() {
   });
   console.log("  Admin user seeded");
 
+  // Shared demo account: anyone with the password can enter the platform.
+  // The email is non-routable (`.local`) so it can never collide with a real
+  // GPSSA/ADL inbox; the client only ever sends the password and we map it to
+  // this user server-side.
+  const demoPassword = await bcrypt.hash("welcomeGPSSA", 12);
+  await prisma.user.upsert({
+    where: { email: "demo@gpssa.local" },
+    update: { password: demoPassword, userType: "demo", role: "user" },
+    create: {
+      email: "demo@gpssa.local",
+      password: demoPassword,
+      name: "Demo Account",
+      role: "user",
+      userType: "demo",
+      hasCompletedProfile: true,
+    },
+  });
+  console.log("  Shared GPSSA demo account seeded");
+
   for (const svc of GPSSA_SERVICES) {
     await prisma.gPSSAService.upsert({
       where: { id: svc.name.replace(/\s+/g, "-").toLowerCase().slice(0, 25) },

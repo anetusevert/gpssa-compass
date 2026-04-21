@@ -9,9 +9,15 @@ import { GPSSALogo } from "@/components/ui/GPSSALogo";
 import { LoginTransition } from "@/components/ui/LoginTransition";
 
 type Phase = "entry" | "hero" | "login";
+type LoginMode = "demo" | "admin";
 
 const ease = [0.16, 1, 0.3, 1] as [number, number, number, number];
 const smoothEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
+
+// Shared GPSSA demo account: clients enter the platform with just a password.
+// The email is non-routable and pre-seeded in the database, so we can hand the
+// same access password to multiple viewers without exposing any inbox.
+const DEMO_EMAIL = "demo@gpssa.local";
 
 function AmbientBackdrop() {
   return (
@@ -69,12 +75,171 @@ function AmbientBackdrop() {
   );
 }
 
-function LoginForm({
+function PoweredByADL() {
+  return (
+    <motion.div
+      className="mt-8 flex items-center justify-center gap-3"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.5, duration: 0.6 }}
+    >
+      <span className="text-[11px] uppercase tracking-[0.28em] text-white/30">
+        Powered by
+      </span>
+      <Image
+        src="/images/adl-logo.png"
+        alt="Arthur D. Little"
+        width={72}
+        height={22}
+        className="adl-logo-white object-contain opacity-70"
+      />
+    </motion.div>
+  );
+}
+
+function DemoAccessForm({
   onSuccess,
   onBack,
+  onSwitchToAdmin,
 }: {
   onSuccess: () => void;
   onBack: () => void;
+  onSwitchToAdmin: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      setError("");
+      setLoading(true);
+
+      const res = await signIn("credentials", {
+        email: DEMO_EMAIL,
+        password,
+        redirect: false,
+      });
+
+      setLoading(false);
+
+      if (res?.error) {
+        setError("Incorrect access password. Please try again.");
+        return;
+      }
+
+      onSuccess();
+    },
+    [password, onSuccess]
+  );
+
+  return (
+    <motion.div
+      key="demo-form"
+      initial={{ opacity: 0, y: 30, scale: 0.97, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      exit={{ opacity: 0, y: -20, scale: 0.97, filter: "blur(10px)" }}
+      transition={{ duration: 0.6, ease }}
+      className="w-full max-w-md"
+    >
+      <div className="glass-card surface-depth tile-no-frame rounded-[28px] p-8 md:p-10">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <GPSSALogo size="sm" />
+          <p className="mt-5 text-caption uppercase tracking-[0.3em] text-white/40">
+            Secure Access
+          </p>
+          <p className="mt-2 text-sm text-gray-muted max-w-xs">
+            Enter the access password to continue into the intelligence
+            platform.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="access-password"
+              className="text-micro uppercase font-medium text-white/50"
+            >
+              Access Password
+            </label>
+            <input
+              id="access-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              autoFocus
+              className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 text-body transition-all duration-300 focus:border-white/10 focus:outline-none focus:ring-2 focus:ring-white/10"
+              autoComplete="current-password"
+            />
+          </div>
+
+          <AnimatePresence>
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="text-caption text-center text-red-400"
+              >
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
+
+          <motion.button
+            type="submit"
+            disabled={loading}
+            whileHover={{ y: -2, scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            className="group relative mt-2 overflow-hidden rounded-2xl px-4 py-3.5 text-body font-medium text-white disabled:opacity-60"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06))",
+            }}
+          >
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              {loading ? "Authenticating..." : "Access Platform"}
+              <ArrowRight
+                size={16}
+                className="icon-white transition-transform duration-300 group-hover:translate-x-1"
+              />
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          </motion.button>
+        </form>
+
+        <button
+          type="button"
+          onClick={onSwitchToAdmin}
+          className="mt-4 w-full text-center text-[11px] uppercase tracking-[0.28em] text-white/30 transition-colors duration-200 hover:text-white/60"
+        >
+          Admin sign in →
+        </button>
+
+        <button
+          onClick={onBack}
+          className="mt-3 w-full text-center text-caption text-gray-muted transition-colors duration-200 hover:text-white/70"
+        >
+          Back to overview
+        </button>
+      </div>
+
+      <PoweredByADL />
+    </motion.div>
+  );
+}
+
+function AdminLoginForm({
+  onSuccess,
+  onBack,
+  onSwitchToDemo,
+}: {
+  onSuccess: () => void;
+  onBack: () => void;
+  onSwitchToDemo: () => void;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -107,6 +272,7 @@ function LoginForm({
 
   return (
     <motion.div
+      key="admin-form"
       initial={{ opacity: 0, y: 30, scale: 0.97, filter: "blur(8px)" }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       exit={{ opacity: 0, y: -20, scale: 0.97, filter: "blur(10px)" }}
@@ -117,10 +283,10 @@ function LoginForm({
         <div className="mb-8 flex flex-col items-center text-center">
           <GPSSALogo size="sm" />
           <p className="mt-5 text-caption uppercase tracking-[0.3em] text-white/40">
-            Secure Access
+            Administrator Access
           </p>
           <p className="mt-2 text-sm text-gray-muted max-w-xs">
-            Sign in to continue into the intelligence platform.
+            Sign in with your admin email and password.
           </p>
         </div>
 
@@ -139,6 +305,7 @@ function LoginForm({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@organization.com"
               required
+              autoFocus
               className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 text-body transition-all duration-300 focus:border-white/10 focus:outline-none focus:ring-2 focus:ring-white/10"
               autoComplete="email"
             />
@@ -188,7 +355,7 @@ function LoginForm({
             }}
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
-              {loading ? "Authenticating..." : "Access Platform"}
+              {loading ? "Authenticating..." : "Sign In"}
               <ArrowRight
                 size={16}
                 className="icon-white transition-transform duration-300 group-hover:translate-x-1"
@@ -199,36 +366,29 @@ function LoginForm({
         </form>
 
         <button
+          type="button"
+          onClick={onSwitchToDemo}
+          className="mt-4 w-full text-center text-[11px] uppercase tracking-[0.28em] text-white/30 transition-colors duration-200 hover:text-white/60"
+        >
+          ← Back to general access
+        </button>
+
+        <button
           onClick={onBack}
-          className="mt-5 w-full text-center text-caption text-gray-muted transition-colors duration-200 hover:text-white/70"
+          className="mt-3 w-full text-center text-caption text-gray-muted transition-colors duration-200 hover:text-white/70"
         >
           Back to overview
         </button>
       </div>
 
-      <motion.div
-        className="mt-8 flex items-center justify-center gap-3"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.6 }}
-      >
-        <span className="text-[11px] uppercase tracking-[0.28em] text-white/30">
-          Powered by
-        </span>
-        <Image
-          src="/images/adl-logo.png"
-          alt="Arthur D. Little"
-          width={72}
-          height={22}
-          className="adl-logo-white object-contain opacity-70"
-        />
-      </motion.div>
+      <PoweredByADL />
     </motion.div>
   );
 }
 
 export default function LandingPage() {
   const [phase, setPhase] = useState<Phase>("entry");
+  const [loginMode, setLoginMode] = useState<LoginMode>("demo");
   const [entryStep, setEntryStep] = useState(0);
   const [showTransition, setShowTransition] = useState(false);
 
@@ -424,7 +584,10 @@ export default function LandingPage() {
                 transition={{ delay: 0.6, duration: 0.55, ease }}
               >
                 <motion.button
-                  onClick={() => setPhase("login")}
+                  onClick={() => {
+                    setLoginMode("demo");
+                    setPhase("login");
+                  }}
                   whileHover={{ y: -3, scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="group inline-flex items-center gap-3 rounded-full bg-white/[0.08] px-8 py-4 text-base font-medium text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white/[0.12]"
@@ -480,10 +643,23 @@ export default function LandingPage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <LoginForm
-                onSuccess={handleLoginSuccess}
-                onBack={() => setPhase("hero")}
-              />
+              <AnimatePresence mode="wait">
+                {loginMode === "demo" ? (
+                  <DemoAccessForm
+                    key="demo"
+                    onSuccess={handleLoginSuccess}
+                    onBack={() => setPhase("hero")}
+                    onSwitchToAdmin={() => setLoginMode("admin")}
+                  />
+                ) : (
+                  <AdminLoginForm
+                    key="admin"
+                    onSuccess={handleLoginSuccess}
+                    onBack={() => setPhase("hero")}
+                    onSwitchToDemo={() => setLoginMode("demo")}
+                  />
+                )}
+              </AnimatePresence>
             </motion.section>
           )}
         </AnimatePresence>
