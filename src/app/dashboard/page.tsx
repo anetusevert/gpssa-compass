@@ -552,6 +552,8 @@ function PillarModal({
 export default function DashboardHome() {
   const { data: session } = useSession();
   const replayTour = useCompassTourStore((s) => s.replay);
+  const userType = (session?.user as { userType?: string } | undefined)?.userType;
+  const isDemo = userType === "demo";
   const rawName = (session?.user?.name ?? "there").split(" ")[0];
   const userName = rawName.split(".")[0];
   const [openPillar, setOpenPillar] = useState<string | null>(null);
@@ -631,10 +633,16 @@ export default function DashboardHome() {
           {dateString}
         </p>
         <h1 className="font-playfair text-3xl font-bold text-cream md:text-4xl">
-          {greeting ? `${greeting}, ${userName}` : `Hello, ${userName}`}
+          {isDemo
+            ? greeting || "Welcome"
+            : greeting
+              ? `${greeting}, ${userName}`
+              : `Hello, ${userName}`}
         </h1>
         <p className="mt-2 text-sm text-white/35">
-          Social Insurance &amp; Pension Knowledge Intelligence
+          {isDemo
+            ? "Welcome to the GPSSA Compass — explore the platform freely."
+            : "Social Insurance & Pension Knowledge Intelligence"}
         </p>
       </motion.header>
 

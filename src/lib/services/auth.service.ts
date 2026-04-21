@@ -57,8 +57,14 @@ export class AuthService {
   }
 
   detectUserType(email: string): string {
-    if (email === "utena.treves@gmail.com") return "adl";
-    if (email.endsWith("@adlittle.com")) return "adl";
+    const lower = email.toLowerCase();
+    if (lower === "utena.treves@gmail.com") return "adl";
+    if (lower.endsWith("@adlittle.com")) return "adl";
+    // Recognise demo accounts so first-sign-in auto-creation routes them
+    // through the neutral demo experience instead of defaulting to gpssa.
+    if (lower.startsWith("demo@") || lower.startsWith("demo.") || lower.includes("+demo@")) {
+      return "demo";
+    }
     return "gpssa";
   }
 

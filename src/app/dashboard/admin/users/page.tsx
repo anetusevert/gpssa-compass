@@ -13,6 +13,7 @@ import {
   Trash2,
   Camera,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -194,10 +195,12 @@ export default function UsersPage() {
     admins: users.filter((u) => u.role === "admin").length,
     consultants: users.filter((u) => u.userType === "adl").length,
     gpssa: users.filter((u) => u.userType === "gpssa").length,
+    demo: users.filter((u) => u.userType === "demo").length,
   };
 
   const typeVariant = (type: string) => {
     if (type === "adl") return "blue";
+    if (type === "demo") return "gold";
     return "green";
   };
 
@@ -225,11 +228,12 @@ export default function UsersPage() {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Total Users" value={stats.total} icon={Users} />
         <StatCard label="Admins" value={stats.admins} icon={Shield} />
         <StatCard label="Consultants" value={stats.consultants} icon={Briefcase} />
         <StatCard label="GPSSA Employees" value={stats.gpssa} icon={Building2} />
+        <StatCard label="Demo Accounts" value={stats.demo} icon={Sparkles} />
       </div>
 
       <Card>
@@ -392,6 +396,7 @@ export default function UsersPage() {
               >
                 <option value="gpssa">GPSSA</option>
                 <option value="adl">ADL (Consultant)</option>
+                <option value="demo">Demo (Client preview)</option>
               </select>
             </div>
           </div>
@@ -500,6 +505,7 @@ export default function UsersPage() {
               >
                 <option value="gpssa">GPSSA</option>
                 <option value="adl">ADL (Consultant)</option>
+                <option value="demo">Demo (Client preview)</option>
               </select>
             </div>
           </div>

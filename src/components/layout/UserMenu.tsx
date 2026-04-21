@@ -37,8 +37,15 @@ export function UserMenu({ collapsed }: UserMenuProps) {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const user = session?.user as
-    | { id?: string; name?: string; email?: string; role?: string; avatar?: string }
+    | { id?: string; name?: string; email?: string; role?: string; userType?: string; avatar?: string }
     | undefined;
+
+  const isDemo = user?.userType === "demo";
+  // For demo accounts the always-visible identity stays neutral so we can
+  // hand the same login to multiple client viewers without leaking a name.
+  const displayName = isDemo ? "Demo Account" : user?.name || "User";
+  const displayEmail = isDemo ? "Client preview" : user?.email;
+  const avatarInitial = isDemo ? "D" : (user?.name || "U").charAt(0).toUpperCase();
 
   useEffect(() => {
     if (user?.name) setName(user.name);
@@ -133,25 +140,25 @@ export function UserMenu({ collapsed }: UserMenuProps) {
           collapsed ? "justify-center px-1 py-1.5" : "gap-2.5 px-2.5 py-1.5"
         }`}
       >
-        {user?.avatar ? (
+        {user?.avatar && !isDemo ? (
           <img
             src={user.avatar}
-            alt={user.name || ""}
+            alt={displayName}
             className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-white/10"
           />
         ) : (
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gpssa-green/40 to-adl-blue/40 flex items-center justify-center text-cream text-[10px] font-bold shrink-0 ring-1 ring-white/10">
-            {(user?.name || "U").charAt(0).toUpperCase()}
+            {avatarInitial}
           </div>
         )}
         {!collapsed && (
           <>
             <div className="flex-1 text-left min-w-0">
               <p className="text-sm font-medium text-cream truncate">
-                {user?.name || "User"}
+                {displayName}
               </p>
               <p className="text-[11px] text-gray-muted truncate">
-                {user?.email}
+                {displayEmail}
               </p>
             </div>
             <ChevronUp
@@ -188,15 +195,15 @@ export function UserMenu({ collapsed }: UserMenuProps) {
                       if (f) handleAvatarUpload(f);
                     }}
                   />
-                  {user?.avatar ? (
+                  {user?.avatar && !isDemo ? (
                     <img
                       src={user.avatar}
-                      alt={user.name || ""}
+                      alt={displayName}
                       className="w-16 h-16 rounded-full object-cover"
                     />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gpssa-green/30 to-adl-blue/30 flex items-center justify-center text-cream text-xl font-bold">
-                      {(user?.name || "U").charAt(0).toUpperCase()}
+                      {avatarInitial}
                     </div>
                   )}
                   <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
