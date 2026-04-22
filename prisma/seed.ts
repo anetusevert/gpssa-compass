@@ -75,9 +75,18 @@ async function main() {
 
   const hashedPassword = await bcrypt.hash("Ayden3", 12);
 
+  // Canonical admin: utena.treves@gmail.com / Ayden3.
+  // Re-assert role + name on every seed so a stale or manually-tweaked row
+  // can never lose admin privileges.
   await prisma.user.upsert({
     where: { email: "utena.treves@gmail.com" },
-    update: { password: hashedPassword, userType: "adl" },
+    update: {
+      password: hashedPassword,
+      name: "Utena Treves",
+      role: "admin",
+      userType: "adl",
+      hasCompletedProfile: true,
+    },
     create: {
       email: "utena.treves@gmail.com",
       password: hashedPassword,
@@ -87,7 +96,7 @@ async function main() {
       hasCompletedProfile: true,
     },
   });
-  console.log("  Admin user seeded");
+  console.log("  Admin user seeded (utena.treves@gmail.com)");
 
   // Shared demo account: anyone with the password can enter the platform.
   // The email is non-routable (`.local`) so it can never collide with a real
