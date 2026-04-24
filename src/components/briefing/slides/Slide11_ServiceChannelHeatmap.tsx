@@ -100,7 +100,7 @@ export function Slide11_ServiceChannelHeatmap({ snapshot }: Props) {
         pillar="Service x Channel"
         done={snapshot.completeness.services.done}
         total={snapshot.completeness.services.total}
-        message="The capability matrix lights up once the services and channels research agents have finished mapping each service against each channel."
+        message="The capability matrix lights up once each service has been mapped against each channel."
       />
     );
   }
@@ -109,7 +109,7 @@ export function Slide11_ServiceChannelHeatmap({ snapshot }: Props) {
     <SlideLayout
       eyebrow="Service x Channel Coverage"
       title="Coverage at a glance — every service, every channel, every gap."
-      subtitle="Each cell scored by autonomous agents against current GPSSA channel capabilities."
+      subtitle="Each cell scored against current GPSSA channel capabilities — Full, Partial, Planned, or None."
     >
       <div className="flex h-full flex-col items-stretch justify-center gap-4 max-w-6xl mx-auto">
         {/* Stats strip */}

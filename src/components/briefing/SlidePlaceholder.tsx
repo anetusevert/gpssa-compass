@@ -120,7 +120,7 @@ export function SlidePlaceholder({
           animate={{ opacity: [0.3, 1, 0.3] }}
           transition={{ duration: 1.6, repeat: Infinity }}
         />
-        Agents still working
+        Live data still loading
       </motion.div>
     </div>
   );

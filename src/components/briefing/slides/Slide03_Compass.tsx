@@ -52,7 +52,7 @@ export function Slide03_Compass({ snapshot }: Props) {
     <SlideLayout
       eyebrow="Foundation · The Compass"
       title="Five pillars. One operating picture."
-      subtitle="Every fact in this deck flows from these five canonical pillars — refreshed continuously by autonomous research agents."
+      subtitle="Every fact in this deck flows from these five canonical pillars — one operating picture, kept continuously up to date."
     >
       <div className="flex h-full items-center justify-center">
         <OrbitDiagram

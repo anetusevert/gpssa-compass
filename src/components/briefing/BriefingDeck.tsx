@@ -17,10 +17,8 @@ import { Slide06_Personas } from "./slides/Slide06_Personas";
 import { Slide07_Atlas } from "./slides/Slide07_Atlas";
 import { Slide08_GlobalBenchmarks } from "./slides/Slide08_GlobalBenchmarks";
 import { Slide09_Quadrant } from "./slides/Slide09_Quadrant";
-import { Slide10_PeerInstitutions } from "./slides/Slide10_PeerInstitutions";
 import { Slide11_ServiceChannelHeatmap } from "./slides/Slide11_ServiceChannelHeatmap";
 import { Slide12_Decision } from "./slides/Slide12_Decision";
-import { Slide13_Roadmap } from "./slides/Slide13_Roadmap";
 import { Slide14_Closing } from "./slides/Slide14_Closing";
 import { SlidePlaceholder } from "./SlidePlaceholder";
 import { ComparatorPicker } from "./ComparatorPicker";
@@ -75,11 +73,7 @@ const SLIDES: SlideRenderer[] = [
   ),
   dataReadySlide(
     ({ snapshot }) => <Slide09_Quadrant snapshot={snapshot} />,
-    "Quadrant View"
-  ),
-  dataReadySlide(
-    ({ snapshot }) => <Slide10_PeerInstitutions snapshot={snapshot} />,
-    "Peer Benchmarking"
+    "Spider Comparison"
   ),
   dataReadySlide(
     ({ snapshot }) => <Slide11_ServiceChannelHeatmap snapshot={snapshot} />,
@@ -88,10 +82,6 @@ const SLIDES: SlideRenderer[] = [
   dataReadySlide(
     ({ snapshot }) => <Slide12_Decision snapshot={snapshot} />,
     "Decision Walkthrough"
-  ),
-  dataReadySlide(
-    ({ snapshot }) => <Slide13_Roadmap snapshot={snapshot} />,
-    "12-Month Roadmap"
   ),
   dataReadySlide(({ snapshot }) => <Slide14_Closing snapshot={snapshot} />, "Closing"),
 ];

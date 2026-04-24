@@ -21,36 +21,36 @@ const CHAPTERS: Chapter[] = [
   {
     numeral: "I",
     name: "Foundation",
-    header: "If it's a number, it has a citation.",
-    preview: "5 pillars · 1,000+ data points · every source linked.",
-    soWhat: "Trust the numbers.",
+    header: "What's inside the Compass — and the evidence behind every number.",
+    preview: "5 pillars · peer institutions · sources cited.",
+    soWhat: "See the engine.",
     Icon: Database,
     accent: "#1B7A4A",
   },
   {
     numeral: "II",
     name: "UAE today",
-    header: "The system, the mandate, the people behind every benefit.",
+    header: "The system we run, and the people behind every benefit.",
     preview: "6 branches · 4 coverage classes · 10 personas, 10 journeys.",
-    soWhat: "Know what we're really asking of.",
+    soWhat: "Know what we serve.",
     Icon: Map,
     accent: "#4899FF",
   },
   {
     numeral: "III",
     name: "Compare",
-    header: "Where the UAE actually plays — by country, by peer, by dimension.",
-    preview: "Atlas · benchmarks · quadrant · peer institutions · channels.",
+    header: "Where the UAE plays — by country, by standard, by dimension.",
+    preview: "Living Atlas · standards & compliance · spider compare.",
     soWhat: "Set the bar globally.",
     Icon: Globe2,
     accent: "#E7B02E",
   },
   {
     numeral: "IV",
-    name: "Decide",
-    header: "From insight to a sequenced 12-month plan.",
-    preview: "Decision walkthrough · roadmap · Q1–Q4 sequencing.",
-    soWhat: "Move.",
+    name: "Apply",
+    header: "From the dashboard to a real GPSSA decision in one click.",
+    preview: "Service × channel coverage · question-to-slide walkthrough.",
+    soWhat: "Use it tomorrow.",
     Icon: Compass,
     accent: "#CA63D5",
   },
@@ -64,8 +64,8 @@ export function Slide02_Outline({ total }: Slide02Props) {
   return (
     <SlideLayout
       eyebrow="Outline"
-      title="From evidence to decision."
-      subtitle="How this deck moves GPSSA from informed to ready."
+      title="A tour of the Compass in twelve slides."
+      subtitle="What it sees, who it serves, how it compares — and how it answers a real GPSSA question."
     >
       <div className="flex h-full flex-col">
         {/* North star */}

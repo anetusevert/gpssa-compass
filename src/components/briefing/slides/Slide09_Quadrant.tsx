@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Globe, Building2, Plus, X } from "lucide-react";
 import { SlideLayout } from "./SlideLayout";
-import { QuadrantChart, type QuadrantPoint } from "../charts/QuadrantChart";
+import { AnimatedRadar, type RadarSeries } from "../charts/AnimatedRadar";
 import { useComparatorStore } from "../store";
-import type { BriefingSnapshot } from "@/lib/briefing/types";
+import type {
+  AtlasCountryRow,
+  BriefingSnapshot,
+  PeerInstitutionRow,
+} from "@/lib/briefing/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -16,29 +20,29 @@ interface Props {
 
 type Mode = "country" | "institution";
 
-const COUNTRY_DIMS: { key: keyof CountryMetrics; label: string }[] = [
-  { key: "maturityScore", label: "Maturity score" },
-  { key: "coverageRate", label: "Coverage" },
-  { key: "replacementRate", label: "Replacement" },
-  { key: "sustainability", label: "Sustainability" },
-  { key: "digitalReadiness", label: "Digital readiness" },
-];
-
-interface CountryMetrics {
-  maturityScore: number | null;
-  coverageRate: number | null;
-  replacementRate: number | null;
-  sustainability: number | null;
-  digitalReadiness: number | null;
+interface Axis {
+  key: string;
+  label: string;
 }
 
-function quadrantOf(x: number, y: number): string {
-  const right = x >= 50;
-  const top = y >= 50;
-  if (right && top) return "Leaders";
-  if (!right && top) return "Niche";
-  if (right && !top) return "Challengers";
-  return "Laggards";
+const COUNTRY_AXES: Axis[] = [
+  { key: "maturityScore", label: "Maturity" },
+  { key: "coverageRate", label: "Coverage" },
+  { key: "replacementRate", label: "Adequacy" },
+  { key: "sustainability", label: "Sustainability" },
+  { key: "digitalReadiness", label: "Digital" },
+];
+
+const UAE_COLOR = "#33C490";
+
+function readCountry(c: AtlasCountryRow, key: string): number {
+  const v = (c.metrics as Record<string, number | null>)[key];
+  return typeof v === "number" ? Math.max(0, Math.min(100, v)) : 0;
+}
+
+function readPeer(p: PeerInstitutionRow, key: string): number {
+  const v = p.dimensionScores[key];
+  return typeof v === "number" ? Math.max(0, Math.min(100, v)) : 0;
 }
 
 export function Slide09_Quadrant({ snapshot }: Props) {
@@ -47,132 +51,114 @@ export function Slide09_Quadrant({ snapshot }: Props) {
   const remove = useComparatorStore((s) => s.remove);
   const openPicker = useComparatorStore((s) => s.openPicker);
 
-  // Default axes per mode
-  const countryDimList = useMemo(() => COUNTRY_DIMS, []);
-  const institutionDimList = useMemo(
-    () => snapshot.benchmarks.dimensionList,
-    [snapshot]
+  const institutionAxes: Axis[] = useMemo(
+    () =>
+      snapshot.benchmarks.dimensionList.map((d) => ({
+        key: d.slug,
+        label: d.name,
+      })),
+    [snapshot.benchmarks.dimensionList]
   );
 
-  const [xKey, setXKey] = useState<string>(COUNTRY_DIMS[1].key); // Coverage
-  const [yKey, setYKey] = useState<string>(COUNTRY_DIMS[3].key); // Sustainability
+  const axes: Axis[] = mode === "country" ? COUNTRY_AXES : institutionAxes.slice(0, 7);
 
-  // When mode flips, pick sensible defaults
-  useEffect(() => {
+  // Build series — UAE / GPSSA always first, then selected comparators.
+  const series: RadarSeries[] = useMemo(() => {
+    const out: RadarSeries[] = [];
+
     if (mode === "country") {
-      setXKey(COUNTRY_DIMS[1].key);
-      setYKey(COUNTRY_DIMS[3].key);
-    } else if (institutionDimList.length >= 2) {
-      setXKey(institutionDimList[0].slug);
-      setYKey(institutionDimList[1].slug);
-    }
-  }, [mode, institutionDimList]);
+      const uae = snapshot.atlas.countries.find((c) => c.iso3 === "ARE");
+      if (uae) {
+        out.push({
+          name: "UAE",
+          color: UAE_COLOR,
+          values: axes.map((a) => readCountry(uae, a.key)),
+        });
+      }
 
-  const dimList =
-    mode === "country"
-      ? countryDimList.map((d) => ({ slug: d.key, name: d.label }))
-      : institutionDimList.map((d) => ({ slug: d.slug, name: d.name }));
+      // Global average reference, if present in standards aggregates
+      if (snapshot.standards.globalAverageMetrics) {
+        const m = snapshot.standards.globalAverageMetrics;
+        out.push({
+          name: "Global average",
+          color: "rgba(255,255,255,0.55)",
+          values: axes.map((a) => {
+            const v = m[a.key];
+            return typeof v === "number" ? Math.max(0, Math.min(100, v)) : 0;
+          }),
+        });
+      }
 
-  const xLabel =
-    dimList.find((d) => d.slug === xKey)?.name ??
-    (dimList[0]?.name ?? "");
-  const yLabel =
-    dimList.find((d) => d.slug === yKey)?.name ??
-    (dimList[1]?.name ?? "");
-
-  const points: QuadrantPoint[] = useMemo(() => {
-    if (mode === "country") {
-      const selectedIds = new Set(
-        slide5.filter((r) => r.kind === "country").map((r) => r.id)
-      );
-      return snapshot.atlas.countries
-        .map((c) => {
-          const x = (c.metrics as Record<string, number | null>)[xKey];
-          const y = (c.metrics as Record<string, number | null>)[yKey];
-          if (x == null || y == null) return null;
-          const id = `country:${c.iso3}`;
-          const isUae = c.iso3 === "ARE";
-          const ref = slide5.find((r) => r.id === id);
-          let kind: QuadrantPoint["kind"] = "default";
-          let color = "rgba(255,255,255,0.32)";
-          if (isUae) {
-            kind = "uae";
-            color = "#33C490";
-          } else if (selectedIds.has(id) && ref) {
-            kind = "selected";
-            color = ref.color;
-          }
-          return {
-            id,
-            name: isUae ? "UAE" : c.name,
-            flag: c.flag,
-            x,
-            y,
-            kind,
-            color,
-          } as QuadrantPoint;
-        })
-        .filter((p): p is QuadrantPoint => p !== null);
-    }
-    // institution mode
-    const selectedIds = new Set(
-      slide5.filter((r) => r.kind === "institution").map((r) => r.id)
-    );
-    return snapshot.benchmarks.allPeers
-      .map((p) => {
-        const x = p.dimensionScores[xKey];
-        const y = p.dimensionScores[yKey];
-        if (x == null || y == null) return null;
-        const id = `institution:${p.id}`;
-        const ref = slide5.find((r) => r.id === id);
-        let kind: QuadrantPoint["kind"] = "default";
-        let color = "rgba(255,255,255,0.32)";
-        if (p.isGpssa) {
-          kind = "uae";
-          color = "#33C490";
-        } else if (selectedIds.has(id) && ref) {
-          kind = "selected";
-          color = ref.color;
-        }
-        return {
-          id,
+      const refs = slide5.filter((r) => r.kind === "country");
+      for (const ref of refs) {
+        const iso = ref.id.replace(/^country:/, "");
+        const c = snapshot.atlas.countries.find((cc) => cc.iso3 === iso);
+        if (!c) continue;
+        out.push({
+          name: c.name,
+          color: ref.color,
+          values: axes.map((a) => readCountry(c, a.key)),
+        });
+      }
+    } else {
+      const gpssa = snapshot.benchmarks.allPeers.find((p) => p.isGpssa);
+      if (gpssa) {
+        out.push({
+          name: gpssa.shortName ?? gpssa.name,
+          color: UAE_COLOR,
+          values: axes.map((a) => readPeer(gpssa, a.key)),
+        });
+      }
+      const refs = slide5.filter((r) => r.kind === "institution");
+      for (const ref of refs) {
+        const id = ref.id.replace(/^institution:/, "");
+        const p = snapshot.benchmarks.allPeers.find((pp) => pp.id === id);
+        if (!p) continue;
+        out.push({
           name: p.shortName ?? p.name,
-          x,
-          y,
-          kind,
-          color,
-        } as QuadrantPoint;
-      })
-      .filter((p): p is QuadrantPoint => p !== null);
-  }, [mode, snapshot, slide5, xKey, yKey]);
-
-  // Dynamic action sub-line
-  const subLine = useMemo(() => {
-    const uae = points.find((p) => p.kind === "uae");
-    if (!uae) {
-      return mode === "country"
-        ? "UAE has no score on the chosen dimensions yet."
-        : "GPSSA has no score on the chosen dimensions yet.";
+          color: ref.color,
+          values: axes.map((a) => readPeer(p, a.key)),
+        });
+      }
     }
-    const total = points.length;
-    const ahead = points.filter(
-      (p) => p.kind !== "uae" && p.x + p.y < uae.x + uae.y
-    ).length;
-    const q = quadrantOf(uae.x, uae.y);
-    return `On ${xLabel} × ${yLabel}, the UAE sits in the ${q} quadrant — ahead of ${ahead} of ${total - 1} ${mode === "country" ? "peer countries" : "peer institutions"}.`;
-  }, [points, mode, xLabel, yLabel]);
+
+    return out;
+  }, [mode, axes, snapshot, slide5]);
+
+  // Action sub-line — average score gap UAE vs cohort.
+  const subLine = useMemo(() => {
+    if (series.length === 0) {
+      return mode === "country"
+        ? "Pick countries to compare against the UAE on the same dimensions."
+        : "Pick peer institutions to compare against GPSSA across all scoring dimensions.";
+    }
+    const us = series[0];
+    const usAvg = us.values.reduce((s, v) => s + v, 0) / us.values.length;
+    const others = series.slice(1);
+    if (others.length === 0) {
+      return `${us.name}: average score ${Math.round(usAvg)}/100 across ${axes.length} dimensions.`;
+    }
+    const otherAvg =
+      others
+        .flatMap((s) => s.values)
+        .reduce((s, v) => s + v, 0) /
+      (others.flatMap((s) => s.values).length || 1);
+    const gap = Math.round(usAvg - otherAvg);
+    return gap >= 0
+      ? `${us.name} leads the comparator group by ~${gap} points on average across ${axes.length} dimensions.`
+      : `${us.name} trails the comparator group by ~${Math.abs(gap)} points on average — clear runway on ${axes.length} dimensions.`;
+  }, [series, axes, mode]);
 
   return (
     <SlideLayout
-      eyebrow="Compare · Quadrant"
-      title="Pick the two axes that matter."
+      eyebrow="Compare · Spider"
+      title="One picture. Every dimension. Every gap."
       subtitle={subLine}
     >
       <div className="flex h-full flex-col gap-3">
         {/* Controls */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            {/* Mode toggle */}
             <div className="flex rounded-lg bg-white/[0.04] p-0.5 ring-1 ring-white/10">
               <ModeButton
                 active={mode === "country"}
@@ -187,19 +173,6 @@ export function Slide09_Quadrant({ snapshot }: Props) {
                 label="Institutions"
               />
             </div>
-
-            <AxisSelect
-              label="X"
-              value={xKey}
-              onChange={setXKey}
-              options={dimList.map((d) => ({ value: d.slug, label: d.name }))}
-            />
-            <AxisSelect
-              label="Y"
-              value={yKey}
-              onChange={setYKey}
-              options={dimList.map((d) => ({ value: d.slug, label: d.name }))}
-            />
           </div>
 
           <div className="flex items-center gap-2">
@@ -241,14 +214,78 @@ export function Slide09_Quadrant({ snapshot }: Props) {
           </div>
         </div>
 
-        {/* Chart */}
+        {/* Spider area */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.15, ease: EASE }}
-          className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.018] p-2"
+          className="grid min-h-0 flex-1 grid-cols-12 gap-3"
         >
-          <QuadrantChart data={points} xLabel={xLabel} yLabel={yLabel} />
+          {/* Radar */}
+          <div className="col-span-9 relative flex min-h-0 items-center justify-center overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.018] p-2">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-40"
+              style={{
+                background:
+                  "radial-gradient(circle at 50% 50%, rgba(51,196,144,0.06) 0%, transparent 65%)",
+              }}
+            />
+            {series.length > 0 ? (
+              <AnimatedRadar
+                axes={axes.map((a) => a.label)}
+                series={series}
+                size={520}
+              />
+            ) : (
+              <div className="text-center text-[12px] text-white/45">
+                Pick at least one comparator to render the spider.
+              </div>
+            )}
+          </div>
+
+          {/* Legend / score table */}
+          <aside className="col-span-3 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.018] p-3">
+            <div className="mb-2 text-[9.5px] uppercase tracking-[0.2em] text-white/45">
+              Series
+            </div>
+            <div className="flex flex-1 flex-col gap-2 overflow-y-auto pr-1">
+              {series.map((s) => {
+                const avg = Math.round(
+                  s.values.reduce((acc, v) => acc + v, 0) / (s.values.length || 1)
+                );
+                return (
+                  <div
+                    key={s.name}
+                    className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-sm"
+                          style={{ background: s.color }}
+                        />
+                        <span className="truncate text-[11.5px] font-medium text-cream">
+                          {s.name}
+                        </span>
+                      </div>
+                      <span className="font-playfair text-[12px] font-semibold tabular-nums text-cream/85">
+                        {avg}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {series.length === 0 && (
+                <div className="text-[11px] text-white/40">
+                  No series yet — add comparators to populate.
+                </div>
+              )}
+            </div>
+            <div className="mt-2 text-[9px] uppercase tracking-[0.18em] text-white/35">
+              {axes.length} dimensions · scored 0–100
+            </div>
+          </aside>
         </motion.div>
       </div>
     </SlideLayout>
@@ -279,35 +316,5 @@ function ModeButton({
       <Icon size={11} />
       {label}
     </button>
-  );
-}
-
-function AxisSelect({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <label className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10.5px] text-cream">
-      <span className="text-white/45">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="cursor-pointer bg-transparent pr-1 text-cream outline-none"
-        style={{ colorScheme: "dark" }}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value} className="bg-[#071122]">
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
