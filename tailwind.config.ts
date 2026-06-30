@@ -24,6 +24,8 @@ const config: Config = {
         },
         teal: "var(--teal)",
         gold: "var(--gold)",
+        amber: "var(--amber)",
+        rose: "var(--rose)",
         cream: "var(--cream)",
         "gray-muted": "var(--gray-muted)",
         surface: "var(--surface)",

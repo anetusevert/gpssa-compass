@@ -7,6 +7,11 @@ import { COUNTRIES, SCORING_DIMENSIONS } from "../src/lib/countries/catalog";
 import { DEFAULT_AGENTS } from "../src/lib/agents";
 import { agentService } from "../src/lib/services/agent.service";
 import { seedStandardsLibrary } from "../src/lib/standards/seed";
+// Workstream B — End-to-End QA & Service Fulfilment Framework (RFP #GPSSA-016-2026)
+import { seedRoadmapGovernance } from "../src/lib/roadmap/seed";
+import { seedQualityAssurance } from "../src/lib/qa/seed";
+import { seedFulfilment } from "../src/lib/fulfilment/seed";
+import { seedPerformance } from "../src/lib/kpi/seed";
 
 const prisma = new PrismaClient();
 
@@ -329,6 +334,17 @@ async function main() {
       console.warn(`    ! ${f.id} (${f.name}): ${f.error}`);
     }
   }
+
+  // ── Workstream B — End-to-End QA & Service Fulfilment Framework ──
+  // Roadmap/governance first so Benefits Realisation can link to initiatives.
+  await seedRoadmapGovernance(prisma);
+  console.log("  Roadmap & governance seeded (RFP §2.3 phase plan, opportunities, RACI, capability transfer)");
+  await seedQualityAssurance(prisma);
+  console.log("  Quality Assurance framework seeded (dimensions, scorecards, reviews, calibration, taxonomy, CAPA)");
+  await seedFulfilment(prisma);
+  console.log("  Service fulfilment seeded (SLA/OLA, cases, breaches, fulfilment snapshots)");
+  await seedPerformance(prisma);
+  console.log("  Performance & VoC seeded (KPI/KQI, measurements, CSAT/NPS, benefits realisation)");
 
   console.log("Seeding complete!");
 }

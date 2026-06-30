@@ -430,6 +430,9 @@ model Opportunity {
   feasibility     Float?
   status          String                      @default("identified")
   sourceSection   String?
+  // Workstream B: explicit prioritisation scoring (RICE / WSJF).
+  riceScore       Float?
+  wsjfScore       Float?
   conceptSheet    ConceptSheet?
   sourceCitations OpportunitySourceCitation[]
   createdAt       DateTime                    @default(now())
@@ -462,6 +465,7 @@ model RoadmapPhase {
   id          String              @id @default(cuid())
   name        String
   description String?
+  workstream  String? // A (Product & Service Roadmap) | B (QA Framework) — RFP §2.3
   startDate   String?
   endDate     String?
   objectives  String?
@@ -482,6 +486,7 @@ model RoadmapInitiative {
   dependencies    String?
   estimatedImpact String?
   sortOrder       Int          @default(0)
+  benefits        BenefitsRealisation[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -513,8 +518,20 @@ model KPI {
   frequency   String   @default("monthly")
   owner       String?
   pillar      String?
+  // Workstream B: KPI vs KQI catalogue (TM Forum GB917 + Balanced Scorecard).
+  kind        String   @default("kpi") // kpi | kqi
+  timing      String? // leading | lagging
+  perspective String? // financial | customer | process | capacity
+  tier        String? // operational | tactical | strategic
+  direction   String   @default("higher-better") // higher-better | lower-better
+  parentId    String? // KQI -> feeding-KPI decomposition
+  parent      KPI?     @relation("KpiDecomposition", fields: [parentId], references: [id], onDelete: SetNull)
+  children    KPI[]    @relation("KpiDecomposition")
+  measurements KpiMeasurement[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([parentId])
 }
 
 model Activity {
@@ -559,6 +576,7 @@ model DataSource {
   countryCitations           CountrySourceCitation[]
   standardCitations          StandardSourceCitation[]
   complianceCitations        StandardComplianceSourceCitation[]
+  qaScorecardCitations       QAScorecardSourceCitation[]
 }
 
 model CountrySourceCitation {
@@ -1287,4 +1305,394 @@ model GpssaMilestone {
   updatedAt   DateTime @updatedAt
 
   @@index([year])
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// WORKSTREAM B — End-to-End Quality Assurance & Service Fulfilment Framework
+// (RFP #GPSSA-016-2026). Anchored to COPC (3-metric quality), ISO/Six Sigma,
+// ITIL SLA/OLA, Balanced Scorecard, ISSA service-quality guidelines.
+// ════════════════════════════════════════════════════════════════════════
+
+// ── MG1: Quality Assurance Framework ──
+
+model QualityDimension {
+  id          String   @id @default(cuid())
+  name        String
+  definition  String?
+  category    String   @default("accuracy") // accuracy | completeness | compliance | timeliness | cx | consistency
+  copcFamily  String? // customer | business | compliance
+  weight      Float    @default(1.0)
+  sortOrder   Int      @default(0)
+  criteria    QAScorecardCriterion[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model QAScorecard {
+  id              String                      @id @default(cuid())
+  name            String
+  description     String?
+  serviceScope    String? // service name / queue this scorecard governs
+  status          String                      @default("draft") // draft | active | archived
+  criteria        QAScorecardCriterion[]
+  samplingPlans   QASamplingPlan[]
+  reviews         QAReview[]
+  calibrations    QACalibrationSession[]
+  sourceCitations QAScorecardSourceCitation[]
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+}
+
+model QAScorecardCriterion {
+  id          String           @id @default(cuid())
+  scorecardId String
+  scorecard   QAScorecard      @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+  dimensionId String?
+  dimension   QualityDimension? @relation(fields: [dimensionId], references: [id], onDelete: SetNull)
+  text        String
+  weight      Float            @default(1.0)
+  critical    Boolean          @default(false) // auto-fail criterion
+  sortOrder   Int              @default(0)
+  reviewItems QAReviewItem[]
+  createdAt   DateTime         @default(now())
+
+  @@index([scorecardId])
+}
+
+model QASamplingPlan {
+  id              String      @id @default(cuid())
+  scorecardId     String
+  scorecard       QAScorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+  method          String      @default("hybrid") // statistical | risk-based | hybrid
+  populationSize  Int         @default(0)
+  confidenceLevel Float       @default(95)
+  marginError     Float       @default(5)
+  sampleSize      Int         @default(0)
+  riskWeighting   String?
+  cadence         String      @default("monthly")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([scorecardId])
+}
+
+model QAReview {
+  id                String         @id @default(cuid())
+  scorecardId       String
+  scorecard         QAScorecard    @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+  serviceName       String?
+  caseRef           String
+  reviewer          String?
+  totalScore        Float          @default(0)
+  customerAccuracy  Boolean        @default(true) // COPC: free of customer-critical error
+  businessAccuracy  Boolean        @default(true) // COPC: free of business-critical error
+  complianceAccuracy Boolean       @default(true) // COPC: free of compliance-critical error
+  autoFailTriggered Boolean        @default(false)
+  status            String         @default("completed") // draft | completed
+  reviewedAt        DateTime       @default(now())
+  items             QAReviewItem[]
+  createdAt         DateTime       @default(now())
+
+  @@index([scorecardId])
+}
+
+model QAReviewItem {
+  id          String               @id @default(cuid())
+  reviewId    String
+  review      QAReview             @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  criterionId String
+  criterion   QAScorecardCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  passed      Boolean              @default(true)
+  score       Float                @default(0)
+  note        String?
+
+  @@index([reviewId])
+}
+
+model QACalibrationSession {
+  id             String                @id @default(cuid())
+  scorecardId    String
+  scorecard      QAScorecard           @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+  caseRef        String
+  sessionDate    DateTime              @default(now())
+  evaluatorCount Int                   @default(0)
+  irrScore       Float                 @default(0) // inter-rater reliability %
+  driftNote      String?
+  status         String                @default("completed")
+  scores         QACalibrationScore[]
+  createdAt      DateTime              @default(now())
+
+  @@index([scorecardId])
+}
+
+model QACalibrationScore {
+  id        String               @id @default(cuid())
+  sessionId String
+  session   QACalibrationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  evaluator String
+  score     Float                @default(0)
+
+  @@index([sessionId])
+}
+
+model ErrorTaxonomyNode {
+  id          String              @id @default(cuid())
+  parentId    String?
+  parent      ErrorTaxonomyNode?  @relation("Taxonomy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    ErrorTaxonomyNode[] @relation("Taxonomy")
+  code        String              @unique
+  name        String
+  severity    String              @default("major") // critical | major | minor
+  category    String?
+  description String?
+  sortOrder   Int                 @default(0)
+  defects     Defect[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([parentId])
+}
+
+model Defect {
+  id               String             @id @default(cuid())
+  taxonomyNodeId   String?
+  taxonomyNode     ErrorTaxonomyNode? @relation(fields: [taxonomyNodeId], references: [id], onDelete: SetNull)
+  source           String             @default("qa") // qa | fulfilment
+  serviceName      String?
+  caseRef          String?
+  severity         String             @default("major")
+  detectedAt       DateTime           @default(now())
+  status           String             @default("open") // open | analysing | resolved
+  correctiveActions CorrectiveAction[]
+  breaches         Breach[]
+  createdAt        DateTime           @default(now())
+
+  @@index([taxonomyNodeId])
+}
+
+model CorrectiveAction {
+  id                 String   @id @default(cuid())
+  defectId           String?
+  defect             Defect?  @relation(fields: [defectId], references: [id], onDelete: SetNull)
+  clusterLabel       String?
+  title              String
+  rootCauseMethod    String   @default("5why") // 5why | fishbone | fault-tree
+  rootCause          String?
+  actionType         String   @default("corrective") // corrective | preventive
+  owner              String?
+  dueDate            String?
+  status             String   @default("open") // open | in-progress | verified | closed
+  effectivenessCheck String?
+  cycle              String   @default("pdca") // pdca | dmaic
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([defectId])
+}
+
+model QAScorecardSourceCitation {
+  id           String      @id @default(cuid())
+  scorecardId  String
+  sourceId     String
+  citation     String?
+  evidenceNote String?
+  createdAt    DateTime    @default(now())
+  scorecard    QAScorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+  source       DataSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([scorecardId, sourceId])
+  @@index([sourceId])
+}
+
+// ── MG2: Service Fulfilment & Breach Reduction ──
+
+model SLADefinition {
+  id             String          @id @default(cuid())
+  serviceName    String?
+  name           String
+  tier           String          @default("standard") // bronze | silver | gold | standard
+  type           String          @default("sla") // sla | ola
+  targetHours    Int             @default(24)
+  underpinsSlaId String?
+  underpins      SLADefinition?  @relation("OlaUnderpins", fields: [underpinsSlaId], references: [id], onDelete: SetNull)
+  underpinnedBy  SLADefinition[] @relation("OlaUnderpins")
+  direction      String?
+  description    String?
+  cases          ServiceCase[]
+  breaches       Breach[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model ServiceCase {
+  id              String         @id @default(cuid())
+  serviceName     String?
+  caseRef         String         @unique
+  segment         String         @default("manual-review") // straight-through | manual-review | specialist
+  impact          String         @default("medium") // low | medium | high
+  urgency         String         @default("medium") // low | medium | high
+  priority        String         @default("P3") // P1..P5
+  status          String         @default("open") // open | in-progress | on-hold | resolved
+  owner           String?
+  openedAt        DateTime       @default(now())
+  slaId           String?
+  sla             SLADefinition? @relation(fields: [slaId], references: [id], onDelete: SetNull)
+  dueAt           DateTime?
+  resolvedAt      DateTime?
+  breached        Boolean        @default(false)
+  breachRiskLevel String         @default("green") // green | amber | red
+  breaches        Breach[]
+  createdAt       DateTime       @default(now())
+
+  @@index([slaId])
+}
+
+model Breach {
+  id             String         @id @default(cuid())
+  caseId         String?
+  case           ServiceCase?   @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  slaId          String?
+  sla            SLADefinition? @relation(fields: [slaId], references: [id], onDelete: SetNull)
+  breachedAt     DateTime       @default(now())
+  hoursOver      Int            @default(0)
+  reason         String?
+  escalationType String         @default("functional") // functional | hierarchical
+  defectId       String?
+  defect         Defect?        @relation(fields: [defectId], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
+
+  @@index([caseId])
+}
+
+model FulfilmentSnapshot {
+  id               String   @id @default(cuid())
+  serviceName      String?
+  period           String
+  avgTatHours      Float    @default(0)
+  firstTimeRightPct Float   @default(0)
+  reworkPct        Float    @default(0)
+  backlogCount     Int      @default(0)
+  wipOver30        Int      @default(0)
+  pcePct           Float    @default(0)
+  dpmo             Float    @default(0)
+  createdAt        DateTime @default(now())
+
+  @@unique([serviceName, period])
+}
+
+// ── MG3: Performance & Voice of Customer ──
+
+model KpiMeasurement {
+  id         String   @id @default(cuid())
+  kpiId      String
+  kpi        KPI      @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  period     String
+  value      Float
+  target     Float?
+  comparator String   @default("GPSSA")
+  createdAt  DateTime @default(now())
+
+  @@unique([kpiId, period, comparator])
+  @@index([kpiId])
+}
+
+model CxMeasurement {
+  id          String   @id @default(cuid())
+  metric      String // csat | dsat | nps | ces | pulse | fcr | repeat-contact
+  serviceName String?
+  channel     String?
+  period      String
+  value       Float
+  sampleSize  Int?
+  driver      String?
+  createdAt   DateTime @default(now())
+
+  @@index([metric])
+}
+
+model ComplaintTheme {
+  id          String   @id @default(cuid())
+  theme       String
+  period      String
+  count       Int      @default(0)
+  sentiment   String   @default("negative")
+  serviceName String?
+  createdAt   DateTime @default(now())
+}
+
+model ComputedKqi {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  kind      String   @default("avg") // avg | best-practice | median | p95
+  scope     String   @default("global")
+  value     Float    @default(0)
+  unit      String?
+  formula   String?
+  asOfDate  DateTime?
+  payload   String   @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── MG4: Benefits Realisation ──
+
+model BenefitsRealisation {
+  id           String             @id @default(cuid())
+  initiativeId String?
+  initiative   RoadmapInitiative? @relation(fields: [initiativeId], references: [id], onDelete: SetNull)
+  title        String
+  metric       String
+  baseline     Float
+  target       Float
+  actual       Float?
+  unit         String?
+  status       String             @default("on-track") // on-track | at-risk | realised | missed
+  validatedBy  String?
+  validatedAt  String?
+  note         String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([initiativeId])
+}
+
+// ── MG5: Governance & Operating Model ──
+
+model GovernanceForum {
+  id        String   @id @default(cuid())
+  name      String
+  tier      Int      @default(1) // 1..4
+  cadence   String   @default("daily") // daily | weekly | monthly | quarterly
+  purpose   String?
+  attendees String?
+  owner     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RaciEntry {
+  id          String   @id @default(cuid())
+  processArea String
+  activity    String
+  team        String
+  role        String   @default("R") // R | A | S | C | I
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([processArea])
+}
+
+model CapabilityTransferItem {
+  id                String   @id @default(cuid())
+  phase             String?
+  item              String
+  mechanism         String   @default("train-the-trainer") // train-the-trainer | playbook | coaching | sustainment-metric
+  owner             String?
+  status            String   @default("planned") // planned | in-progress | embedded
+  sustainmentMetric String?
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }

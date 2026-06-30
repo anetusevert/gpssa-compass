@@ -19,6 +19,10 @@ import { Slide08_GlobalBenchmarks } from "./slides/Slide08_GlobalBenchmarks";
 import { Slide09_Quadrant } from "./slides/Slide09_Quadrant";
 import { Slide11_ServiceChannelHeatmap } from "./slides/Slide11_ServiceChannelHeatmap";
 import { Slide12_Decision } from "./slides/Slide12_Decision";
+import { Slide15_QAFramework } from "./slides/Slide15_QAFramework";
+import { Slide16_Fulfilment } from "./slides/Slide16_Fulfilment";
+import { Slide17_KQIDashboard } from "./slides/Slide17_KQIDashboard";
+import { Slide18_Governance } from "./slides/Slide18_Governance";
 import { Slide14_Closing } from "./slides/Slide14_Closing";
 import { SlidePlaceholder } from "./SlidePlaceholder";
 import { ComparatorPicker } from "./ComparatorPicker";
@@ -83,6 +87,11 @@ const SLIDES: SlideRenderer[] = [
     ({ snapshot }) => <Slide12_Decision snapshot={snapshot} />,
     "Decision Walkthrough"
   ),
+  // ── Workstream B chapter — Quality & Fulfilment (RFP #GPSSA-016-2026) ──
+  () => <Slide15_QAFramework />,
+  () => <Slide16_Fulfilment />,
+  () => <Slide17_KQIDashboard />,
+  () => <Slide18_Governance />,
   dataReadySlide(({ snapshot }) => <Slide14_Closing snapshot={snapshot} />, "Closing"),
 ];
 

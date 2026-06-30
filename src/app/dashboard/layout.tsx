@@ -27,6 +27,8 @@ export default function DashboardLayout({
     || pathname === "/dashboard/delivery/personas"
     || pathname === "/dashboard/products/portfolio"
     || pathname === "/dashboard/products/segments"
+    || pathname === "/dashboard/fulfilment/cases"
+    || pathname === "/dashboard/fulfilment/breach"
     || isMandatePage
     || isAtlasCountryPage;
   const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
