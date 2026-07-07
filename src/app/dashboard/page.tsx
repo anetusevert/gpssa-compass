@@ -19,6 +19,22 @@ import {
   X,
   Scale,
   Sparkles,
+  ShieldCheck,
+  ClipboardCheck,
+  ListChecks,
+  GitBranch,
+  Wrench,
+  LayoutGrid,
+  Gauge,
+  AlertTriangle,
+  LineChart,
+  Target,
+  Activity,
+  MessageSquare,
+  TrendingUp,
+  Map,
+  Lightbulb,
+  Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useCompassTourStore } from "@/components/tour/tour-store";
@@ -93,6 +109,67 @@ const PILLARS: Pillar[] = [
       { label: "Channels", href: "/dashboard/delivery/channels", icon: Truck },
       { label: "Personas", href: "/dashboard/delivery/personas", icon: UserCircle },
       { label: "Delivery Models", href: "/dashboard/delivery/models", icon: Network },
+    ],
+  },
+];
+
+const OPERATIONS: Pillar[] = [
+  {
+    id: "quality",
+    title: "Quality Assurance",
+    subtitle: "Scorecards, reviews & CAPA",
+    icon: ShieldCheck,
+    accentVar: "--teal",
+    glowColor: "rgba(45,212,191,0.22)",
+    items: [
+      { label: "Framework", href: "/dashboard/quality/framework", icon: ShieldCheck },
+      { label: "Scorecards", href: "/dashboard/quality/scorecards", icon: ClipboardCheck },
+      { label: "Reviews & Sampling", href: "/dashboard/quality/reviews", icon: ListChecks },
+      { label: "Calibration", href: "/dashboard/quality/calibration", icon: Scale },
+      { label: "Error Taxonomy", href: "/dashboard/quality/taxonomy", icon: GitBranch },
+      { label: "Corrective Actions", href: "/dashboard/quality/capa", icon: Wrench },
+    ],
+  },
+  {
+    id: "fulfilment",
+    title: "Service Fulfilment",
+    subtitle: "Case board, SLA & Lean analytics",
+    icon: LayoutGrid,
+    accentVar: "--amber",
+    glowColor: "rgba(233,162,59,0.22)",
+    items: [
+      { label: "Case Board", href: "/dashboard/fulfilment/cases", icon: LayoutGrid },
+      { label: "SLA / OLA", href: "/dashboard/fulfilment/sla", icon: Gauge },
+      { label: "Breach & Aging", href: "/dashboard/fulfilment/breach", icon: AlertTriangle },
+      { label: "Analytics", href: "/dashboard/fulfilment/analytics", icon: LineChart },
+    ],
+  },
+  {
+    id: "performance",
+    title: "Performance",
+    subtitle: "KPI/KQI, VoC & benefits",
+    icon: Target,
+    accentVar: "--gpssa-green",
+    glowColor: "rgba(0,168,107,0.22)",
+    items: [
+      { label: "KPI / KQI", href: "/dashboard/performance/catalogue", icon: Target },
+      { label: "Dashboards", href: "/dashboard/performance/dashboards", icon: Activity },
+      { label: "Voice of Customer", href: "/dashboard/performance/voc", icon: MessageSquare },
+      { label: "Benefits Realisation", href: "/dashboard/performance/benefits", icon: TrendingUp },
+    ],
+  },
+  {
+    id: "roadmap",
+    title: "Roadmap & Governance",
+    subtitle: "Roadmap, backlog & operating model",
+    icon: Map,
+    accentVar: "--gold",
+    glowColor: "rgba(197,165,114,0.22)",
+    items: [
+      { label: "12-Month Roadmap", href: "/dashboard/roadmap", icon: Map },
+      { label: "Opportunity Backlog", href: "/dashboard/roadmap/backlog", icon: Lightbulb },
+      { label: "Governance & RACI", href: "/dashboard/roadmap/governance", icon: Network },
+      { label: "Operating Model", href: "/dashboard/roadmap/operating-model", icon: Workflow },
     ],
   },
 ];
@@ -546,6 +623,27 @@ function PillarModal({
 }
 
 /* ──────────────────────────────────────────────
+ *  Tier Label (centered, flanking hairlines)
+ * ────────────────────────────────────────────── */
+
+function TierLabel({ children, delay }: { children: string; delay: number }) {
+  return (
+    <motion.div
+      className="flex items-center justify-center gap-3"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: EASE, delay }}
+    >
+      <span className="h-px w-8 bg-gradient-to-r from-transparent to-white/15" />
+      <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/40">
+        {children}
+      </span>
+      <span className="h-px w-8 bg-gradient-to-l from-transparent to-white/15" />
+    </motion.div>
+  );
+}
+
+/* ──────────────────────────────────────────────
  *  Dashboard Home
  * ────────────────────────────────────────────── */
 
@@ -569,10 +667,11 @@ export default function DashboardHome() {
   const greeting = now ? greetingFor(now) : "";
   const dateString = now ? formatDate(now) : "\u00A0";
 
-  const activePillar = PILLARS.find((p) => p.id === openPillar) ?? null;
+  const activePillar =
+    [...PILLARS, ...OPERATIONS].find((p) => p.id === openPillar) ?? null;
 
   return (
-    <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden py-8">
       {/* Ambient orbs */}
       <div
         className="orb pointer-events-none"
@@ -650,18 +749,37 @@ export default function DashboardHome() {
       <div className="relative z-10 w-full max-w-3xl px-6 space-y-3">
         <AtlasBar />
 
-        <div
-          className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-3"
-          data-tour="compass-pillar-grid"
-        >
-          {PILLARS.map((pillar, i) => (
-            <PillarTile
-              key={pillar.id}
-              pillar={pillar}
-              index={i}
-              onOpenModal={() => setOpenPillar(pillar.id)}
-            />
-          ))}
+        {/* Tier 1 — Core Portfolio */}
+        <div className="space-y-2">
+          <TierLabel delay={0.2}>Core Portfolio</TierLabel>
+          <div
+            className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-3"
+            data-tour="compass-pillar-grid"
+          >
+            {PILLARS.map((pillar, i) => (
+              <PillarTile
+                key={pillar.id}
+                pillar={pillar}
+                index={i}
+                onOpenModal={() => setOpenPillar(pillar.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Tier 2 — Operational Excellence */}
+        <div className="space-y-2">
+          <TierLabel delay={0.4}>Operational Excellence</TierLabel>
+          <div className="grid grid-cols-2 sm:grid-cols-4 items-stretch gap-3">
+            {OPERATIONS.map((pillar, i) => (
+              <PillarTile
+                key={pillar.id}
+                pillar={pillar}
+                index={PILLARS.length + i}
+                onOpenModal={() => setOpenPillar(pillar.id)}
+              />
+            ))}
+          </div>
         </div>
 
         <MandateBar />
