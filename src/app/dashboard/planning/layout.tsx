@@ -7,25 +7,25 @@ const roadmapTabs = [
   {
     id: "roadmap",
     label: "12-Month Roadmap",
-    href: "/dashboard/roadmap",
+    href: "/dashboard/planning",
     icon: CalendarRange,
   },
   {
     id: "backlog",
     label: "Opportunity Backlog",
-    href: "/dashboard/roadmap/backlog",
+    href: "/dashboard/planning/backlog",
     icon: ListOrdered,
   },
   {
     id: "governance",
     label: "Governance & RACI",
-    href: "/dashboard/roadmap/governance",
+    href: "/dashboard/planning/governance",
     icon: Network,
   },
   {
     id: "operating-model",
     label: "Operating Model",
-    href: "/dashboard/roadmap/operating-model",
+    href: "/dashboard/planning/operating-model",
     icon: Building2,
   },
 ];

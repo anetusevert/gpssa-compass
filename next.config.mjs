@@ -16,6 +16,8 @@ const nextConfig = {
       { source: "/dashboard/discover/design", destination: "/dashboard/services/analysis", permanent: true },
       { source: "/dashboard/requirements", destination: "/dashboard", permanent: true },
       { source: "/dashboard/requirements/:path*", destination: "/dashboard", permanent: true },
+      { source: "/dashboard/roadmap", destination: "/dashboard/planning", permanent: false },
+      { source: "/dashboard/roadmap/:path*", destination: "/dashboard/planning/:path*", permanent: false },
     ];
   },
 };

@@ -161,14 +161,14 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "ROADMAP & GOVERNANCE",
-    prefix: "/dashboard/roadmap",
+    prefix: "/dashboard/planning",
     color: "var(--gold)",
     glow: "rgba(197,165,114,0.14)",
     items: [
-      { label: "12-Month Roadmap", href: "/dashboard/roadmap", icon: Map },
-      { label: "Opportunity Backlog", href: "/dashboard/roadmap/backlog", icon: Lightbulb },
-      { label: "Governance & RACI", href: "/dashboard/roadmap/governance", icon: Network },
-      { label: "Operating Model", href: "/dashboard/roadmap/operating-model", icon: Workflow },
+      { label: "12-Month Roadmap", href: "/dashboard/planning", icon: Map },
+      { label: "Opportunity Backlog", href: "/dashboard/planning/backlog", icon: Lightbulb },
+      { label: "Governance & RACI", href: "/dashboard/planning/governance", icon: Network },
+      { label: "Operating Model", href: "/dashboard/planning/operating-model", icon: Workflow },
     ],
   },
   {
