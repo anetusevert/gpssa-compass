@@ -24,7 +24,7 @@ interface SlideEngineProps {
 }
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-const SLIDE_DURATION_MS = 12_000;
+const SLIDE_DURATION_MS = 14_000;
 
 export function SlideEngine({ slides, snapshot, onClose }: SlideEngineProps) {
   const [current, setCurrent] = useState(0);
@@ -130,6 +130,12 @@ export function SlideEngine({ slides, snapshot, onClose }: SlideEngineProps) {
         const digit = Number(e.key);
         const target = digit === 0 ? 9 : digit - 1;
         if (target < total) goTo(target);
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        if (total > 10) goTo(10);
+      } else if (e.key === "=" || e.key === "+") {
+        e.preventDefault();
+        if (total > 11) goTo(11);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -340,7 +346,8 @@ export function SlideEngine({ slides, snapshot, onClose }: SlideEngineProps) {
                 <KbdRow keys={["←", "→"]} action="Navigate slides" />
                 <KbdRow keys={["Space"]} action="Play / pause autoplay" />
                 <KbdRow keys={["F"]} action="Toggle fullscreen" />
-                <KbdRow keys={["1", "0"]} action="Jump to slide" />
+                <KbdRow keys={["1", "0"]} action="Jump to slides 1–10" />
+                <KbdRow keys={["-", "="]} action="Jump to slides 11–12" />
                 <KbdRow keys={["Esc"]} action="Exit fullscreen / close" />
                 <KbdRow keys={["?"]} action="Show this help" />
               </div>

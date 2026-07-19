@@ -152,8 +152,8 @@ export function Slide01_Cover() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.7, delay: 1.2 }}
         >
-          A live, sourced, comparable view of GPSSA against every major social
-          insurance authority on earth.
+          A live operating system for GPSSA — mandate, global benchmarks,
+          portfolio design and operational excellence in one command surface.
         </motion.p>
 
         <motion.div

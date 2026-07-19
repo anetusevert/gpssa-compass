@@ -31,7 +31,7 @@ const METRIC_LABELS: { key: keyof AtlasCountryRow["metrics"]; label: string }[] 
   { key: "digitalReadiness", label: "Digital readiness" },
 ];
 
-export function Slide07_Atlas({ snapshot }: Props) {
+export function Slide05_GlobalBar({ snapshot }: Props) {
   const slide5 = useComparatorStore((s) => s.slide5);
   const toggle = useComparatorStore((s) => s.toggle);
   const remove = useComparatorStore((s) => s.remove);
@@ -105,9 +105,9 @@ export function Slide07_Atlas({ snapshot }: Props) {
 
   return (
     <SlideLayout
-      eyebrow="Compare · Global Atlas"
-      title="We see every pension system on the planet."
-      subtitle="A living world map of pension maturity — hover or click any country to inspect its scorecard."
+      eyebrow="Global bar"
+      title="A living Atlas proves peer-comparable intelligence."
+      subtitle="Hover any country for its scorecard. Compare UAE against leaders — live data, not a static appendix."
     >
       <div className="flex h-full flex-col gap-3">
         {/* Header strip */}

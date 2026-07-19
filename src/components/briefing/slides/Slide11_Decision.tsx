@@ -83,7 +83,7 @@ const EXAMPLES: ScriptedExample[] = [
   },
 ];
 
-export function Slide12_Decision({ snapshot }: Props) {
+export function Slide11_Decision({ snapshot }: Props) {
   const [exampleIdx, setExampleIdx] = useState(0);
   const [stage, setStage] = useState(0); // 0..STAGES.length
 
@@ -120,8 +120,8 @@ export function Slide12_Decision({ snapshot }: Props) {
   return (
     <SlideLayout
       eyebrow="From question to decision"
-      title="From question to decision in four moves."
-      subtitle="This is how Compass turns a strategic question into a sourced, scored recommendation."
+      title="Watch Compass answer a real GPSSA question."
+      subtitle="Question → Atlas → Standards → Peers → Opportunity — a sourced recommendation in one cinematic loop."
     >
       <div className="flex h-full flex-col items-stretch justify-center gap-7 max-w-6xl mx-auto">
         {/* Example dots */}

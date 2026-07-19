@@ -9,21 +9,17 @@ import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 import type { BriefingSnapshot } from "@/lib/briefing/types";
 
 import { Slide01_Cover } from "./slides/Slide01_Cover";
-import { Slide02_Outline } from "./slides/Slide02_Outline";
-import { Slide03_Compass } from "./slides/Slide03_Compass";
-import { Slide04_Evidence } from "./slides/Slide04_Evidence";
-import { Slide05_UAEToday } from "./slides/Slide05_UAEToday";
-import { Slide06_Personas } from "./slides/Slide06_Personas";
-import { Slide07_Atlas } from "./slides/Slide07_Atlas";
-import { Slide08_GlobalBenchmarks } from "./slides/Slide08_GlobalBenchmarks";
-import { Slide09_Quadrant } from "./slides/Slide09_Quadrant";
-import { Slide11_ServiceChannelHeatmap } from "./slides/Slide11_ServiceChannelHeatmap";
-import { Slide12_Decision } from "./slides/Slide12_Decision";
-import { Slide15_QAFramework } from "./slides/Slide15_QAFramework";
-import { Slide16_Fulfilment } from "./slides/Slide16_Fulfilment";
-import { Slide17_KQIDashboard } from "./slides/Slide17_KQIDashboard";
-import { Slide18_Governance } from "./slides/Slide18_Governance";
-import { Slide14_Closing } from "./slides/Slide14_Closing";
+import { Slide02_Ambition } from "./slides/Slide02_Ambition";
+import { Slide03_OperatingSystem } from "./slides/Slide03_OperatingSystem";
+import { Slide04_Mandate } from "./slides/Slide04_Mandate";
+import { Slide05_GlobalBar } from "./slides/Slide05_GlobalBar";
+import { Slide06_Diagnose } from "./slides/Slide06_Diagnose";
+import { Slide07_Roadmap } from "./slides/Slide07_Roadmap";
+import { Slide08_Quality } from "./slides/Slide08_Quality";
+import { Slide09_Fulfilment } from "./slides/Slide09_Fulfilment";
+import { Slide10_Performance } from "./slides/Slide10_Performance";
+import { Slide11_Decision } from "./slides/Slide11_Decision";
+import { Slide12_Close } from "./slides/Slide12_Close";
 import { SlidePlaceholder } from "./SlidePlaceholder";
 import { ComparatorPicker } from "./ComparatorPicker";
 
@@ -56,43 +52,17 @@ function dataReadySlide(
 
 const SLIDES: SlideRenderer[] = [
   () => <Slide01_Cover />,
-  ({ total }) => <Slide02_Outline total={total} />,
-  dataReadySlide(({ snapshot }) => <Slide03_Compass snapshot={snapshot} />, "Compass"),
-  dataReadySlide(({ snapshot }) => <Slide04_Evidence snapshot={snapshot} />, "Evidence Base"),
-  dataReadySlide(
-    ({ snapshot }) => <Slide05_UAEToday snapshot={snapshot} />,
-    "UAE Today"
-  ),
-  dataReadySlide(
-    ({ snapshot }) => <Slide06_Personas snapshot={snapshot} />,
-    "Personas & Journeys"
-  ),
-  dataReadySlide(
-    ({ snapshot }) => <Slide07_Atlas snapshot={snapshot} />,
-    "Global Atlas"
-  ),
-  dataReadySlide(
-    ({ snapshot }) => <Slide08_GlobalBenchmarks snapshot={snapshot} />,
-    "Standards & Compliance"
-  ),
-  dataReadySlide(
-    ({ snapshot }) => <Slide09_Quadrant snapshot={snapshot} />,
-    "Spider Comparison"
-  ),
-  dataReadySlide(
-    ({ snapshot }) => <Slide11_ServiceChannelHeatmap snapshot={snapshot} />,
-    "Service x Channel"
-  ),
-  dataReadySlide(
-    ({ snapshot }) => <Slide12_Decision snapshot={snapshot} />,
-    "Decision Walkthrough"
-  ),
-  // ── Workstream B chapter — Quality & Fulfilment (RFP #GPSSA-016-2026) ──
-  () => <Slide15_QAFramework />,
-  () => <Slide16_Fulfilment />,
-  () => <Slide17_KQIDashboard />,
-  () => <Slide18_Governance />,
-  dataReadySlide(({ snapshot }) => <Slide14_Closing snapshot={snapshot} />, "Closing"),
+  () => <Slide02_Ambition />,
+  () => <Slide03_OperatingSystem />,
+  dataReadySlide(({ snapshot }) => <Slide04_Mandate snapshot={snapshot} />, "Mandate"),
+  dataReadySlide(({ snapshot }) => <Slide05_GlobalBar snapshot={snapshot} />, "Global Atlas"),
+  dataReadySlide(({ snapshot }) => <Slide06_Diagnose snapshot={snapshot} />, "Diagnose"),
+  dataReadySlide(({ snapshot }) => <Slide07_Roadmap snapshot={snapshot} />, "Roadmap"),
+  () => <Slide08_Quality />,
+  () => <Slide09_Fulfilment />,
+  () => <Slide10_Performance />,
+  dataReadySlide(({ snapshot }) => <Slide11_Decision snapshot={snapshot} />, "Decision"),
+  dataReadySlide(({ snapshot }) => <Slide12_Close snapshot={snapshot} />, "Close"),
 ];
 
 export function BriefingDeck() {
@@ -127,7 +97,6 @@ export function BriefingDeck() {
     }
   }, []);
 
-  // Initial fetch when deck opens
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
@@ -135,7 +104,6 @@ export function BriefingDeck() {
     return () => controller.abort();
   }, [open, fetchSnapshot]);
 
-  // Re-fetch when any research job completes (deck stays current)
   useResearchUpdates({
     enabled: open,
     onComplete: () => {
@@ -143,7 +111,6 @@ export function BriefingDeck() {
     },
   });
 
-  // Lock body scroll while deck is open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -168,7 +135,6 @@ export function BriefingDeck() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: EASE }}
         >
-          {/* Cinematic open backdrop */}
           <motion.div
             className="absolute inset-0 bg-navy"
             initial={{ opacity: 0 }}
@@ -176,7 +142,6 @@ export function BriefingDeck() {
             transition={{ duration: 0.3 }}
           />
 
-          {/* Loading state until first snapshot arrives */}
           <div className="relative h-full w-full">
             {loading && !snapshot && (
               <div className="absolute inset-0 z-10 flex items-center justify-center">
@@ -195,12 +160,14 @@ export function BriefingDeck() {
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4">
                 <div className="text-sm text-white/70">{error}</div>
                 <button
+                  type="button"
                   onClick={() => void fetchSnapshot()}
                   className="rounded-full bg-white/[0.06] px-4 py-1.5 text-xs text-cream ring-1 ring-white/[0.08] hover:bg-white/[0.1]"
                 >
                   Retry
                 </button>
                 <button
+                  type="button"
                   onClick={closeDeck}
                   className="text-[11px] uppercase tracking-[0.2em] text-white/40 hover:text-cream"
                 >
@@ -215,7 +182,6 @@ export function BriefingDeck() {
               onClose={closeDeck}
             />
 
-            {/* Shared comparator drawer (Slides 5 & 7) */}
             {snapshot && <ComparatorPicker snapshot={snapshot} />}
           </div>
         </motion.div>

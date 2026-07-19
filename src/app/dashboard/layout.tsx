@@ -20,7 +20,8 @@ export default function DashboardLayout({
   const isAtlasCountryPage = pathname.startsWith("/dashboard/atlas/country/");
   // Every Mandate route is a single-viewport experience (no document scroll).
   const isMandatePage = pathname.startsWith("/dashboard/mandate");
-  const isFullViewport = pathname === "/dashboard/atlas/benchmarking"
+  const isFullViewport = pathname === "/dashboard"
+    || pathname === "/dashboard/atlas/benchmarking"
     || pathname === "/dashboard/services/catalog"
     || pathname === "/dashboard/services/channels"
     || pathname === "/dashboard/delivery/channels"

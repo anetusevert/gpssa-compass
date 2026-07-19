@@ -32,7 +32,7 @@ const RISK = [
   { key: "breached", label: "Breached", color: "#b91c1c" },
 ] as const;
 
-export function Slide16_Fulfilment() {
+export function Slide09_Fulfilment() {
   const [headline, setHeadline] = useState<Headline | null>(null);
   const [risk, setRisk] = useState<RiskCounts>({});
 
@@ -69,9 +69,9 @@ export function Slide16_Fulfilment() {
 
   return (
     <SlideLayout
-      eyebrow="Workstream B · Service Fulfilment"
-      title="Breach-reduction by design, not by firefighting"
-      subtitle="Tiered SLA/OLA, live time-to-breach early-warning, and a Lean engine driving cycle-time and first-time-right."
+      eyebrow="Fulfil on time"
+      title="Breach early-warning — by design, not firefighting."
+      subtitle="Case board, tiered SLA/OLA, Lean cycle-time and first-time-right — fulfilment as a managed system."
       align="left"
     >
       <div className="grid h-full grid-cols-12 gap-6">

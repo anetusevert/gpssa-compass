@@ -26,7 +26,7 @@ const LEVEL_WEIGHT: Record<string, number> = {
   None: 0,
 };
 
-export function Slide11_ServiceChannelHeatmap({ snapshot }: Props) {
+export function Slide06_Diagnose({ snapshot }: Props) {
   const { channelCapabilities, channelNames, count, capabilityLevelCounts } =
     snapshot.services;
 
@@ -107,9 +107,9 @@ export function Slide11_ServiceChannelHeatmap({ snapshot }: Props) {
 
   return (
     <SlideLayout
-      eyebrow="Service x Channel Coverage"
-      title="Coverage at a glance — every service, every channel, every gap."
-      subtitle="Each cell scored against current GPSSA channel capabilities — Full, Partial, Planned, or None."
+      eyebrow="See the gaps"
+      title="Diagnose before you redesign — every service, every channel."
+      subtitle="Compass surfaces Full / Partial / Planned / None coverage so leadership knows what to fix first."
     >
       <div className="flex h-full flex-col items-stretch justify-center gap-4 max-w-6xl mx-auto">
         {/* Stats strip */}

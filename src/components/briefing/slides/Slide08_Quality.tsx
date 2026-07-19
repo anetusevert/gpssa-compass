@@ -36,7 +36,7 @@ const COMPONENTS = [
   "Corrective action (CAPA)",
 ];
 
-export function Slide15_QAFramework() {
+export function Slide08_Quality() {
   const [rows, setRows] = useState<SummaryRow[]>([]);
 
   useEffect(() => {
@@ -67,9 +67,9 @@ export function Slide15_QAFramework() {
 
   return (
     <SlideLayout
-      eyebrow="Workstream B · Quality Assurance"
-      title="An end-to-end Quality Assurance framework"
-      subtitle="Nine integrated components, scored the COPC way — three parallel accuracy metrics, never one blended number."
+      eyebrow="Assure quality"
+      title="COPC-grade QA — built into the product, not a slide appendix."
+      subtitle="Nine components. Three parallel accuracy metrics. Sampling → calibration → CAPA — Compass runs the loop."
       align="left"
     >
       <div className="grid h-full grid-cols-12 gap-6">

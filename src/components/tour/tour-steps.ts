@@ -17,9 +17,9 @@ export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
     id: "welcome",
     path: "/dashboard",
     target: { kind: "center" },
-    title: "One command surface for pension intelligence",
+    title: "One operating system for pension intelligence",
     subtitle:
-      "GPSSA Intelligence gives leadership a single view of what you deliver, how you benchmark globally, and where mandate meets execution—without switching tools.",
+      "GPSSA Intelligence puts mandate, global benchmarks, portfolio design and operational excellence on a single command surface—no tool-switching.",
   },
   {
     id: "atlas-entry",
@@ -27,15 +27,31 @@ export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
     target: { kind: "selector", query: '[data-tour="compass-atlas-bar"]' },
     title: "Global evidence, on demand",
     subtitle:
-      "The Atlas is your operating context: countries, maturity, and benchmarks. Open it whenever you need the world map or peer comparisons.",
+      "The Atlas is your operating context: countries, maturity, and peer benchmarks. Hover to preview; click to enter the world map.",
+  },
+  {
+    id: "mandate-entry",
+    path: "/dashboard",
+    target: { kind: "selector", query: '[data-tour="compass-mandate-bar"]' },
+    title: "Mandate-grounded decisions",
+    subtitle:
+      "Every recommendation sits on GPSSA’s statutory remit and RFI alignment—open the Mandate hub when you need legal traceability.",
   },
   {
     id: "pillars",
     path: "/dashboard",
     target: { kind: "selector", query: '[data-tour="compass-pillar-grid"]' },
-    title: "Three lenses on the operating model",
+    title: "Core portfolio lenses",
     subtitle:
-      "Services, Products, and Delivery are structured so teams drill from strategy to channel design—each tile expands into the modules underneath.",
+      "Services, Products, and Delivery — drill from catalogue to channels, segments and personas. Hover any tile to preview deep links in the focus stage.",
+  },
+  {
+    id: "ops",
+    path: "/dashboard",
+    target: { kind: "selector", query: '[data-tour="compass-ops-grid"]' },
+    title: "Operational excellence",
+    subtitle:
+      "Quality, Fulfilment, Performance and Roadmap & Governance — the Workstream B layer that turns strategy into assured delivery.",
   },
   {
     id: "sidebar",
@@ -59,7 +75,7 @@ export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
     target: { kind: "selector", query: '[data-tour="compass-benchmark-workspace"]' },
     title: "Benchmarks you can defend",
     subtitle:
-      "GPSSA Intelligence stacks institutions, dimensions, and evidence here—so you quantify gaps before you commit the narrative.",
+      "Stack institutions, dimensions, and evidence here—so you quantify gaps before you commit the narrative.",
   },
   {
     id: "catalog",
@@ -99,7 +115,7 @@ export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
     target: { kind: "selector", query: '[data-tour="compass-briefing"]' },
     title: "Executive Briefing, ready to present",
     subtitle:
-      "The deck is the sponsor storyline for GPSSA Intelligence: evidence, gaps, and opportunities in one flow. Open it when you walk the room.",
+      "A twelve-slide McKinsey-grade pitch of what Compass does for GPSSA—live data, cinematic motion, ready for the room.",
   },
   {
     id: "finale",

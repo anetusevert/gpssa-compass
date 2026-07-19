@@ -1,9 +1,8 @@
 /**
  * Static reference data for the GPSSA mandate.
  *
- * Both the dashboard pages under `/dashboard/mandate/*` and the executive
- * briefing slide `Slide05_UAEToday` import these constants so the storyline
- * stays in sync wherever it is shown.
+ * Consumed by dashboard pages under `/dashboard/mandate/*` so the storyline
+ * stays in sync wherever remit structure is shown.
  */
 
 import {

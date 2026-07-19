@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, Globe, Layers, Package, GitCompare } from "lucide-react";
+import { ArrowRight, Globe, Layers, ShieldCheck, Map } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { SlideLayout } from "./SlideLayout";
 import { useBriefingStore } from "../store";
@@ -38,18 +38,21 @@ const CTAS: CTA[] = [
     badge: (s) => `${s.services.count} services`,
   },
   {
-    label: "Product Portfolio",
-    href: "/dashboard/products/portfolio",
-    icon: Package,
-    color: "rgba(197,165,114,0.85)",
-    badge: (s) => `${s.products.count} products`,
+    label: "Quality Assurance",
+    href: "/dashboard/quality/framework",
+    icon: ShieldCheck,
+    color: "rgba(45,212,191,0.85)",
+    badge: () => "COPC framework",
   },
   {
-    label: "Benchmarking",
-    href: "/dashboard/atlas/benchmarking",
-    icon: GitCompare,
-    color: "rgba(45,212,191,0.85)",
-    badge: (s) => `${s.benchmarks.peers.length} peers`,
+    label: "Roadmap & Plan",
+    href: "/dashboard/planning",
+    icon: Map,
+    color: "rgba(197,165,114,0.85)",
+    badge: (s) =>
+      s.opportunities.count
+        ? `${s.opportunities.count} opportunities`
+        : "12-month plan",
   },
 ];
 
@@ -109,7 +112,7 @@ function AmbientBackdrop() {
   );
 }
 
-export function Slide14_Closing({ snapshot }: Props) {
+export function Slide12_Close({ snapshot }: Props) {
   const router = useRouter();
   const closeDeck = useBriefingStore((s) => s.closeDeck);
 
@@ -120,9 +123,9 @@ export function Slide14_Closing({ snapshot }: Props) {
 
   return (
     <SlideLayout
-      eyebrow="The Compass Difference"
-      title="Foundations are strong. Let's turn them into leadership."
-      subtitle="GPSSA Compass is your operating system for the next pension era — already up, already comparing, already proposing the next move."
+      eyebrow="Adopt the Compass"
+      title="Operating system for the next pension era."
+      subtitle="Already comparing. Already assuring. Already proposing the next move — open any module and keep going."
     >
       <div className="relative flex h-full flex-col items-center justify-center">
         <AmbientBackdrop />

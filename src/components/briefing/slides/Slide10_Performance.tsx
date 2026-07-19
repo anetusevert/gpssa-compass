@@ -33,7 +33,7 @@ const RAG_COLOR: Record<string, string> = {
   gray: "#8A9BB0",
 };
 
-export function Slide17_KQIDashboard() {
+export function Slide10_Performance() {
   const [kqis, setKqis] = useState<DashMetric[]>([]);
   const [voc, setVoc] = useState<Record<string, VocMetric>>({});
 
@@ -70,9 +70,9 @@ export function Slide17_KQIDashboard() {
 
   return (
     <SlideLayout
-      eyebrow="Workstream B · Measurement"
-      title="KQIs that roll up from the work — and the voice of the customer"
-      subtitle="Citizen-facing quality indicators decomposed into operational KPIs, on a tiered dashboard, paired with continuous VoC."
+      eyebrow="Measure what matters"
+      title="KPI↔KQI rollup, VoC, and benefits you can defend."
+      subtitle="Strategic indicators decompose into operational KPIs — with continuous voice of customer on the same glass."
       align="left"
     >
       <div className="grid h-full grid-cols-12 gap-6">
