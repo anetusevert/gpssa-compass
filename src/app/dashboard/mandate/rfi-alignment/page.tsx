@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Mandate — RFI Alignment.
+ * Mandate — RFP Alignment.
  *
  * Full-viewport home of the three-column cinematic alignment board:
- *   Statutory articles ─ RFI 02-2026 sections ─ App pillar screens.
+ *   Statutory articles ─ RFP GPSSA-016-2026 sections ─ App pillar screens.
  *
  * Renders inside the dashboard's `isFullViewport` layout.
  */
@@ -16,6 +16,7 @@ import {
   AlignmentBoard,
   type AlignmentPayload,
 } from "@/components/mandate/AlignmentBoard";
+import { RFI_REFERENCE } from "@/lib/mandate/rfi-sections";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -62,11 +63,14 @@ export default function MandateRfiAlignmentPage() {
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 text-[9px] uppercase tracking-[0.28em] text-[#00A86B]">
-              <Network size={10} /> Mandate · RFI Alignment
+              <Network size={10} /> Mandate · RFP Alignment
             </div>
             <h1 className="mt-0.5 truncate font-playfair text-base font-semibold text-cream md:text-lg">
-              How your RFI maps to the legal mandate &amp; ADL GPSSA Intelligence
+              How RFP {RFI_REFERENCE.number} maps to the legal mandate &amp; GPSSA Intelligence
             </h1>
+            <p className="mt-0.5 hidden truncate text-[11px] text-white/45 md:block">
+              {RFI_REFERENCE.title} · {RFI_REFERENCE.city}, {RFI_REFERENCE.year}
+            </p>
           </div>
           <div className="hidden items-center gap-2 text-[10px] text-white/55 md:flex">
             <Sparkles size={10} className="text-[#00A86B]" />

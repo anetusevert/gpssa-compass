@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-guard";
 import { resumeScreenResearchJob, runScreenResearchJob } from "@/lib/research/engine";
 
 export async function POST(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     await resumeScreenResearchJob(params.id);
 

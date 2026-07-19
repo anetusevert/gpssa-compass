@@ -16,6 +16,7 @@ import {
 import { HeroRail } from "./HeroRail";
 import { ModuleTile } from "./ModuleTile";
 import { FocusStage } from "./FocusStage";
+import { StoryVideoTrigger } from "./StoryVideoModal";
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
 
@@ -94,7 +95,7 @@ export function HomeTheater() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE }}
       >
-        <div className="mb-1.5 flex justify-center">
+        <div className="mb-1.5 flex justify-center gap-2">
           <motion.button
             type="button"
             onClick={() => replayTour()}
@@ -105,6 +106,7 @@ export function HomeTheater() {
             <Sparkles size={10} className="text-[var(--gpssa-green)]/90" strokeWidth={2} />
             Guided tour
           </motion.button>
+          <StoryVideoTrigger />
         </div>
         <p className="mb-0.5 text-[10px] font-medium tracking-[0.22em] text-white/30 uppercase">
           {dateString}

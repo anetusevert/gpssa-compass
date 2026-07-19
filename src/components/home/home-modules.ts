@@ -67,8 +67,8 @@ export const HERO_MODULES: HomeModule[] = [
   {
     id: "mandate",
     title: "Mandate",
-    subtitle: "Legal remit & RFI alignment",
-    valueLine: "Ground every recommendation in GPSSA’s statutory remit and RFI obligations.",
+    subtitle: "Legal remit & RFP alignment",
+    valueLine: "Ground every recommendation in GPSSA’s statutory remit and RFP GPSSA-016-2026.",
     icon: Scale,
     accentVar: "--gpssa-green",
     glowColor: "rgba(0,168,107,0.22)",
@@ -76,7 +76,7 @@ export const HERO_MODULES: HomeModule[] = [
     tier: "hero",
     links: [
       { label: "Mandate Hub", href: "/dashboard/mandate", icon: Landmark },
-      { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
+      { label: "RFP Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
       { label: "Legal Corpus", href: "/dashboard/mandate/legal", icon: ScrollText },
     ],
   },

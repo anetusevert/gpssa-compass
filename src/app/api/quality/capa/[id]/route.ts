@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin-guard";
+import { requireEditor } from "@/lib/admin-guard";
 
 const VALID_STATUS = ["open", "in-progress", "verified", "closed"];
 
@@ -8,7 +8,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdmin();
+  const { error } = await requireEditor();
   if (error) return error;
 
   try {

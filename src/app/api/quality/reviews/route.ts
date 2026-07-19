@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin-guard";
+import { requireEditor } from "@/lib/admin-guard";
 import { computeReviewOutcome } from "@/lib/qa/scoring";
 
 export async function GET(req: NextRequest) {
@@ -27,7 +27,7 @@ interface IncomingItem {
 }
 
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireEditor();
   if (error) return error;
 
   try {

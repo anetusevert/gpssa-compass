@@ -295,7 +295,9 @@ export default function UsersPage() {
                         onChange={(e) => handleRoleChange(user.id, e.target.value)}
                         className="px-2 py-1 rounded-lg text-xs bg-transparent border border-white/10 text-cream focus:outline-none focus:ring-1 focus:ring-gpssa-green/50 cursor-pointer"
                       >
-                        <option value="user">User</option>
+                        <option value="viewer">Viewer</option>
+                        <option value="editor">Editor</option>
+                        <option value="user">User (legacy editor)</option>
                         <option value="admin">Admin</option>
                       </select>
                     </td>
@@ -383,7 +385,9 @@ export default function UsersPage() {
                 onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg glass text-cream text-sm bg-transparent focus:outline-none focus:ring-1 focus:ring-gpssa-green/50"
               >
-                <option value="user">User</option>
+                <option value="viewer">Viewer</option>
+                <option value="editor">Editor</option>
+                <option value="user">User (legacy editor)</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
@@ -492,7 +496,9 @@ export default function UsersPage() {
                 onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg glass text-cream text-sm bg-transparent focus:outline-none focus:ring-1 focus:ring-gpssa-green/50"
               >
-                <option value="user">User</option>
+                <option value="viewer">Viewer</option>
+                <option value="editor">Editor</option>
+                <option value="user">User (legacy editor)</option>
                 <option value="admin">Admin</option>
               </select>
             </div>

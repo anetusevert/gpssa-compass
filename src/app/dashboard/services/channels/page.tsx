@@ -786,7 +786,7 @@ export default function ChannelCapabilitiesPage() {
               </div>
               <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
                 <Scale size={10} />
-                RFI 2.B-2 · Customer &amp; service performance
+                RFP §2.3-A2 · Customer &amp; service performance
               </div>
             </div>
 
@@ -857,7 +857,7 @@ export default function ChannelCapabilitiesPage() {
               </div>
               <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
                 <Scale size={10} />
-                RFI 2.E-3 · Process optimisation
+                RFP §2.4 · GPSSA service catalogue
               </div>
             </div>
 
@@ -971,7 +971,7 @@ export default function ChannelCapabilitiesPage() {
               </div>
               <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
                 <Scale size={10} />
-                RFI 2.E-5 · Reduce fulfilment timelines
+                RFP §1.4 · Measurable CX &amp; SLA improvement
               </div>
             </div>
 

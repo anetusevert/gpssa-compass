@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 import { runAllPillars, PILLAR_ORDER, type PillarKey } from "@/lib/research/orchestrator";
 
@@ -19,6 +20,9 @@ function isPillarKey(v: unknown): v is PillarKey {
 }
 
 export async function POST(req: Request) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   let body: RunAllRequestBody = {};
   try {
     body = (await req.json()) as RunAllRequestBody;
@@ -97,6 +101,9 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   const runs = await prisma.orchestratorRun.findMany({
     orderBy: { startedAt: "desc" },
     take: 20,

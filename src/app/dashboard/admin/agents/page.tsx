@@ -616,6 +616,25 @@ export default function AgentsPage() {
         description="Activate, run, and manage the AI research agents that populate every screen of the platform"
       />
 
+      <div className="rounded-xl border border-amber/30 bg-amber/5 px-4 py-3 flex items-start gap-3">
+        <AlertTriangle size={16} className="text-amber shrink-0 mt-0.5" />
+        <div className="text-xs text-white/65 leading-relaxed">
+          <p className="font-semibold text-cream mb-0.5">Leave-behind ops · pause by default</p>
+          <p>
+            For board demos and customer handover, keep agents paused and rely on the gold seed.
+            Run pillars only when refreshing evidence. Token spend appears on each job (
+            <span className="text-cream tabular-nums">
+              {researchJobs.reduce((s, j) => s + (j.totalTokens || 0), 0).toLocaleString()} tokens
+            </span>{" "}
+            across listed jobs · est.{" "}
+            <span className="text-cream tabular-nums">
+              ${researchJobs.reduce((s, j) => s + (j.totalCost || 0), 0).toFixed(2)}
+            </span>
+            ). Admin-only — research APIs reject unauthenticated and non-admin callers.
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Agents" value={stats.total} icon={Bot} />
         <StatCard label="Running" value={stats.running} icon={Activity} trend={stats.running > 0 ? "up" : "neutral"} />

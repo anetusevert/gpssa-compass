@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-07-19T00:00:00.000Z",
+  "source": "gold-seed-minimal",
+  "note": "Minimal leave-behind corpus so Mandate screens are never empty. Replace by running: npx tsx scripts/scrape-gpssa.ts",
+  "pages": [
+    {
+      "slug": "about-gpssa",
+      "url": "https://www.gpssa.gov.ae/en/about",
+      "lang": "en",
+      "title": "About GPSSA",
+      "section": "about",
+      "contentType": "html",
+      "htmlSnapshot": null,
+      "markdown": "# About GPSSA\n\nThe General Pension and Social Security Authority administers pension and social security schemes for UAE nationals in the government and private sectors.\n\n## Mandate\n\nGPSSA is responsible for registration, contribution collection, benefit calculation and payment, and member services across covered schemes.",
+      "etag": null,
+      "lastModified": null,
+      "pdfPath": null,
+      "hash": "gold-about-gpssa-v1"
+    },
+    {
+      "slug": "laws-regulations",
+      "url": "https://www.gpssa.gov.ae/en/laws",
+      "lang": "en",
+      "title": "Laws & Regulations",
+      "section": "legal",
+      "contentType": "html",
+      "htmlSnapshot": null,
+      "markdown": "# Laws & Regulations\n\nFederal legislation and Cabinet resolutions establish GPSSA’s authority over pension entitlements, contribution rates, and benefit formulas.\n\nKey instruments include the Federal Pension Law and subsequent amendments governing coverage classes and retirement ages.",
+      "etag": null,
+      "lastModified": null,
+      "pdfPath": null,
+      "hash": "gold-laws-v1"
+    },
+    {
+      "slug": "services-overview",
+      "url": "https://www.gpssa.gov.ae/en/services",
+      "lang": "en",
+      "title": "Services Overview",
+      "section": "services",
+      "contentType": "html",
+      "htmlSnapshot": null,
+      "markdown": "# Services\n\nGPSSA delivers registration, contribution inquiry, end-of-service benefits, retirement pensions, survivor benefits, and digital self-service via portal and mobile channels.",
+      "etag": null,
+      "lastModified": null,
+      "pdfPath": null,
+      "hash": "gold-services-v1"
+    },
+    {
+      "slug": "digital-strategy",
+      "url": "https://www.gpssa.gov.ae/en/digital",
+      "lang": "en",
+      "title": "Digital & Customer Experience",
+      "section": "digital",
+      "contentType": "html",
+      "htmlSnapshot": null,
+      "markdown": "# Digital & Customer Experience\n\nGPSSA continues to expand digital channels, reduce bureaucracy, and align service quality with UAE Global Star Rating expectations.",
+      "etag": null,
+      "lastModified": null,
+      "pdfPath": null,
+      "hash": "gold-digital-v1"
+    },
+    {
+      "slug": "governance",
+      "url": "https://www.gpssa.gov.ae/en/governance",
+      "lang": "en",
+      "title": "Governance",
+      "section": "governance",
+      "contentType": "html",
+      "htmlSnapshot": null,
+      "markdown": "# Governance\n\nBoard oversight, executive management, and internal control frameworks guide GPSSA’s administration of social insurance schemes.",
+      "etag": null,
+      "lastModified": null,
+      "pdfPath": null,
+      "hash": "gold-governance-v1"
+    }
+  ]
+}

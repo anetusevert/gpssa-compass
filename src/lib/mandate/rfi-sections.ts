@@ -1,17 +1,27 @@
 /**
- * Structured catalog of the GPSSA Product & Service Development Roadmap RFI
- * (RFI No. GPSSA-RFI-02-2026, Dubai, 2026).
+ * Structured catalog of RFP No. GPSSA-016-2026 —
+ * Product & Service Development Roadmap and Quality Assurance Framework
+ * (Abu Dhabi, June 2026).
  *
- * Hand-derived from `Request for Information 2.pdf`. This is the middle column
- * of the Mandate ↔ RFI ↔ App Pillars alignment board, and is also used by the
- * MandateBasisChip drawer to surface RFI cross-references on existing pillar
- * pages.
+ * Powers the Mandate ↔ RFP ↔ App alignment board and MandateBasisChip
+ * cross-references on pillar pages.
  *
- * `relatedScreens` uses pathnames so the alignment board can link directly into
- * the right destination screen.
+ * `relatedScreens` use pathnames so the board can deep-link into live modules.
  */
 
 export type RfiKind = "objective" | "workstream" | "deliverable" | "area-of-focus";
+
+export type RfiPillar =
+  | "mandate"
+  | "atlas"
+  | "services"
+  | "products"
+  | "delivery"
+  | "international"
+  | "quality"
+  | "fulfilment"
+  | "performance"
+  | "planning";
 
 export interface RfiSection {
   id: string;
@@ -20,288 +30,392 @@ export interface RfiSection {
   body: string;
   kind: RfiKind;
   relatedScreens: string[];
-  relatedPillars: ("mandate" | "atlas" | "services" | "products" | "delivery" | "international")[];
+  relatedPillars: RfiPillar[];
 }
 
+/** Display metadata for the procurement instrument (kept as RFI_* for import stability). */
 export const RFI_REFERENCE = {
-  number: "GPSSA-RFI-02-2026",
-  title: "Product & Service Development Roadmap",
-  city: "Dubai",
+  number: "GPSSA-016-2026",
+  title: "Product & Service Development Roadmap and Quality Assurance Framework",
+  city: "Abu Dhabi",
   year: 2026,
   contact: "procurement@GPSSA.gov.ae",
+  shortTitle: "Roadmap & QA Framework",
 } as const;
 
 export const RFI_SECTIONS: RfiSection[] = [
-  // ── 2.B Key Objectives ───────────────────────────────────────────────────
+  // ── 1.3 Project Objectives ───────────────────────────────────────────────
   {
-    id: "obj-portfolio-assessment",
-    sectionRef: "2.B-1",
-    title: "Assess current service & product portfolio",
-    body: "Assess GPSSA's current service portfolio, product portfolio, and relevant completed initiatives from both customer and operational perspectives.",
+    id: "obj-assess-environment",
+    sectionRef: "§1.3-1",
+    title: "Assess the current environment",
+    body: "Assess the current service, product, operational, fulfilment and control environment across the Pension Sector.",
     kind: "objective",
-    relatedPillars: ["services", "products"],
+    relatedPillars: ["services", "products", "delivery", "fulfilment", "quality"],
     relatedScreens: [
       "/dashboard/services/catalog",
       "/dashboard/products/portfolio",
+      "/dashboard/fulfilment/cases",
+      "/dashboard/quality/framework",
     ],
   },
   {
-    id: "obj-performance-review",
-    sectionRef: "2.B-2",
-    title: "Review customer & service performance indicators",
-    body: "Review available customer and service performance indicators, including Customer Pulse, CSAT, DSAT, NPS, complaint themes, service fulfillment timelines, and SLA performance.",
+    id: "obj-benefits-realisation",
+    sectionRef: "§1.3-2",
+    title: "Validate benefits & remaining gaps",
+    body: "Validate the benefits realized from completed initiatives and identify remaining gaps, risks and optimization opportunities.",
     kind: "objective",
-    relatedPillars: ["delivery", "services"],
+    relatedPillars: ["performance", "planning", "services"],
     relatedScreens: [
-      "/dashboard/delivery/channels",
-      "/dashboard/services/channels",
+      "/dashboard/performance/benefits",
+      "/dashboard/planning/backlog",
+      "/dashboard/services/catalog",
     ],
   },
   {
-    id: "obj-opportunity-categorisation",
-    sectionRef: "2.B-3",
-    title: "Identify & categorise opportunities",
-    body: "Identify and categorize opportunities across existing service enhancements, new external-facing products, supportive/internal products, innovation opportunities, and cross-entity service bundles.",
+    id: "obj-qa-fulfilment-framework",
+    sectionRef: "§1.3-3",
+    title: "Design end-to-end QA & fulfilment framework",
+    body: "Design an integrated end-to-end quality assurance and service fulfilment improvement framework across the Pension Sector.",
     kind: "objective",
-    relatedPillars: ["services", "products"],
+    relatedPillars: ["quality", "fulfilment"],
+    relatedScreens: [
+      "/dashboard/quality/framework",
+      "/dashboard/quality/scorecards",
+      "/dashboard/fulfilment/sla",
+      "/dashboard/fulfilment/breach",
+    ],
+  },
+  {
+    id: "obj-prioritise-opportunities",
+    sectionRef: "§1.3-4",
+    title: "Identify & prioritise opportunities",
+    body: "Identify and prioritize opportunities across existing service enhancements, new products, supportive/internal products, innovation opportunities and cross-entity service bundles.",
+    kind: "objective",
+    relatedPillars: ["services", "products", "planning"],
     relatedScreens: [
       "/dashboard/services/catalog",
       "/dashboard/products/portfolio",
-      "/dashboard/products/segments",
+      "/dashboard/planning/backlog",
     ],
   },
   {
-    id: "obj-roadmap",
-    sectionRef: "2.B-4",
-    title: "Develop a structured 12-month roadmap",
-    body: "Develop a structured and prioritized one-year roadmap that balances customer impact, internal efficiency, strategic alignment, and implementation feasibility.",
+    id: "obj-12m-roadmap",
+    sectionRef: "§1.3-5",
+    title: "Develop a practical 12-month roadmap",
+    body: "Develop a practical 12-month Product & Service Development Roadmap aligned to customer, service and operational outcomes.",
     kind: "objective",
-    relatedPillars: ["services", "products", "delivery"],
-    relatedScreens: ["/dashboard/products/portfolio", "/dashboard/delivery/models"],
+    relatedPillars: ["planning", "services", "products"],
+    relatedScreens: ["/dashboard/planning", "/dashboard/planning/backlog"],
   },
   {
-    id: "obj-prioritisation-governance",
-    sectionRef: "2.B-5",
-    title: "Recommend prioritisation, governance & KPI framework",
-    body: "Recommend a practical prioritization model, governance approach, review cadence, and KPI framework for the Product & Service Development function.",
+    id: "obj-governance-capability",
+    sectionRef: "§1.3-6",
+    title: "Define governance, KPI/KQI & capability transfer",
+    body: "Define governance, KPI/KQI, operating model, implementation roadmap and capability transfer requirements for sustainable execution.",
     kind: "objective",
-    relatedPillars: ["mandate", "delivery"],
-    relatedScreens: ["/dashboard/mandate/governance", "/dashboard/delivery/models"],
-  },
-  {
-    id: "obj-concept-sheets",
-    sectionRef: "2.B-6",
-    title: "Provide top initiative concept sheets",
-    body: "Provide concept sheets and clear rationale for the highest-value opportunities recommended for GPSSA.",
-    kind: "objective",
-    relatedPillars: ["products", "services"],
-    relatedScreens: ["/dashboard/products/portfolio"],
+    relatedPillars: ["planning", "performance", "mandate"],
+    relatedScreens: [
+      "/dashboard/planning/governance",
+      "/dashboard/planning/operating-model",
+      "/dashboard/performance/catalogue",
+      "/dashboard/performance/dashboards",
+    ],
   },
 
-  // ── 2.C In-Scope Workstreams ─────────────────────────────────────────────
+  // ── 2.3 Workstream A — Product & Service Development Roadmap ─────────────
   {
-    id: "ws-current-state",
-    sectionRef: "2.C-1",
-    title: "Current-State Diagnostic",
-    body: "Review GPSSA's current services, products, key journeys, completed enhancement initiatives, internal operational model, existing issues, and major pain points.",
+    id: "ws-a1-diagnostic",
+    sectionRef: "§2.3-A1",
+    title: "A1 · Current-State Diagnostic (Wks 1–4)",
+    body: "Workstream A Phase 1: current-state diagnostic covering services, products, completed initiatives, operating model, case management, controls, governance, roles, reporting, SLA/OLA and system-enabled workflows.",
     kind: "workstream",
-    relatedPillars: ["services", "delivery", "products"],
+    relatedPillars: ["services", "products", "delivery", "fulfilment", "mandate"],
     relatedScreens: [
       "/dashboard/services/catalog",
       "/dashboard/products/portfolio",
       "/dashboard/delivery/personas",
+      "/dashboard/fulfilment/cases",
     ],
   },
   {
-    id: "ws-performance-review",
-    sectionRef: "2.C-2",
-    title: "Customer & Service Performance Review",
-    body: "Assess available service quality and customer-experience indicators such as Customer Pulse, CSAT, DSAT, NPS, complaints, repeat contacts, SLA, and average fulfillment time.",
+    id: "ws-a2-performance",
+    sectionRef: "§2.3-A2",
+    title: "A2 · Customer & Service Performance Review (Wks 2–5)",
+    body: "Workstream A Phase 2: customer and operational performance review using Customer Pulse, CSAT, DSAT, NPS, complaint themes, repeat contacts, breaches, backlog, rework and fulfilment timelines.",
     kind: "workstream",
-    relatedPillars: ["delivery"],
-    relatedScreens: ["/dashboard/delivery/channels", "/dashboard/services/channels"],
+    relatedPillars: ["performance", "fulfilment", "delivery"],
+    relatedScreens: [
+      "/dashboard/performance/voc",
+      "/dashboard/performance/dashboards",
+      "/dashboard/fulfilment/analytics",
+      "/dashboard/fulfilment/breach",
+    ],
   },
   {
-    id: "ws-opportunity-id",
-    sectionRef: "2.C-3",
-    title: "Opportunity Identification",
-    body: "Identify opportunities to enhance existing services, launch new products, introduce supportive/internal products, simplify journeys, and explore cross-entity bundles and innovation ideas.",
+    id: "ws-a3-opportunity",
+    sectionRef: "§2.3-A3",
+    title: "A3 · Opportunity Identification (Wks 6–10)",
+    body: "Workstream A Phase 3: opportunity identification across service enhancements, new external products, supportive/internal products, innovation and cross-entity bundles.",
     kind: "workstream",
-    relatedPillars: ["services", "products"],
-    relatedScreens: ["/dashboard/services/catalog", "/dashboard/products/portfolio"],
+    relatedPillars: ["planning", "services", "products"],
+    relatedScreens: ["/dashboard/planning/backlog", "/dashboard/products/portfolio"],
   },
   {
-    id: "ws-prioritisation",
-    sectionRef: "2.C-4",
-    title: "Prioritization and Sequencing",
-    body: "Develop a practical model to rank opportunities by impact, effort, strategic fit, operational value, and feasibility, including quick wins and longer-term items.",
+    id: "ws-a4-prioritisation",
+    sectionRef: "§2.3-A4",
+    title: "A4 · Prioritization & Sequencing (Wks 9–14)",
+    body: "Workstream A Phase 4: prioritization framework, ranked opportunity backlog and top initiative concept sheets.",
     kind: "workstream",
-    relatedPillars: ["products", "delivery"],
-    relatedScreens: ["/dashboard/products/portfolio", "/dashboard/delivery/models"],
+    relatedPillars: ["planning", "products"],
+    relatedScreens: ["/dashboard/planning/backlog", "/dashboard/planning"],
   },
   {
-    id: "ws-roadmap",
-    sectionRef: "2.C-5",
-    title: "Roadmap Development",
-    body: "Prepare a 12-month roadmap with phases, objectives, dependencies, estimated impact, and indicative sequencing.",
+    id: "ws-a5-roadmap",
+    sectionRef: "§2.3-A5",
+    title: "A5 · Roadmap Development (Wks 13–17)",
+    body: "Workstream A Phase 5: develop the prioritised 12-month Product & Service Development Roadmap with phases, dependencies and expected value.",
     kind: "workstream",
-    relatedPillars: ["products", "services"],
-    relatedScreens: ["/dashboard/products/portfolio"],
+    relatedPillars: ["planning"],
+    relatedScreens: ["/dashboard/planning"],
   },
   {
-    id: "ws-operating-model",
-    sectionRef: "2.C-6",
-    title: "Operating Model and Governance",
-    body: "Define the governance approach, stakeholder engagement model, review cadence, KPI ownership, and benefit-realization mechanism for the roadmap.",
+    id: "ws-a6-operating-model",
+    sectionRef: "§2.3-A6",
+    title: "A6 · Operating Model, Governance & Finalize (Wks 16–20)",
+    body: "Workstream A Phase 6: operating model, governance forums, management routines, sector-wide RACI and finalisation of the roadmap for handover.",
     kind: "workstream",
-    relatedPillars: ["mandate", "delivery"],
-    relatedScreens: ["/dashboard/mandate/governance", "/dashboard/delivery/models"],
+    relatedPillars: ["planning", "mandate"],
+    relatedScreens: [
+      "/dashboard/planning/operating-model",
+      "/dashboard/planning/governance",
+      "/dashboard/mandate/governance",
+    ],
   },
 
-  // ── 2.D Expected Deliverables ────────────────────────────────────────────
+  // ── 2.3 Workstream B — End-to-End Quality Assurance Framework ────────────
   {
-    id: "del-diagnostic-report",
-    sectionRef: "2.D-1",
-    title: "Diagnostic Report",
-    body: "Current-state assessment covering services, products, operations, pain points, and completed initiatives.",
-    kind: "deliverable",
-    relatedPillars: ["services", "products"],
-    relatedScreens: ["/dashboard/services/catalog", "/dashboard/products/portfolio"],
+    id: "ws-b1-discovery",
+    sectionRef: "§2.3-B1",
+    title: "B1 · Current-State Discovery (Wks 1–3)",
+    body: "Workstream B Phase 1: discover current quality, fulfilment and control practices across the Pension Sector.",
+    kind: "workstream",
+    relatedPillars: ["quality", "fulfilment"],
+    relatedScreens: [
+      "/dashboard/quality/framework",
+      "/dashboard/fulfilment/cases",
+      "/dashboard/fulfilment/sla",
+    ],
   },
   {
-    id: "del-benefits-realisation",
-    sectionRef: "2.D-2",
-    title: "Benefits Realization Review",
-    body: "Assessment of what has been delivered, current impact, gaps, and required optimization areas.",
-    kind: "deliverable",
-    relatedPillars: ["delivery", "products"],
-    relatedScreens: ["/dashboard/delivery/models", "/dashboard/products/portfolio"],
+    id: "ws-b2-qa-design",
+    sectionRef: "§2.3-B2",
+    title: "B2 · QA Framework Design (Wks 4–9)",
+    body: "Workstream B Phase 2: design the end-to-end QA framework — dimensions, policy, review methodology, scorecards, sampling, scoring, calibration, error taxonomy, CAPA and governance.",
+    kind: "workstream",
+    relatedPillars: ["quality"],
+    relatedScreens: [
+      "/dashboard/quality/framework",
+      "/dashboard/quality/scorecards",
+      "/dashboard/quality/reviews",
+      "/dashboard/quality/calibration",
+      "/dashboard/quality/taxonomy",
+      "/dashboard/quality/capa",
+    ],
   },
   {
-    id: "del-pain-points",
-    sectionRef: "2.D-3",
-    title: "Customer & Operational Pain-Point Assessment",
-    body: "Analysis of service, journey, and operational pain points linked to KPI performance.",
-    kind: "deliverable",
-    relatedPillars: ["delivery", "services"],
-    relatedScreens: ["/dashboard/delivery/personas", "/dashboard/services/catalog"],
+    id: "ws-b3-pilot",
+    sectionRef: "§2.3-B3",
+    title: "B3 · Pilot Deployment (Wks 10–14)",
+    body: "Workstream B Phase 3: pilot the QA and fulfilment model in selected services before sector-wide rollout.",
+    kind: "workstream",
+    relatedPillars: ["quality", "fulfilment", "planning"],
+    relatedScreens: [
+      "/dashboard/quality/reviews",
+      "/dashboard/fulfilment/cases",
+      "/dashboard/planning",
+    ],
   },
   {
-    id: "del-opportunity-backlog",
-    sectionRef: "2.D-4",
-    title: "Opportunity Backlog",
-    body: "Categorized list of improvement, product, supportive, innovation, and cross-entity opportunities.",
-    kind: "deliverable",
-    relatedPillars: ["products", "services"],
-    relatedScreens: ["/dashboard/products/portfolio", "/dashboard/services/catalog"],
+    id: "ws-b4-sector-deploy",
+    sectionRef: "§2.3-B4",
+    title: "B4 · Full Sector Deployment (Wks 15–17)",
+    body: "Workstream B Phase 4: full Pension Sector deployment of QA scoring, fulfilment controls and breach-reduction measures.",
+    kind: "workstream",
+    relatedPillars: ["quality", "fulfilment", "performance"],
+    relatedScreens: [
+      "/dashboard/quality/scorecards",
+      "/dashboard/fulfilment/breach",
+      "/dashboard/fulfilment/analytics",
+      "/dashboard/performance/dashboards",
+    ],
   },
   {
-    id: "del-prioritisation-framework",
-    sectionRef: "2.D-5",
-    title: "Prioritization Framework",
-    body: "Scoring approach with criteria, weightings, and rationale.",
-    kind: "deliverable",
-    relatedPillars: ["products"],
-    relatedScreens: ["/dashboard/products/portfolio"],
-  },
-  {
-    id: "del-12m-roadmap",
-    sectionRef: "2.D-6",
-    title: "12-Month Roadmap",
-    body: "Phased roadmap with initiatives, sequencing, dependencies, and expected business value.",
-    kind: "deliverable",
-    relatedPillars: ["products", "services"],
-    relatedScreens: ["/dashboard/products/portfolio"],
-  },
-  {
-    id: "del-concept-sheets",
-    sectionRef: "2.D-7",
-    title: "Top Initiative Concept Sheets",
-    body: "Short concept notes for the most important recommended initiatives.",
-    kind: "deliverable",
-    relatedPillars: ["products"],
-    relatedScreens: ["/dashboard/products/portfolio"],
-  },
-  {
-    id: "del-governance-kpi",
-    sectionRef: "2.D-8",
-    title: "Governance and KPI Framework",
-    body: "Recommended governance model, review cadence, KPI ownership, and benefit-tracking approach.",
-    kind: "deliverable",
-    relatedPillars: ["mandate", "delivery"],
-    relatedScreens: ["/dashboard/mandate/governance", "/dashboard/delivery/models"],
-  },
-  {
-    id: "del-exec-presentation",
-    sectionRef: "2.D-9",
-    title: "Executive Presentation",
-    body: "Leadership-ready presentation summarizing findings, recommendations, and proposed roadmap.",
-    kind: "deliverable",
-    relatedPillars: ["mandate", "products"],
-    relatedScreens: ["/dashboard/mandate", "/dashboard/products/portfolio"],
+    id: "ws-b5-capability-transfer",
+    sectionRef: "§2.3-B5",
+    title: "B5 · Capability Transfer & Handover (Wks 18–20)",
+    body: "Workstream B Phase 5: capability transfer, training and handover so GPSSA embeds and sustains the target model.",
+    kind: "workstream",
+    relatedPillars: ["planning", "quality", "mandate"],
+    relatedScreens: [
+      "/dashboard/planning/operating-model",
+      "/dashboard/planning/governance",
+      "/dashboard/quality/framework",
+    ],
   },
 
-  // ── 2.E Areas of Focus ───────────────────────────────────────────────────
+  // ── 2.2 Expected Outcomes (deliverables) ─────────────────────────────────
   {
-    id: "aof-service-enhancement",
-    sectionRef: "2.E-1",
-    title: "Existing service enhancement & journey simplification",
-    body: "Existing service enhancement roadmap and journey simplification opportunities.",
+    id: "del-diagnostic-benefits",
+    sectionRef: "§2.2-1",
+    title: "Evidence-based diagnostic & benefits realisation view",
+    body: "An evidence-based diagnostic and benefits realisation view covering current services, products, operations, fulfilment performance and quality gaps.",
+    kind: "deliverable",
+    relatedPillars: ["services", "products", "fulfilment", "quality", "performance"],
+    relatedScreens: [
+      "/dashboard/services/catalog",
+      "/dashboard/performance/benefits",
+      "/dashboard/fulfilment/analytics",
+    ],
+  },
+  {
+    id: "del-qa-fulfilment-blueprint",
+    sectionRef: "§2.2-2",
+    title: "QA Framework & fulfilment improvement blueprint",
+    body: "A comprehensive end-to-end Quality Assurance Framework and service fulfilment improvement blueprint for the Pension Sector.",
+    kind: "deliverable",
+    relatedPillars: ["quality", "fulfilment"],
+    relatedScreens: [
+      "/dashboard/quality/framework",
+      "/dashboard/fulfilment/sla",
+      "/dashboard/fulfilment/breach",
+    ],
+  },
+  {
+    id: "del-backlog-roadmap",
+    sectionRef: "§2.2-3",
+    title: "Opportunity backlog & 12-month roadmap",
+    body: "A structured opportunity backlog and prioritised 12-month Product & Service Development Roadmap.",
+    kind: "deliverable",
+    relatedPillars: ["planning"],
+    relatedScreens: ["/dashboard/planning/backlog", "/dashboard/planning"],
+  },
+  {
+    id: "del-case-sla-breach",
+    sectionRef: "§2.2-4",
+    title: "Case classification, SLA/OLA & breach management",
+    body: "Standardized case classification, SLA/OLA methodology, breach management and governance approach.",
+    kind: "deliverable",
+    relatedPillars: ["fulfilment"],
+    relatedScreens: [
+      "/dashboard/fulfilment/cases",
+      "/dashboard/fulfilment/sla",
+      "/dashboard/fulfilment/breach",
+    ],
+  },
+  {
+    id: "del-kpi-kqi-raci",
+    sectionRef: "§2.2-5",
+    title: "KPI/KQI framework, operating model & RACI",
+    body: "Defined KPI/KQI framework, dashboard requirements, operating model and RACI for sustainable ownership.",
+    kind: "deliverable",
+    relatedPillars: ["performance", "planning"],
+    relatedScreens: [
+      "/dashboard/performance/catalogue",
+      "/dashboard/performance/dashboards",
+      "/dashboard/planning/governance",
+      "/dashboard/planning/operating-model",
+    ],
+  },
+  {
+    id: "del-pilot-capability-transfer",
+    sectionRef: "§2.2-6",
+    title: "Phased implementation, pilot & capability transfer",
+    body: "A phased implementation, pilot and capability transfer plan that enables GPSSA to embed and sustain the target model.",
+    kind: "deliverable",
+    relatedPillars: ["planning", "quality"],
+    relatedScreens: ["/dashboard/planning", "/dashboard/planning/operating-model"],
+  },
+  {
+    id: "del-exec-briefing",
+    sectionRef: "§2.2-7",
+    title: "Leadership-ready operating picture",
+    body: "Compass Executive Briefing and command surface — the live operating system the project team runs and leaves with GPSSA.",
+    kind: "deliverable",
+    relatedPillars: ["mandate", "atlas", "planning"],
+    relatedScreens: ["/dashboard", "/dashboard/mandate", "/dashboard/atlas"],
+  },
+
+  // ── 1.4 / 2.1 Areas of focus (pain points & requirements) ────────────────
+  {
+    id: "aof-fulfilment-pain",
+    sectionRef: "§1.4",
+    title: "Fulfilment & operational quality pain points",
+    body: "Address case breaches, backlog, rework, exception handling complexity, inconsistent fulfilment, limited management visibility and fragmented governance.",
+    kind: "area-of-focus",
+    relatedPillars: ["fulfilment", "quality", "performance"],
+    relatedScreens: [
+      "/dashboard/fulfilment/breach",
+      "/dashboard/fulfilment/cases",
+      "/dashboard/quality/capa",
+      "/dashboard/performance/voc",
+    ],
+  },
+  {
+    id: "aof-measurable-improvement",
+    sectionRef: "§1.4",
+    title: "Measurable CX & SLA improvement",
+    body: "Support measurable improvement in Customer Pulse, CSAT, DSAT, NPS, SLA compliance, fulfilment turnaround time, quality consistency and operational accountability.",
+    kind: "area-of-focus",
+    relatedPillars: ["performance", "fulfilment", "quality"],
+    relatedScreens: [
+      "/dashboard/performance/voc",
+      "/dashboard/fulfilment/sla",
+      "/dashboard/quality/scorecards",
+    ],
+  },
+  {
+    id: "aof-service-catalogue",
+    sectionRef: "§2.4",
+    title: "GPSSA service catalogue (~35 services)",
+    body: "Engagement covers GPSSA’s current service list (registration, EOS, certificates, advisory, complaints, GCC coordination, etc.) and any services added during the engagement.",
     kind: "area-of-focus",
     relatedPillars: ["services", "delivery"],
-    relatedScreens: ["/dashboard/services/catalog", "/dashboard/delivery/personas"],
+    relatedScreens: [
+      "/dashboard/services/catalog",
+      "/dashboard/services/channels",
+      "/dashboard/delivery/channels",
+    ],
   },
   {
-    id: "aof-new-products",
-    sectionRef: "2.E-2",
-    title: "New value-creating products",
-    body: "New products that create additional value for GPSSA customers, employers, pensioners, insured members, and beneficiaries.",
+    id: "aof-breach-reduction",
+    sectionRef: "§2.1",
+    title: "Breach-reduction & early-warning controls",
+    body: "Case classification, prioritisation, triage, ageing controls, early-warning triggers, escalation thresholds, differentiated SLA/OLA treatment and breach management.",
     kind: "area-of-focus",
-    relatedPillars: ["products"],
-    relatedScreens: ["/dashboard/products/portfolio", "/dashboard/products/segments"],
+    relatedPillars: ["fulfilment"],
+    relatedScreens: [
+      "/dashboard/fulfilment/cases",
+      "/dashboard/fulfilment/sla",
+      "/dashboard/fulfilment/breach",
+      "/dashboard/fulfilment/analytics",
+    ],
   },
   {
-    id: "aof-process-optimisation",
-    sectionRef: "2.E-3",
-    title: "Process optimisation & operational efficiency",
-    body: "Optimize processes that improve service delivery, monitoring, service intelligence, compliance, decision support, or operational efficiency.",
+    id: "aof-global-benchmark",
+    sectionRef: "§1.3",
+    title: "Global benchmark quality ambition",
+    body: "Recommendations and operating picture set against peer social-security authorities — Atlas and benchmarking inform the bar for product and service excellence.",
     kind: "area-of-focus",
-    relatedPillars: ["delivery", "mandate"],
-    relatedScreens: ["/dashboard/delivery/models", "/dashboard/mandate/governance"],
-  },
-  {
-    id: "aof-cross-entity-bundles",
-    sectionRef: "2.E-4",
-    title: "Cross-entity service bundles",
-    body: "New service bundles and joined-up service opportunities with relevant external stakeholders where beneficial.",
-    kind: "area-of-focus",
-    relatedPillars: ["services", "products"],
-    relatedScreens: ["/dashboard/services/channels", "/dashboard/products/portfolio"],
-  },
-  {
-    id: "aof-fulfilment-timelines",
-    sectionRef: "2.E-5",
-    title: "Reduce fulfillment timelines & rework",
-    body: "Reduction of service fulfillment timelines, service effort, exception handling, rework, repeat contact, and avoidable complaints.",
-    kind: "area-of-focus",
-    relatedPillars: ["delivery", "services"],
-    relatedScreens: ["/dashboard/delivery/channels", "/dashboard/services/catalog"],
-  },
-  {
-    id: "aof-tdra-alignment",
-    sectionRef: "2.E-6",
-    title: "TDRA-aligned customer & service measures",
-    body: "Alignment of recommendations with customer and service performance measures such as Customer Pulse, TDRA-aligned service quality expectations, CSAT, DSAT, NPS, and SLA-related indicators.",
-    kind: "area-of-focus",
-    relatedPillars: ["delivery", "international"],
-    relatedScreens: ["/dashboard/delivery/channels", "/dashboard/atlas/benchmarking"],
+    relatedPillars: ["atlas", "international", "services"],
+    relatedScreens: ["/dashboard/atlas", "/dashboard/atlas/benchmarking"],
   },
 ];
 
 export const RFI_KIND_LABELS: Record<RfiKind, string> = {
-  objective: "Key Objective",
-  workstream: "In-Scope Workstream",
-  deliverable: "Expected Deliverable",
+  objective: "Project Objective",
+  workstream: "Workstream Phase",
+  deliverable: "Expected Outcome",
   "area-of-focus": "Area of Focus",
 };
 
@@ -312,7 +426,7 @@ export const RFI_KIND_ACCENT: Record<RfiKind, string> = {
   "area-of-focus": "rgba(202,99,213,0.85)",
 };
 
-export function getRfiSectionsByPillar(pillar: RfiSection["relatedPillars"][number]): RfiSection[] {
+export function getRfiSectionsByPillar(pillar: RfiPillar): RfiSection[] {
   return RFI_SECTIONS.filter((s) => s.relatedPillars.includes(pillar));
 }
 

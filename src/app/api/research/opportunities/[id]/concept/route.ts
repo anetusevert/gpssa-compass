@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin, requireAuth } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { error } = await requireAuth();
+  if (error) return error;
+
   try {
     const { id } = params;
 
@@ -34,6 +38,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const { id } = params;
 

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Scale, FileText, Link2, BookOpen } from "lucide-react";
 import { SlideLayout } from "./SlideLayout";
 import { Counter } from "../charts/Counter";
+import { SourceChip } from "@/components/ui/SourceChip";
 import type { BriefingSnapshot } from "@/lib/briefing/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -110,6 +111,15 @@ export function Slide04_Mandate({ snapshot }: Props) {
               Mandate corpus seeding in progress — structure is ready.
             </p>
           )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <SourceChip label="GPSSA corpus" publisher="GPSSA" />
+          <SourceChip label="Standards library" publisher="ILO / ISSA" />
+          <SourceChip
+            label={`${m.sourcePages} source pages`}
+            publisher="Evidence base"
+          />
         </div>
 
         <motion.p

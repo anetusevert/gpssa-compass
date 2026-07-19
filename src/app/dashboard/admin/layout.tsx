@@ -11,7 +11,7 @@ const adminTabs = [
   { id: "ai-config", label: "AI Configuration", href: "/dashboard/admin/ai-config", icon: Cpu },
   { id: "agents", label: "Agents", href: "/dashboard/admin/agents", icon: Bot },
   { id: "users", label: "Users", href: "/dashboard/admin/users", icon: Users },
-  { id: "research", label: "Research", href: "/dashboard/admin/research", icon: Globe },
+  { id: "research", label: "Research", href: "/dashboard/admin/agents", icon: Globe },
   { id: "scoring", label: "Scoring", href: "/dashboard/admin/scoring", icon: Scale },
   { id: "activity", label: "Activity Logs", href: "/dashboard/admin/activity", icon: ScrollText },
 ];

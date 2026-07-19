@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 
 export async function GET(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
+  const { error } = await requireAuth();
+  if (error) return error;
+
   try {
     const job = await prisma.researchJob.findUnique({
       where: { id: params.id },

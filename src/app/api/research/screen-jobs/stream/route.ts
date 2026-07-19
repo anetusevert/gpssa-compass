@@ -1,3 +1,4 @@
+import { requireAuth } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,9 @@ function snapshotKey(s: StreamSnapshot): string {
 }
 
 export async function GET() {
+  const { error } = await requireAuth();
+  if (error) return error;
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

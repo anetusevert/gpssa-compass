@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireAdmin, requireAuth } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 import { createScreenResearchJob } from "@/lib/research/dispatcher";
 import { runScreenResearchJob } from "@/lib/research/engine";
 
 export async function GET(request: Request) {
+  const { error } = await requireAuth();
+  if (error) return error;
+
   try {
     const { searchParams } = new URL(request.url);
     const latestOnly = searchParams.get("latest") === "true";
@@ -44,6 +48,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const body = await request.json();
     const { agentConfigId } = body;

@@ -5,8 +5,8 @@
  *
  * Columns:
  *   ─ Left   : statutory articles (StandardRequirement)
- *   ─ Middle : RFI sections (objective / workstream / deliverable / area-of-focus)
- *   ─ Right  : app screens (services / products / delivery / atlas / mandate)
+ *   ─ Middle : RFP GPSSA-016-2026 sections (objective / workstream / deliverable / area-of-focus)
+ *   ─ Right  : app screens across Workstream A + B pillars
  *
  * Hovering any node highlights:
  *   - that node
@@ -101,6 +101,10 @@ const SCREEN_COLOR: Record<string, string> = {
   atlas: "#00A86B",
   mandate: "#00A86B",
   international: "#4899FF",
+  quality: "#CA63D5",
+  fulfilment: "#E76363",
+  performance: "#4899FF",
+  planning: "#E7B02E",
 };
 
 const PILLAR_LABELS: Record<string, string> = {
@@ -137,17 +141,72 @@ const SCREEN_DESCRIPTIONS: Record<string, string> = {
   "screen-mandate-governance":
     "Governance hub: mandate basis, accountable owners, review cadence and KPI ownership for each obligation.",
   "screen-mandate-hub":
-    "Top-level mandate workspace linking the legal corpus, RFI alignment, history and live pillar performance.",
+    "Top-level mandate workspace linking the legal corpus, RFP alignment, history and live pillar performance.",
+  "screen-home":
+    "Command theater and Executive Briefing — the live operating picture sponsors and delivery teams run from.",
+  "screen-atlas-hub":
+    "World map of social-security peers — country context for ambition and gap narratives.",
+  "screen-quality-framework":
+    "End-to-end Quality Assurance Framework — dimensions, policy, methodology and governance for the Pension Sector.",
+  "screen-quality-scorecards":
+    "QA scorecards and sampling design used to score fulfilment quality consistently across services.",
+  "screen-quality-reviews":
+    "Structured quality reviews against the scorecard methodology, feeding calibration and CAPA.",
+  "screen-quality-calibration":
+    "Calibration routines that keep scoring consistent across reviewers and entities.",
+  "screen-quality-taxonomy":
+    "Error taxonomy classifying defects so root causes and CAPA can be targeted.",
+  "screen-quality-capa":
+    "Corrective and preventive actions closing the loop from quality findings to sustained improvement.",
+  "screen-fulfilment-cases":
+    "Case classification, triage and ageing — the operational backbone of service fulfilment.",
+  "screen-fulfilment-sla":
+    "SLA/OLA methodology and differentiated treatment by case type and priority.",
+  "screen-fulfilment-breach":
+    "Breach management, early-warning triggers and escalation thresholds.",
+  "screen-fulfilment-analytics":
+    "Fulfilment analytics — backlog, rework, turnaround and breach trends.",
+  "screen-performance-voc":
+    "Voice of customer — Customer Pulse, CSAT, DSAT, NPS and complaint themes.",
+  "screen-performance-catalogue":
+    "KPI/KQI catalogue defining the measures that govern roadmap and QA outcomes.",
+  "screen-performance-dashboards":
+    "Management dashboards for customer, service and operational performance.",
+  "screen-performance-benefits":
+    "Benefits realisation view — what completed initiatives delivered and what gaps remain.",
+  "screen-planning-hub":
+    "Prioritised 12-month Product & Service Development Roadmap with phases and dependencies.",
+  "screen-planning-backlog":
+    "Structured opportunity backlog with prioritisation attributes and concept sheets.",
+  "screen-planning-governance":
+    "Governance forums, management routines and RACI for sustainable roadmap ownership.",
+  "screen-planning-operating-model":
+    "Target operating model and capability-transfer requirements for handover to GPSSA.",
 };
 
 type ActiveSelection = { kind: "article" | "rfi" | "screen"; id: string } | null;
 
 const RFI_KIND_ORDER: RfiKind[] = ["objective", "workstream", "deliverable", "area-of-focus"];
-const SCREEN_PILLAR_ORDER = ["services", "products", "delivery", "atlas", "mandate", "international"];
+const SCREEN_PILLAR_ORDER = [
+  "services",
+  "products",
+  "delivery",
+  "quality",
+  "fulfilment",
+  "performance",
+  "planning",
+  "atlas",
+  "mandate",
+  "international",
+];
 const SCREEN_PILLAR_LABELS: Record<string, string> = {
   services: "Services",
   products: "Products",
   delivery: "Delivery",
+  quality: "Quality",
+  fulfilment: "Fulfilment",
+  performance: "Performance",
+  planning: "Planning",
   atlas: "Global Atlas",
   mandate: "Mandate",
   international: "International",
@@ -744,7 +803,7 @@ export function AlignmentBoard({ payload }: AlignmentBoardProps) {
 
       <Column
         ref={rfiColumnRef}
-        title="Your RFI"
+        title="RFP 016-2026"
         subtitle={`${payload.rfiSections.length} sections · ${rfiGroups.length} kinds`}
         Icon={Target}
         accent="#E7B02E"
@@ -1027,7 +1086,7 @@ function DetailModal({
           {linkedRfis.length > 0 && (
             <div>
               <h4 className="mb-1.5 text-[10px] uppercase tracking-[0.22em] text-white/50">
-                Maps to RFI sections
+                Maps to RFP sections
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {linkedRfis.map((r) => (

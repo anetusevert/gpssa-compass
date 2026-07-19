@@ -109,6 +109,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Channels", href: "/dashboard/delivery/channels", icon: Truck },
       { label: "Personas", href: "/dashboard/delivery/personas", icon: UserCircle },
+      { label: "Delivery Models", href: "/dashboard/delivery/models", icon: Workflow },
     ],
   },
   {
@@ -118,7 +119,7 @@ const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(0,168,107,0.14)",
     items: [
       { label: "Mandate", href: "/dashboard/mandate", icon: Scale },
-      { label: "RFI Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
+      { label: "RFP Alignment", href: "/dashboard/mandate/rfi-alignment", icon: Network },
     ],
   },
   {

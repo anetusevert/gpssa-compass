@@ -990,7 +990,7 @@ export default function ServiceCatalogPage() {
               </div>
               <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
                 <Scale size={10} />
-                RFI 2.B-1 · Assess current portfolio
+                RFP §1.3-1 · Assess the current environment
               </div>
             </div>
 
@@ -1071,7 +1071,7 @@ export default function ServiceCatalogPage() {
               </div>
               <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
                 <Scale size={10} />
-                RFI 2.C-1 · Current-state diagnostic
+                RFP §2.3-A1 · Current-state diagnostic
               </div>
             </div>
 
@@ -1214,7 +1214,7 @@ export default function ServiceCatalogPage() {
               </div>
               <div className="text-[10px] uppercase tracking-wider text-gold/80 hidden md:flex items-center gap-1.5 shrink-0">
                 <Scale size={10} />
-                RFI 2.E-6 · TDRA-aligned measures
+                RFP §2.2-5 · KPI / KQI framework
               </div>
             </div>
 

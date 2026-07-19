@@ -220,9 +220,9 @@ const HISTORY_FALLBACK: Milestone[] = [
     id: "rfi-2026",
     year: 2026,
     date: null,
-    title: "RFI 02-2026 — Product & Service Development Roadmap",
+    title: "RFP GPSSA-016-2026 — Roadmap & Quality Assurance Framework",
     description:
-      "GPSSA invites global partners to inform its product, service and customer-experience roadmap — the most ambitious modernisation programme in the authority's history. The mandate steps boldly into the future.",
+      "GPSSA invites partners to deliver a 12-month Product & Service Development Roadmap and an end-to-end Quality Assurance & fulfilment framework for the Pension Sector — strategy and operational excellence in one engagement.",
     kind: "press",
     sourceUrl: null,
   },

@@ -1,36 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GPSSA Intelligence (Compass)
 
-## Getting Started
+Strategic + operational intelligence platform for GPSSA’s Product & Service Development Roadmap — dual workstream (strategy and operational excellence). Built for the project team to run daily and leave with the customer.
 
-First, run the development server:
+Powered by Arthur D. Little.
+
+---
+
+## Roles
+
+| Role | Can |
+|------|-----|
+| **viewer** | Browse all dashboards, briefing, tour (default demo account) |
+| **editor** | Mutate ops data (QA, fulfilment, backlog fields) — not research agents |
+| **admin** | Full access including AI research agents and user admin |
+| **user** (legacy) | Treated as editor |
+
+Research APIs that start agents require **admin**.
+
+---
+
+## Local setup
 
 ```bash
+npm install
+cp .env.example .env
+# Edit DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
+# Set SEED_ADMIN_PASSWORD and SEED_DEMO_PASSWORD before any shared deploy
+npx prisma db push
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Seed credentials (env)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Purpose |
+|----------|---------|
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Admin account |
+| `SEED_DEMO_PASSWORD` | Shared demo login (`demo@gpssa.local`, role=viewer) |
+| `SEED_EDITOR_EMAIL` / `SEED_EDITOR_PASSWORD` | Optional editor |
 
-## Learn More
+If seed password env vars are unset, seed keeps legacy fallbacks and prints a warning. **Set and rotate `SEED_*_PASSWORD` before customer handover.**
 
-To learn more about Next.js, take a look at the following resources:
+### Gold offline dataset
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Seed always attempts to hydrate:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Minimal mandate corpus from [`prisma/seeds/gpssa-corpus.json`](prisma/seeds/gpssa-corpus.json)
+- Peer institutions + benchmark scores
+- Service × channel capability matrix (gold heatmap)
+- QA, fulfilment, KPI/VoC, roadmap/RACI (Workstream B)
 
-## Deploy on Vercel
+Refresh a fuller live corpus (optional):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx tsx scripts/scrape-gpssa.ts
+npm run db:seed
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Railway deploy
+
+1. Connect the GitHub repo; build uses `railway.json` (`npm run build`, Prisma push + seed on start).
+2. Set env: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, seed passwords, `OPENAI_API_KEY` (only if agents will run).
+3. Custom domain: use **www** (e.g. `www.gpssaintelligence.ae` → Railway).  
+   Apex `gpssaintelligence.ae` must also point at Railway — otherwise visitors hit a stale host.
+
+---
+
+## Gold demo checklist (cold board pitch)
+
+1. Fresh seed completed; agents **not** running  
+2. Login as **viewer** (demo) — Admin nav hidden  
+3. Home command theater loads without scroll at 1280×800  
+4. Executive Briefing — all 12 slides show numbers (Mandate, Atlas, Diagnose, Roadmap)  
+5. QA / Fulfilment / Planning populated  
+6. Unauthenticated `POST /api/research/run-all` returns **401**  
+7. Optional: **Watch the story** on Home (MP4 or Briefing fallback)
+
+Smoke script (with app running + session cookie, or against local after login tooling):
+
+```bash
+npx tsx scripts/smoke-gold.ts
+```
+
+---
+
+## Research agents (admin only)
+
+- Control center: `/dashboard/admin/agents`  
+- Pause by default for demos; run pillars only when refreshing evidence.  
+- Cost: gated behind admin + OpenAI key; do not expose research routes publicly (guards enforced).
+
+---
+
+## Leave-behind video
+
+Script + shot list: [`docs/video/LEAVE_BEHIND_SCRIPT.md`](docs/video/LEAVE_BEHIND_SCRIPT.md)
+
+1. Capture UI with OBS (gold seed)  
+2. Assemble in CapCut (free, 1080p)  
+3. Export to `public/videos/compass-leave-behind.mp4`  
+4. Home → **Watch the story** plays the file (or opens Briefing if missing)
+
+---
+
+## Stack
+
+- Next.js 14 (App Router) · Prisma · PostgreSQL · NextAuth · Framer Motion · OpenAI (agents)

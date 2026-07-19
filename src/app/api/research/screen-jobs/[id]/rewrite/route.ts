@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 import { writeScreenResults } from "@/lib/research/writers";
 import type { ScreenType } from "@/lib/research/types";
@@ -7,6 +8,9 @@ export async function POST(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const job = await prisma.researchJob.findUnique({
       where: { id: params.id },

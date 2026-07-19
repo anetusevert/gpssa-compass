@@ -10,6 +10,7 @@
     "db:migrate": "npx prisma migrate deploy",
     "db:push": "npx prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
+    "smoke:gold": "npx tsx scripts/smoke-gold.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

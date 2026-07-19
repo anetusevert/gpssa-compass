@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 import { createScreenResearchJobForItems } from "@/lib/research/dispatcher";
 import { runScreenResearchJob } from "@/lib/research/engine";
@@ -25,6 +26,9 @@ type Body = {
 };
 
 export async function POST(request: Request) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const body = (await request.json()) as Body;
     const iso3 = body?.iso3?.toUpperCase();

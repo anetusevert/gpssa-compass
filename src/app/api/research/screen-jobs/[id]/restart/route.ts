@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 import { cancelScreenResearchJob } from "@/lib/research/engine";
 import { createScreenResearchJob } from "@/lib/research/dispatcher";
@@ -8,6 +9,9 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const existingJob = await prisma.researchJob.findUnique({
       where: { id: params.id },

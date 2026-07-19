@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin-guard";
+import { requireEditor } from "@/lib/admin-guard";
 import { agingFor } from "@/lib/fulfilment/aging";
 
 const ALLOWED_STATUS = ["open", "in-progress", "on-hold", "resolved"];
@@ -14,7 +14,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdmin();
+  const { error } = await requireEditor();
   if (error) return error;
 
   try {

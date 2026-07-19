@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Bidirectional link from any pillar page back to the legal mandate + RFI catalog.
+ * Bidirectional link from any pillar page back to the legal mandate + RFP catalog.
  *
- * Renders a small chip such as "Mandate basis · 3 articles · 2 RFI refs" that
+ * Renders a small chip such as "Mandate basis · 3 articles · 2 RFP refs" that
  * opens a slide-over panel listing:
  *   ─ matching statutory articles (StandardRequirement / Standard)
- *   ─ matching RFI sections (from rfi-sections.ts)
+ *   ─ matching RFP sections (from rfi-sections.ts — GPSSA-016-2026)
  *   ─ deep links to /dashboard/mandate/legal#<slug> and /dashboard/mandate/rfi-alignment
  *
  * Usage:
@@ -129,12 +129,12 @@ export function MandateBasisChip({
         className={`${chipBase} ${chipStyle} ${
           variant === "floating" ? "fixed bottom-6 right-6 z-30 shadow-2xl" : ""
         } ${className ?? ""}`}
-        title="View the legal mandate and RFI references behind this screen"
+        title="View the legal mandate and RFP references behind this screen"
       >
         <Scale size={12} className="text-[#00A86B]" />
         <span className="text-cream">Mandate basis</span>
         <span className="rounded-full bg-white/[0.08] px-1.5 py-px text-[9px] tracking-widest text-white/65">
-          {articles.length} art · {rfiHits.length} RFI
+          {articles.length} art · {rfiHits.length} RFP
         </span>
       </button>
 
@@ -164,7 +164,7 @@ export function MandateBasisChip({
                     Mandate basis
                   </div>
                   <h2 className="mt-0.5 font-playfair text-lg font-semibold text-cream">
-                    Legal &amp; RFI references for this screen
+                    Legal &amp; RFP references for this screen
                   </h2>
                 </div>
                 <button
@@ -234,12 +234,12 @@ export function MandateBasisChip({
                   <SectionHeader
                     Icon={Target}
                     accent="#E7B02E"
-                    title="RFI 02-2026 references"
+                    title="RFP GPSSA-016-2026 references"
                     count={rfiHits.length}
                   />
                   {rfiHits.length === 0 ? (
                     <div className="mt-3 rounded-xl border border-white/[0.04] bg-white/[0.015] p-4 text-[12px] text-white/45">
-                      No RFI sections directly reference this screen.
+                      No RFP sections directly reference this screen.
                     </div>
                   ) : (
                     <ul className="mt-3 space-y-2">

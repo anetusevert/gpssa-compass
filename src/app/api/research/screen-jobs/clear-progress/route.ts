@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 import type { ScreenType } from "@/lib/research/types";
 
@@ -130,6 +131,9 @@ async function resetDomainData(screenType: ScreenType): Promise<number> {
 }
 
 export async function POST(request: Request) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const body = await request.json();
     const { agentConfigId } = body;

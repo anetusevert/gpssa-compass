@@ -35,7 +35,7 @@ export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
     target: { kind: "selector", query: '[data-tour="compass-mandate-bar"]' },
     title: "Mandate-grounded decisions",
     subtitle:
-      "Every recommendation sits on GPSSA’s statutory remit and RFI alignment—open the Mandate hub when you need legal traceability.",
+      "Every recommendation sits on GPSSA’s statutory remit and RFP alignment—open the Mandate hub when you need legal traceability.",
   },
   {
     id: "pillars",
@@ -105,9 +105,9 @@ export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
     id: "mandate-rfi",
     path: "/dashboard/mandate/rfi-alignment",
     target: { kind: "selector", query: '[data-tour="compass-mandate-rfi"]' },
-    title: "Mandate meets RFI",
+    title: "Mandate meets RFP",
     subtitle:
-      "Statutory articles, RFI sections, and application pillars connect here—traceability you can take into governance or sponsor reviews.",
+      "Statutory articles, RFP GPSSA-016-2026 sections, and application pillars connect here—traceability you can take into governance or sponsor reviews.",
   },
   {
     id: "briefing",

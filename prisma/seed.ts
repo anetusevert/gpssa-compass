@@ -12,6 +12,7 @@ import { seedRoadmapGovernance } from "../src/lib/roadmap/seed";
 import { seedQualityAssurance } from "../src/lib/qa/seed";
 import { seedFulfilment } from "../src/lib/fulfilment/seed";
 import { seedPerformance } from "../src/lib/kpi/seed";
+import { seedGoldChannelMatrix } from "../src/lib/seed/gold-channel-matrix";
 
 const prisma = new PrismaClient();
 
@@ -78,49 +79,82 @@ const SEED_DATA_SOURCES = [
 async function main() {
   console.log("Seeding GPSSA Compass database...");
 
-  const hashedPassword = await bcrypt.hash("Ayden3", 12);
+  // Passwords from env — set SEED_*_PASSWORD on Railway / customer hosts and rotate.
+  // Fallbacks preserve continuity with existing environments until env is set.
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || "utena.treves@gmail.com";
+  const adminPasswordPlain = process.env.SEED_ADMIN_PASSWORD || "Ayden3";
+  const demoPasswordPlain = process.env.SEED_DEMO_PASSWORD || "welcomeGPSSA";
+  if (!process.env.SEED_ADMIN_PASSWORD || !process.env.SEED_DEMO_PASSWORD) {
+    console.warn(
+      "  ! SEED_ADMIN_PASSWORD / SEED_DEMO_PASSWORD unset — using legacy fallbacks. Set env vars and rotate before customer handover."
+    );
+  }
+  const hashedPassword = await bcrypt.hash(adminPasswordPlain, 12);
 
-  // Canonical admin: utena.treves@gmail.com / Ayden3.
-  // Re-assert role + name on every seed so a stale or manually-tweaked row
+  // Canonical admin. Re-assert role + name on every seed so a stale row
   // can never lose admin privileges.
   await prisma.user.upsert({
-    where: { email: "utena.treves@gmail.com" },
+    where: { email: adminEmail },
     update: {
       password: hashedPassword,
-      name: "Utena Treves",
+      name: process.env.SEED_ADMIN_NAME || "Platform Admin",
       role: "admin",
       userType: "adl",
       hasCompletedProfile: true,
     },
     create: {
-      email: "utena.treves@gmail.com",
+      email: adminEmail,
       password: hashedPassword,
-      name: "Utena Treves",
+      name: process.env.SEED_ADMIN_NAME || "Platform Admin",
       role: "admin",
       userType: "adl",
       hasCompletedProfile: true,
     },
   });
-  console.log("  Admin user seeded (utena.treves@gmail.com)");
+  console.log(`  Admin user seeded (${adminEmail})`);
 
-  // Shared demo account: anyone with the password can enter the platform.
-  // The email is non-routable (`.local`) so it can never collide with a real
-  // GPSSA/ADL inbox; the client only ever sends the password and we map it to
-  // this user server-side.
-  const demoPassword = await bcrypt.hash("welcomeGPSSA", 12);
+  // Shared demo account: viewer role — leadership can explore without
+  // triggering research agents. Email is non-routable (.local).
+  const demoPassword = await bcrypt.hash(demoPasswordPlain, 12);
   await prisma.user.upsert({
     where: { email: "demo@gpssa.local" },
-    update: { password: demoPassword, userType: "demo", role: "user" },
+    update: { password: demoPassword, userType: "demo", role: "viewer" },
     create: {
       email: "demo@gpssa.local",
       password: demoPassword,
       name: "Demo Account",
-      role: "user",
+      role: "viewer",
       userType: "demo",
       hasCompletedProfile: true,
     },
   });
-  console.log("  Shared GPSSA demo account seeded");
+  console.log("  Shared GPSSA demo account seeded (role=viewer)");
+
+  // Optional editor account for project-team day-to-day ops edits.
+  const editorEmail = process.env.SEED_EDITOR_EMAIL;
+  const editorPasswordPlain = process.env.SEED_EDITOR_PASSWORD;
+  if (editorEmail && editorPasswordPlain) {
+    const editorHash = await bcrypt.hash(editorPasswordPlain, 12);
+    await prisma.user.upsert({
+      where: { email: editorEmail },
+      update: {
+        password: editorHash,
+        role: "editor",
+        userType: "gpssa",
+        hasCompletedProfile: true,
+        name: process.env.SEED_EDITOR_NAME || "Project Editor",
+      },
+      create: {
+        email: editorEmail,
+        password: editorHash,
+        name: process.env.SEED_EDITOR_NAME || "Project Editor",
+        role: "editor",
+        userType: "gpssa",
+        hasCompletedProfile: true,
+      },
+    });
+    console.log(`  Editor user seeded (${editorEmail})`);
+  }
 
   for (const svc of GPSSA_SERVICES) {
     await prisma.gPSSAService.upsert({
@@ -345,6 +379,9 @@ async function main() {
   console.log("  Service fulfilment seeded (SLA/OLA, cases, breaches, fulfilment snapshots)");
   await seedPerformance(prisma);
   console.log("  Performance & VoC seeded (KPI/KQI, measurements, CSAT/NPS, benefits realisation)");
+
+  const channelCells = await seedGoldChannelMatrix(prisma);
+  console.log(`  Gold service×channel matrix seeded (${channelCells} capability cells)`);
 
   console.log("Seeding complete!");
 }

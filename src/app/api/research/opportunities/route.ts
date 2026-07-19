@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin, requireAuth } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
+  const { error } = await requireAuth();
+  if (error) return error;
+
   try {
     const opportunities = await prisma.opportunity.findMany({
       include: { conceptSheet: true },
@@ -19,6 +23,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const body = await request.json();
 
