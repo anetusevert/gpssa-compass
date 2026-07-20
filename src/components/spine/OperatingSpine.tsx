@@ -1,17 +1,26 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, GitBranch, Star } from "lucide-react";
+import { ArrowRight, GitBranch, Loader2, Sparkles, Star } from "lucide-react";
+import { useEngagementStore } from "@/lib/engagement/store";
+import { emphasizedNodes, PHASE_SPINE_ACCENT } from "@/lib/spine/conductor";
+import type { SpineDraft } from "@/lib/spine/generate";
+import type { LifecycleCategory } from "@/lib/spine/library";
 import type { SpineGraphPayload, SpineNodeId, SpineServiceListItem } from "@/lib/spine/types";
+import { TileScroll } from "@/components/ui/PageFrame";
+
+const SpineOrbCanvas = dynamic(() => import("@/components/home/SpineOrbCanvas"), {
+  ssr: false,
+  loading: () => <div className="h-full w-full bg-gradient-to-b from-[var(--gpssa-green)]/10 to-transparent" />,
+});
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-
 const NODE_ORDER: SpineNodeId[] = ["episode", "journey", "process", "systems", "qa"];
-
-const SHORT_LABEL: Record<SpineNodeId, string> = {
+const SHORT: Record<SpineNodeId, string> = {
   episode: "Episode",
   journey: "Journey",
   process: "Process",
@@ -19,11 +28,36 @@ const SHORT_LABEL: Record<SpineNodeId, string> = {
   qa: "QA",
 };
 
+type LibraryPayload = {
+  categories: { id: LifecycleCategory; label: string; blurb: string }[];
+  episodes: {
+    id: string;
+    category: LifecycleCategory;
+    name: string;
+    description: string;
+    suggestedPersonaKeys: string[];
+  }[];
+};
+
+type Workspace = {
+  episodes: { id: string; name: string; description: string | null; isActive: boolean; personaKey: string | null }[];
+  personaKey: string | null;
+  persona: { id: string; name: string; tagline: string } | null;
+  personas: { id: string; name: string; tagline: string }[];
+  journeyCandidates: {
+    id: string;
+    source: string;
+    label: string;
+    stages: { name: string; actor: string; outcome?: string | null }[];
+  }[];
+  painPoints: string[];
+  systems: { id: string; code: string; name: string; kind: string }[];
+};
+
 export function OperatingSpine({
   className = "",
   initialServiceId,
   lockService = false,
-  /** hero = landing primary stage with full inspector */
   variant = "hero",
 }: {
   className?: string;
@@ -33,15 +67,37 @@ export function OperatingSpine({
 }) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
+  const engagementOpen = useEngagementStore((s) => s.engagementOpen);
+  const phaseId = useEngagementStore((s) => s.phaseId);
+  const emphasis = useMemo(
+    () => emphasizedNodes(phaseId, engagementOpen),
+    [phaseId, engagementOpen]
+  );
+  const accent = engagementOpen ? PHASE_SPINE_ACCENT[phaseId] : null;
+
   const [services, setServices] = useState<SpineServiceListItem[]>([]);
-  const [serviceId, setServiceId] = useState<string>(initialServiceId ?? "");
+  const [serviceId, setServiceId] = useState(initialServiceId ?? "");
   const [graph, setGraph] = useState<SpineGraphPayload | null>(null);
-  const [selected, setSelected] = useState<SpineNodeId | null>("episode");
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [library, setLibrary] = useState<LibraryPayload | null>(null);
+  const [selected, setSelected] = useState<SpineNodeId>("episode");
   const [hovered, setHovered] = useState<SpineNodeId | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<SpineDraft | null>(null);
+  const [draftSource, setDraftSource] = useState<string | null>(null);
+  const [category, setCategory] = useState<LifecycleCategory | "all">("end-of-service");
+  const [personaPick, setPersonaPick] = useState("");
 
-  const active = hovered ?? selected;
+  const refresh = useCallback(async (id: string) => {
+    const [g, w] = await Promise.all([
+      fetch(`/api/spine/${id}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/spine/${id}/workspace`).then((r) => (r.ok ? r.json() : null)),
+    ]);
+    setGraph(g);
+    setWorkspace(w);
+    if (w?.personaKey) setPersonaPick(w.personaKey);
+  }, []);
 
   useEffect(() => {
     if (initialServiceId) setServiceId(initialServiceId);
@@ -49,26 +105,21 @@ export function OperatingSpine({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/spine/services")
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`Spine list failed (${r.status})`);
-        return r.json();
-      })
-      .then((rows: SpineServiceListItem[]) => {
+    Promise.all([
+      fetch("/api/spine/services").then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/spine/library/episodes").then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([rows, lib]) => {
         if (cancelled) return;
         const list = Array.isArray(rows) ? rows : [];
         setServices(list);
-        if (initialServiceId && list.some((s) => s.id === initialServiceId)) {
+        setLibrary(lib);
+        if (initialServiceId && list.some((s: SpineServiceListItem) => s.id === initialServiceId)) {
           setServiceId(initialServiceId);
-          return;
-        }
-        if (!lockService) {
-          const gold = list.find((s) => s.isGoldPath) ?? list[0];
+        } else if (!lockService) {
+          const gold = list.find((s: SpineServiceListItem) => s.isGoldPath) ?? list[0];
           if (gold) setServiceId(gold.id);
         }
-      })
-      .catch((e: Error) => {
-        if (!cancelled) setLoadError(e.message);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -81,108 +132,104 @@ export function OperatingSpine({
   useEffect(() => {
     if (!serviceId) return;
     let cancelled = false;
-    setGraph(null);
-    fetch(`/api/spine/${serviceId}`)
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`Spine graph failed (${r.status})`);
-        return r.json();
-      })
-      .then((g: SpineGraphPayload) => {
-        if (cancelled) return;
-        setGraph(g);
-        setLoadError(null);
-        const firstLit = g.nodes.find((n) => n.lit)?.id ?? "episode";
-        setSelected(firstLit);
-      })
-      .catch((e: Error) => {
-        if (!cancelled) {
-          setGraph(null);
-          setLoadError(e.message);
-        }
-      });
+    refresh(serviceId).then(() => {
+      if (!cancelled) setSelected("episode");
+    });
     return () => {
       cancelled = true;
     };
-  }, [serviceId]);
+  }, [serviceId, refresh]);
 
-  const litSet = useMemo(() => {
-    if (!graph) return new Set<SpineNodeId>();
-    if (active) {
-      const set = new Set<SpineNodeId>([active]);
-      for (const e of graph.edges) {
-        if (e.lit && (e.from === active || e.to === active)) {
-          set.add(e.from);
-          set.add(e.to);
-        }
-      }
-      return set;
+  async function workspaceAction(action: string, payload: Record<string, unknown> = {}) {
+    if (!serviceId) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/spine/${serviceId}/workspace`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...payload }),
+      });
+      await refresh(serviceId);
+    } finally {
+      setBusy(false);
     }
-    return new Set(graph.nodes.filter((n) => n.lit).map((n) => n.id));
-  }, [graph, active]);
+  }
 
-  const onSelect = useCallback((id: SpineNodeId) => {
-    setSelected((prev) => (prev === id ? prev : id));
-  }, []);
+  async function runGenerate() {
+    if (!serviceId) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/spine/${serviceId}/generate`, { method: "POST" });
+      const data = await r.json();
+      if (r.ok) {
+        setDraft(data.draft);
+        setDraftSource(data.source);
+        setSelected("process");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runApply() {
+    if (!serviceId || !draft) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/spine/${serviceId}/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft }),
+      });
+      await refresh(serviceId);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (loading) {
     return (
-      <div
-        className={`flex min-h-[200px] items-center justify-center rounded-2xl border border-white/[0.06] bg-black/20 text-[12px] text-white/40 ${className}`}
-      >
+      <div className={`flex min-h-0 flex-1 items-center justify-center text-[12px] text-white/40 ${className}`}>
         Loading operating spine…
       </div>
     );
   }
 
-  if (loadError || !services.length || !graph) {
+  if (!graph || !services.length) {
     return (
-      <div
-        className={`rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center ${className}`}
-      >
-        <p className="text-[13px] text-white/50">
-          {loadError ?? "No operating spine data yet."}
-        </p>
-        <p className="mt-1 text-[12px] text-white/35">
-          Redeploy runs seed automatically. Gold path: End of Service – Civil.
-        </p>
+      <div className={`rounded-2xl border border-dashed border-white/10 p-6 text-center text-[12px] text-white/40 ${className}`}>
+        No spine data. Redeploy seed for End of Service – Civil.
       </div>
     );
   }
 
-  const hero = variant === "hero";
+  const libEps =
+    library?.episodes.filter((e) => category === "all" || e.category === category) ?? [];
 
   return (
     <section
-      className={`relative flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.05] via-white/[0.02] to-transparent ${
-        hero ? "px-4 py-4 sm:px-6 sm:py-5" : "px-4 py-4"
-      } ${className}`}
+      className={`relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent ${className}`}
       data-tour="compass-operating-spine"
     >
       {/* Header */}
-      <div className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.05] px-3 py-2 sm:px-4">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-[var(--gpssa-green)]">
+          <div className="inline-flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--gpssa-green)]">
             <GitBranch size={11} />
             Service operating spine
             {graph.isGoldPath && (
-              <span className="ml-1 inline-flex items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[8px] tracking-[0.14em] text-amber-200/90">
-                <Star size={8} /> Gold path
+              <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[8px] text-amber-200">
+                <Star size={8} /> Gold
               </span>
             )}
           </div>
-          <p className="mt-1 max-w-xl text-[12px] text-white/40">
-            Click a node to inspect. {graph.service.name}
-          </p>
+          <p className="truncate text-[11px] text-white/40">{graph.service.name}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!lockService && (
             <select
               value={serviceId}
-              onChange={(e) => {
-                setServiceId(e.target.value);
-                setHovered(null);
-              }}
-              className="max-w-[220px] truncate rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 text-[11px] text-cream"
+              onChange={(e) => setServiceId(e.target.value)}
+              className="max-w-[200px] truncate rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-[11px] text-cream"
             >
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -194,75 +241,50 @@ export function OperatingSpine({
           )}
           <Link
             href={`/dashboard/services/operating/${serviceId}`}
-            className="inline-flex items-center gap-1 rounded-lg bg-[var(--gpssa-green)] px-3 py-1.5 text-[11px] font-semibold text-[#071322] transition hover:brightness-110"
+            className="inline-flex items-center gap-1 rounded-lg bg-[var(--gpssa-green)] px-2.5 py-1.5 text-[11px] font-semibold text-[#071322]"
           >
-            Open blueprint
-            <ArrowRight size={12} />
+            Blueprint <ArrowRight size={11} />
           </Link>
         </div>
       </div>
 
-      {/* Nodes — short labels, no overflow */}
-      <div className="relative mx-auto w-full max-w-3xl shrink-0 px-2 pt-1">
-        <div className="absolute left-[10%] right-[10%] top-[22px] h-px bg-white/10" />
-        <div className="absolute left-[10%] right-[10%] top-[22px] flex h-px">
-          {NODE_ORDER.slice(0, -1).map((id, i) => {
-            const edge = graph.edges.find((e) => e.from === id);
-            const lit = edge?.lit && litSet.has(id) && litSet.has(NODE_ORDER[i + 1]);
-            return (
-              <div
-                key={id}
-                className="h-full flex-1 transition-colors duration-300"
-                style={{
-                  background: lit
-                    ? "linear-gradient(90deg, var(--gpssa-green), rgba(0,168,107,0.25))"
-                    : "transparent",
-                }}
-              />
-            );
-          })}
+      {/* 3D stage + hit targets */}
+      <div className="relative shrink-0" style={{ height: variant === "hero" ? 132 : 100 }}>
+        <div className="absolute inset-0">
+          <SpineOrbCanvas
+            selected={selected}
+            hovered={hovered}
+            emphasized={emphasis}
+            conducting={engagementOpen}
+            accent={accent}
+          />
         </div>
-
-        <div className="relative flex justify-between">
-          {NODE_ORDER.map((id, i) => {
+        <div className="absolute inset-x-2 bottom-1 top-0 flex items-end justify-between gap-1 sm:inset-x-6">
+          {NODE_ORDER.map((id) => {
             const node = graph.nodes.find((n) => n.id === id)!;
-            const isLit = litSet.has(id);
-            const isSelected = selected === id;
-            const isDim = active !== null && !isLit;
+            const emp = emphasis.has(id);
+            const dim = engagementOpen && emphasis.size > 0 && !emp && selected !== id;
             return (
               <button
                 key={id}
                 type="button"
-                onClick={() => onSelect(id)}
+                onClick={() => setSelected(id)}
                 onMouseEnter={() => setHovered(id)}
                 onMouseLeave={() => setHovered(null)}
-                className="group relative z-[1] flex w-[18%] min-w-0 flex-col items-center gap-2"
-                style={{ opacity: isDim ? 0.3 : 1 }}
-                aria-pressed={isSelected}
+                className="flex min-h-[44px] w-[18%] flex-col items-center justify-end pb-0.5"
+                style={{ opacity: dim ? 0.45 : 1 }}
               >
                 <motion.span
-                  className={`flex h-11 w-11 items-center justify-center rounded-full text-[12px] font-bold transition ${
-                    node.lit
-                      ? isSelected
-                        ? "bg-[var(--gpssa-green)] text-[#071322] shadow-[0_0_32px_rgba(0,168,107,0.5)] ring-2 ring-white/30"
-                        : "bg-[var(--gpssa-green)] text-[#071322] shadow-[0_0_24px_rgba(0,168,107,0.35)]"
-                      : "bg-white/[0.04] text-white/35 ring-1 ring-white/10"
+                  className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                    selected === id ? "bg-black/50 text-cream" : "text-white/55"
                   }`}
-                  animate={
-                    !reduceMotion && isSelected
-                      ? { scale: [1, 1.06, 1] }
-                      : { scale: 1 }
-                  }
+                  animate={!reduceMotion && selected === id ? { y: [0, -2, 0] } : {}}
                   transition={{ duration: 1.2, ease: EASE }}
                 >
-                  {i + 1}
+                  {SHORT[id]}
                 </motion.span>
-                <span
-                  className={`w-full truncate text-center text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                    isSelected || node.lit ? "text-cream" : "text-white/30"
-                  }`}
-                >
-                  {SHORT_LABEL[id]}
+                <span className="max-w-full truncate text-[9px] text-white/30">
+                  {node.lit ? node.summary : "Empty"}
                 </span>
               </button>
             );
@@ -270,253 +292,549 @@ export function OperatingSpine({
         </div>
       </div>
 
-      {/* Inspector — outside node hover zone so Open works */}
-      <AnimatePresence mode="wait">
-        {selected && (
+      {/* Inspector */}
+      <div className="min-h-0 flex-1 border-t border-white/[0.05] px-3 py-2 sm:px-4">
+        <AnimatePresence mode="wait">
           <motion.div
-            key={`${serviceId}-${selected}`}
-            initial={{ opacity: 0, y: 8 }}
+            key={selected}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.28, ease: EASE }}
-            className={`mt-4 min-h-0 flex-1 rounded-xl border border-white/[0.07] bg-black/30 ${
-              hero ? "overflow-y-auto p-4" : "p-3"
-            }`}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: EASE }}
+            className="flex h-full min-h-0 flex-col"
           >
-            <NodeInspector
-              graph={graph}
-              nodeId={selected}
-              dense={!hero}
-              onNavigate={(href) => router.push(href)}
-            />
+            {selected === "episode" && (
+              <EpisodeInspector
+                library={library}
+                libEps={libEps}
+                category={category}
+                setCategory={setCategory}
+                workspace={workspace}
+                personaPick={personaPick}
+                setPersonaPick={setPersonaPick}
+                busy={busy}
+                onActivateLibrary={(libraryId) =>
+                  workspaceAction("activate-library", {
+                    libraryId,
+                    personaKey: personaPick || undefined,
+                  })
+                }
+                onActivateEpisode={(episodeId) =>
+                  workspaceAction("activate-episode", {
+                    episodeId,
+                    personaKey: personaPick || undefined,
+                  })
+                }
+                onSetPersona={(key) => {
+                  setPersonaPick(key);
+                  workspaceAction("set-persona", { personaKey: key });
+                }}
+              />
+            )}
+            {selected === "journey" && (
+              <JourneyInspector
+                graph={graph}
+                workspace={workspace}
+                busy={busy}
+                onApply={(stages, source) =>
+                  workspaceAction("apply-journey", { stages, source })
+                }
+              />
+            )}
+            {selected === "process" && (
+              <ProcessInspector
+                graph={graph}
+                draft={draft}
+                draftSource={draftSource}
+                busy={busy}
+                onGenerate={runGenerate}
+                onApply={runApply}
+                setDraft={setDraft}
+              />
+            )}
+            {selected === "systems" && (
+              <SystemsInspector graph={graph} workspace={workspace} onNavigate={(h) => router.push(h)} />
+            )}
+            {selected === "qa" && (
+              <QaInspector graph={graph} draft={draft} onNavigate={(h) => router.push(h)} />
+            )}
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="mt-3 flex shrink-0 flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/35">
-        <span>
-          {graph.fulfilment.cases.length} cases · {graph.fulfilment.breachCount} breaches
-        </span>
-        <span>·</span>
-        <span>{graph.quality.capas.length} CAPAs</span>
-        <span>·</span>
-        <span>
-          {graph.processes.reduce(
-            (n, p) => n + (p.sop?.steps.filter((s) => s.qaCheckpoint).length ?? 0),
-            0
-          )}{" "}
-          QA checkpoints
-        </span>
-        <span>·</span>
-        <span className="text-white/25">Seed rehearsal — not live Ma&apos;ashi</span>
+        </AnimatePresence>
       </div>
     </section>
   );
 }
 
-function NodeInspector({
+function EpisodeInspector({
+  library,
+  libEps,
+  category,
+  setCategory,
+  workspace,
+  personaPick,
+  setPersonaPick,
+  busy,
+  onActivateLibrary,
+  onActivateEpisode,
+  onSetPersona,
+}: {
+  library: LibraryPayload | null;
+  libEps: LibraryPayload["episodes"];
+  category: LifecycleCategory | "all";
+  setCategory: (c: LifecycleCategory | "all") => void;
+  workspace: Workspace | null;
+  personaPick: string;
+  setPersonaPick: (k: string) => void;
+  busy: boolean;
+  onActivateLibrary: (id: string) => void;
+  onActivateEpisode: (id: string) => void;
+  onSetPersona: (key: string) => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-[13px] font-semibold text-cream">Episode × persona</h3>
+          <p className="text-[11px] text-white/40">Lifecycle library or an existing episode on this service</p>
+        </div>
+        {busy && <Loader2 size={14} className="animate-spin text-white/40" />}
+      </div>
+
+      <div className="flex shrink-0 flex-wrap gap-1">
+        <Chip active={category === "all"} onClick={() => setCategory("all")}>
+          All
+        </Chip>
+        {library?.categories.map((c) => (
+          <Chip key={c.id} active={category === c.id} onClick={() => setCategory(c.id)}>
+            {c.label}
+          </Chip>
+        ))}
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-2 sm:grid-cols-[1.2fr_0.8fr]">
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+            Library
+          </p>
+          <ul className="space-y-1.5">
+            {libEps.map((e) => (
+              <li key={e.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onActivateLibrary(e.id)}
+                  className="w-full rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-2 text-left transition hover:border-[var(--gpssa-green)]/35"
+                >
+                  <p className="text-[12px] font-medium text-cream">{e.name}</p>
+                  <p className="line-clamp-2 text-[10px] text-white/40">{e.description}</p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </TileScroll>
+
+        <div className="flex min-h-0 flex-col gap-2">
+          <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+            <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+              On this service
+            </p>
+            <ul className="space-y-1">
+              {(workspace?.episodes ?? []).map((e) => (
+                <li key={e.id}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onActivateEpisode(e.id)}
+                    className={`w-full rounded-lg px-2 py-1.5 text-left text-[11px] ${
+                      e.isActive
+                        ? "bg-[var(--gpssa-green)]/15 text-cream"
+                        : "text-white/55 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {e.isActive ? "● " : ""}
+                    {e.name}
+                  </button>
+                </li>
+              ))}
+              {!workspace?.episodes?.length && (
+                <p className="text-[11px] text-white/35">None yet — pick from library.</p>
+              )}
+            </ul>
+          </TileScroll>
+
+          <div className="shrink-0 rounded-lg border border-white/[0.05] bg-black/20 p-2">
+            <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+              Persona
+            </p>
+            <select
+              value={personaPick}
+              onChange={(e) => {
+                setPersonaPick(e.target.value);
+                if (e.target.value) onSetPersona(e.target.value);
+              }}
+              className="w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-[11px] text-cream"
+            >
+              <option value="">Select persona…</option>
+              {(workspace?.personas ?? []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {workspace?.persona && (
+              <p className="mt-1 text-[10px] text-white/40">{workspace.persona.tagline}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JourneyInspector({
   graph,
-  nodeId,
-  dense,
+  workspace,
+  busy,
+  onApply,
+}: {
+  graph: SpineGraphPayload;
+  workspace: Workspace | null;
+  busy: boolean;
+  onApply: (stages: { name: string; actor: string; outcome?: string }[], source: string) => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div>
+        <h3 className="text-[13px] font-semibold text-cream">Journey</h3>
+        <p className="text-[11px] text-white/40">
+          Choose a candidate map — persona research, gold path, or current stages
+        </p>
+      </div>
+      <div className="grid min-h-0 flex-1 gap-2 sm:grid-cols-2">
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+            Candidates
+          </p>
+          <ul className="space-y-1.5">
+            {(workspace?.journeyCandidates ?? []).map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    onApply(
+                      c.stages.map((s) => ({
+                        name: s.name,
+                        actor: s.actor,
+                        outcome: s.outcome ?? undefined,
+                      })),
+                      c.source
+                    )
+                  }
+                  className="w-full rounded-lg border border-white/[0.06] px-2.5 py-2 text-left hover:border-[var(--gpssa-green)]/35"
+                >
+                  <p className="text-[12px] font-medium text-cream">{c.label}</p>
+                  <p className="text-[10px] text-white/35">
+                    {c.source} · {c.stages.length} stages
+                  </p>
+                </button>
+              </li>
+            ))}
+            {!workspace?.journeyCandidates?.length && (
+              <p className="text-[11px] text-white/35">Activate an episode + persona first.</p>
+            )}
+          </ul>
+          {!!workspace?.painPoints?.length && (
+            <div className="mt-3 border-t border-white/[0.05] pt-2">
+              <p className="mb-1 text-[9px] uppercase tracking-[0.14em] text-white/30">
+                Research pain points
+              </p>
+              <ul className="space-y-1">
+                {workspace.painPoints.slice(0, 4).map((p) => (
+                  <li key={p} className="text-[10px] text-amber-100/70">
+                    · {p}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/dashboard/atlas"
+                className="mt-1 inline-block text-[10px] text-[var(--gpssa-green)]"
+              >
+                Open Atlas research →
+              </Link>
+            </div>
+          )}
+        </TileScroll>
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+            Active stages
+          </p>
+          <ol className="space-y-1.5">
+            {graph.stages.map((s, i) => (
+              <li key={s.id} className="flex gap-2 text-[12px]">
+                <span className="font-bold text-[var(--gpssa-green)]">{i + 1}</span>
+                <span className="text-cream">
+                  {s.name}
+                  <span className="block text-[10px] text-white/35">
+                    {s.actor}
+                    {s.outcome ? ` · ${s.outcome}` : ""}
+                  </span>
+                </span>
+              </li>
+            ))}
+            {!graph.stages.length && (
+              <p className="text-[11px] text-white/35">No stages yet.</p>
+            )}
+          </ol>
+        </TileScroll>
+      </div>
+    </div>
+  );
+}
+
+function ProcessInspector({
+  graph,
+  draft,
+  draftSource,
+  busy,
+  onGenerate,
+  onApply,
+  setDraft,
+}: {
+  graph: SpineGraphPayload;
+  draft: SpineDraft | null;
+  draftSource: string | null;
+  busy: boolean;
+  onGenerate: () => void;
+  onApply: () => void;
+  setDraft: (d: SpineDraft | null) => void;
+}) {
+  const sop = graph.processes[0]?.sop;
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-[13px] font-semibold text-cream">Process & SOP</h3>
+          <p className="text-[11px] text-white/40">
+            Agentic draft from episode + journey — amend, then apply
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onGenerate}
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--gpssa-green)]/40 bg-[var(--gpssa-green)]/15 px-2.5 py-1.5 text-[11px] font-semibold text-[var(--gpssa-green)]"
+          >
+            <Sparkles size={12} />
+            {busy ? "Working…" : "Generate"}
+          </button>
+          {draft && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onApply}
+              className="rounded-lg bg-[var(--gpssa-green)] px-2.5 py-1.5 text-[11px] font-semibold text-[#071322]"
+            >
+              Apply draft
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="grid min-h-0 flex-1 gap-2 sm:grid-cols-2">
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1 text-[9px] uppercase tracking-[0.14em] text-white/30">
+            Draft {draftSource ? `(${draftSource})` : ""}
+          </p>
+          {!draft ? (
+            <p className="text-[11px] text-white/40">
+              Generate a process + SOP with QA checkpoints from the active episode/journey.
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              <li className="text-[12px] font-medium text-cream">{draft.sopTitle}</li>
+              {draft.steps.map((st, i) => (
+                <li key={i} className="text-[11px] text-cream/90">
+                  <input
+                    className="w-full rounded border border-white/10 bg-black/30 px-1.5 py-1 text-[11px]"
+                    value={st.title}
+                    onChange={(e) => {
+                      const steps = [...draft.steps];
+                      steps[i] = { ...st, title: e.target.value };
+                      setDraft({ ...draft, steps });
+                    }}
+                  />
+                  {st.qaCheckpoint && (
+                    <span className="text-[9px] text-[var(--gpssa-green)]"> QA</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </TileScroll>
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1 text-[9px] uppercase tracking-[0.14em] text-white/30">Live SOP</p>
+          {sop ? (
+            <ul className="space-y-1">
+              <li className="text-[12px] text-cream">
+                {sop.title} · v{sop.version}
+              </li>
+              {sop.steps.map((st) => (
+                <li key={st.id} className="text-[11px] text-white/55">
+                  {st.sortOrder + 1}. {st.title}
+                  {st.qaCheckpoint ? " · QA" : ""}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11px] text-white/40">No SOP applied yet.</p>
+          )}
+        </TileScroll>
+      </div>
+    </div>
+  );
+}
+
+function SystemsInspector({
+  graph,
+  workspace,
   onNavigate,
 }: {
   graph: SpineGraphPayload;
-  nodeId: SpineNodeId;
-  dense: boolean;
-  onNavigate: (href: string) => void;
+  workspace: Workspace | null;
+  onNavigate: (h: string) => void;
 }) {
-  const blueprint = `/dashboard/services/operating/${graph.service.id}`;
-
-  if (nodeId === "episode") {
-    return (
-      <InspectorShell
-        title={graph.episode?.name ?? "No episode"}
-        subtitle="Customer life event that triggers this service"
-        ctaLabel="Full blueprint"
-        ctaHref={blueprint}
-        onNavigate={onNavigate}
-      >
-        <p className="text-[12px] leading-relaxed text-white/50">
-          {graph.episode?.description ?? "Seed an episode for this service."}
-        </p>
-      </InspectorShell>
-    );
-  }
-
-  if (nodeId === "journey") {
-    return (
-      <InspectorShell
-        title={`${graph.stages.length} journey stages`}
-        subtitle="Organisation + customer path"
-        ctaLabel="Open blueprint"
-        ctaHref={`${blueprint}#journey`}
-        onNavigate={onNavigate}
-      >
-        {graph.stages.length === 0 ? (
-          <p className="text-[12px] text-white/40">No stages seeded.</p>
-        ) : (
-          <ol className={`flex flex-wrap gap-2 ${dense ? "" : "sm:gap-2.5"}`}>
-            {graph.stages.map((s, i) => (
-              <li
-                key={s.id}
-                className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5"
-              >
-                <span className="text-[10px] font-bold text-[var(--gpssa-green)]">{i + 1}</span>
-                <p className="text-[11px] font-medium text-cream">{s.name}</p>
-                {!dense && s.outcome && (
-                  <p className="text-[10px] text-white/35">{s.outcome}</p>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
-      </InspectorShell>
-    );
-  }
-
-  if (nodeId === "process") {
-    const proc = graph.processes[0];
-    const sop = proc?.sop;
-    return (
-      <InspectorShell
-        title={sop?.title ?? proc?.name ?? "Process & SOP"}
-        subtitle={sop ? `v${sop.version} · back-office runbook with QA checkpoints` : "No SOP"}
-        ctaLabel="Open SOP section"
-        ctaHref={`${blueprint}#process`}
-        onNavigate={onNavigate}
-      >
-        {!sop ? (
-          <p className="text-[12px] text-white/40">No SOP linked.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {sop.steps.slice(0, dense ? 4 : 8).map((st) => (
-              <li
-                key={st.id}
-                className="flex items-start gap-2 text-[12px] text-cream/90"
-              >
-                <span className="mt-0.5 w-4 shrink-0 text-[10px] font-bold text-white/30">
-                  {st.sortOrder + 1}
-                </span>
-                <span className="min-w-0">
-                  {st.title}
-                  {st.qaCheckpoint && (
-                    <span className="ml-1.5 rounded bg-[var(--gpssa-green)]/15 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--gpssa-green)]">
-                      QA
-                    </span>
-                  )}
+  const linked = graph.processes.flatMap((p) => p.systems);
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-[13px] font-semibold text-cream">Systems & fulfilment</h3>
+          <p className="text-[11px] text-white/40">Inventory only — not live Ma&apos;ashi</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate("/dashboard/fulfilment/cases")}
+          className="text-[11px] text-[var(--gpssa-green)]"
+        >
+          Case board →
+        </button>
+      </div>
+      <div className="grid min-h-0 flex-1 gap-2 sm:grid-cols-2">
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1 text-[9px] uppercase text-white/30">Linked / inventory</p>
+          <ul className="space-y-1">
+            {(linked.length ? linked : workspace?.systems ?? []).map((s) => (
+              <li key={s.id + (s as { role?: string }).role} className="text-[12px] text-cream">
+                {s.name}{" "}
+                <span className="text-white/35">
+                  {(s as { role?: string }).role ?? s.kind}
                 </span>
               </li>
             ))}
           </ul>
-        )}
-      </InspectorShell>
-    );
-  }
-
-  if (nodeId === "systems") {
-    const systems = graph.processes.flatMap((p) => p.systems);
-    return (
-      <InspectorShell
-        title={`${systems.length} systems · ${graph.fulfilment.cases.length} cases`}
-        subtitle="Where work sits — inventory only, not live integration"
-        ctaLabel="Case board"
-        ctaHref="/dashboard/fulfilment/cases"
-        onNavigate={onNavigate}
-      >
-        <div className="mb-2 flex flex-wrap gap-1.5">
-          {systems.map((s) => (
-            <span
-              key={`${s.id}-${s.role}`}
-              className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[11px] text-cream"
-            >
-              {s.name}
-              <span className="ml-1 text-white/30">{s.role}</span>
-            </span>
-          ))}
-        </div>
-        <ul className="space-y-1">
-          {graph.fulfilment.cases.slice(0, dense ? 3 : 5).map((c) => (
-            <li key={c.id} className="flex items-center justify-between text-[11px]">
-              <span className="font-mono text-cream/90">{c.caseRef}</span>
-              <span
-                className={
-                  c.breached || c.breachRiskLevel === "red"
-                    ? "text-red-300/90"
-                    : "text-white/40"
-                }
-              >
-                {c.breached ? "breached" : c.breachRiskLevel} · {c.status}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </InspectorShell>
-    );
-  }
-
-  return (
-    <InspectorShell
-      title={`${graph.quality.scorecards.length} scorecards · ${graph.quality.capas.length} CAPAs`}
-      subtitle={`${graph.quality.reviewCount} reviews · ${graph.quality.defects.length} defects — process QA, not software QA`}
-      ctaLabel="CAPA board"
-      ctaHref="/dashboard/quality/capa"
-      onNavigate={onNavigate}
-    >
-      {graph.quality.capas.length === 0 ? (
-        <p className="text-[12px] text-white/40">No CAPAs on this service yet.</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {graph.quality.capas.map((c) => (
-            <li key={c.id} className="text-[12px] text-cream">
-              {c.title}{" "}
-              <span className="text-white/35">({c.status})</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <button
-        type="button"
-        onClick={() => onNavigate("/dashboard/quality/scorecards")}
-        className="mt-2 text-[11px] text-[var(--gpssa-green)] hover:underline"
-      >
-        Open scorecards →
-      </button>
-    </InspectorShell>
+        </TileScroll>
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1 text-[9px] uppercase text-white/30">Cases</p>
+          <ul className="space-y-1">
+            {graph.fulfilment.cases.slice(0, 8).map((c) => (
+              <li key={c.id} className="flex justify-between text-[11px]">
+                <span className="font-mono text-cream">{c.caseRef}</span>
+                <span className={c.breached ? "text-red-300" : "text-white/40"}>
+                  {c.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </TileScroll>
+      </div>
+    </div>
   );
 }
 
-function InspectorShell({
-  title,
-  subtitle,
-  ctaLabel,
-  ctaHref,
+function QaInspector({
+  graph,
+  draft,
   onNavigate,
-  children,
 }: {
-  title: string;
-  subtitle: string;
-  ctaLabel: string;
-  ctaHref: string;
-  onNavigate: (href: string) => void;
-  children: React.ReactNode;
+  graph: SpineGraphPayload;
+  draft: SpineDraft | null;
+  onNavigate: (h: string) => void;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="text-[14px] font-semibold text-cream">{title}</h3>
-          <p className="mt-0.5 text-[11px] text-white/40">{subtitle}</p>
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-[13px] font-semibold text-cream">QA & improvement</h3>
+          <p className="text-[11px] text-white/40">Process QA — not software QA</p>
         </div>
         <button
           type="button"
-          onClick={() => onNavigate(ctaHref)}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--gpssa-green)]/35 bg-[var(--gpssa-green)]/10 px-2.5 py-1.5 text-[11px] font-semibold text-[var(--gpssa-green)] hover:bg-[var(--gpssa-green)]/20"
+          onClick={() => onNavigate("/dashboard/quality/capa")}
+          className="text-[11px] text-[var(--gpssa-green)]"
         >
-          {ctaLabel}
-          <ArrowRight size={12} />
+          CAPA →
         </button>
       </div>
-      <div className="min-h-0 flex-1">{children}</div>
+      <div className="grid min-h-0 flex-1 gap-2 sm:grid-cols-3">
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1 text-[9px] uppercase text-white/30">Scorecards</p>
+          {graph.quality.scorecards.map((s) => (
+            <p key={s.id} className="text-[12px] text-cream">
+              {s.name}
+            </p>
+          ))}
+          {draft?.qaApproach && (
+            <p className="mt-2 text-[10px] text-white/40">{draft.qaApproach.summary}</p>
+          )}
+        </TileScroll>
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1 text-[9px] uppercase text-white/30">Checkpoints</p>
+          {(draft?.qaApproach?.checkpointFocus ??
+            graph.processes[0]?.sop?.steps.filter((s) => s.qaCheckpoint).map((s) => s.title) ??
+            []
+          ).map((t) => (
+            <p key={t} className="text-[11px] text-cream">
+              · {t}
+            </p>
+          ))}
+        </TileScroll>
+        <TileScroll className="rounded-lg border border-white/[0.05] bg-black/20 p-2">
+          <p className="mb-1 text-[9px] uppercase text-white/30">CAPAs</p>
+          {graph.quality.capas.map((c) => (
+            <p key={c.id} className="text-[11px] text-cream">
+              {c.title}
+            </p>
+          ))}
+          {!graph.quality.capas.length && (
+            <p className="text-[11px] text-white/35">None yet</p>
+          )}
+        </TileScroll>
+      </div>
     </div>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${
+        active
+          ? "bg-[var(--gpssa-green)]/20 text-[#9DE5C2]"
+          : "bg-white/[0.04] text-white/40 hover:text-white/70"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { Sidebar, useSidebarStore } from "@/components/layout/Sidebar";
+import { ModuleRail, useModuleRailWidth } from "@/components/layout/ModuleRail";
 import { PageTransitionLoader } from "@/components/ui/PageTransitionLoader";
 import { BriefingDeck } from "@/components/briefing/BriefingDeck";
 import { CompassTour } from "@/components/tour/CompassTour";
@@ -19,51 +20,37 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const collapsed = useSidebarStore((s) => s.collapsed);
-  const isAtlasCountryPage = pathname.startsWith("/dashboard/atlas/country/");
-  // Every Mandate route is a single-viewport experience (no document scroll).
-  const isMandatePage = pathname.startsWith("/dashboard/mandate");
-  const isFullViewport = pathname === "/dashboard"
-    || pathname === "/dashboard/atlas/benchmarking"
-    || pathname === "/dashboard/services/catalog"
-    || pathname === "/dashboard/services/channels"
-    || pathname === "/dashboard/delivery/channels"
-    || pathname === "/dashboard/delivery/personas"
-    || pathname === "/dashboard/products/portfolio"
-    || pathname === "/dashboard/products/segments"
-    || pathname === "/dashboard/fulfilment/cases"
-    || pathname === "/dashboard/fulfilment/breach"
-    || isMandatePage
-    || isAtlasCountryPage;
+  const railWidth = useModuleRailWidth();
   const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
   const showChrome = pathname !== "/dashboard";
 
   return (
-    <div className="flex min-h-screen bg-navy">
+    <div className="flex h-screen overflow-hidden bg-navy">
       <Sidebar />
 
       <motion.main
-        className={`flex flex-1 flex-col ${
-          isFullViewport ? "h-screen overflow-hidden" : "overflow-y-auto"
-        }`}
-        animate={{ marginLeft: sidebarWidth }}
+        className="flex h-screen min-h-0 flex-1 flex-col overflow-hidden"
+        animate={{ marginLeft: sidebarWidth, marginRight: railWidth }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
         {showChrome && (
-          <>
+          <div className="shrink-0">
             <DemoDataBanner pathname={pathname} />
             <NextActionBar pathname={pathname} />
-          </>
+          </div>
         )}
         <motion.div
           key="dashboard-content"
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className={isFullViewport ? "min-h-0 flex-1 overflow-hidden" : ""}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="min-h-0 flex-1 overflow-hidden"
         >
           {children}
         </motion.div>
       </motion.main>
+
+      <ModuleRail />
       <PageTransitionLoader />
       <BriefingDeck />
       <CompassTour />

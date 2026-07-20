@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { OperatingSpine } from "@/components/spine/OperatingSpine";
 import type { SpineGraphPayload } from "@/lib/spine/types";
 
@@ -69,39 +70,42 @@ export default function ServiceOperatingBlueprintPage() {
   const sop = graph.processes[0]?.sop;
 
   return (
-    <div className="h-full overflow-y-auto px-6 pb-10 pt-2">
-      <Link
-        href="/dashboard/services/operating"
-        className="mb-3 inline-flex items-center gap-1 text-[11px] text-white/40 hover:text-cream"
-      >
-        <ArrowLeft size={12} /> All blueprints
-      </Link>
-
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gpssa-green)]">
-            Service operating blueprint
-          </p>
-          <h1 className="font-playfair text-2xl font-bold text-cream">{graph.service.name}</h1>
-          <p className="mt-1 text-[12px] text-white/40">
-            {graph.service.category}
-            {graph.service.description ? ` · ${graph.service.description}` : ""}
-          </p>
+    <PageFrame
+      header={
+        <div className="px-6 pt-2 pb-2">
+          <Link
+            href="/dashboard/services/operating"
+            className="mb-2 inline-flex items-center gap-1 text-[11px] text-white/40 hover:text-cream"
+          >
+            <ArrowLeft size={12} /> All blueprints
+          </Link>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gpssa-green)]">
+                Service operating blueprint
+              </p>
+              <h1 className="font-playfair text-xl font-bold text-cream sm:text-2xl">
+                {graph.service.name}
+              </h1>
+            </div>
+            {graph.isGoldPath && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-100">
+                <Star size={12} className="text-amber-300" />
+                Gold path · seed rehearsal
+              </span>
+            )}
+          </div>
         </div>
-        {graph.isGoldPath && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-100">
-            <Star size={12} className="text-amber-300" />
-            Gold path · seed rehearsal (not live Ma&apos;ashi)
-          </span>
-        )}
-      </header>
-
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col gap-3 px-6 pb-4">
       <OperatingSpine
-        className="mb-6"
+        className="min-h-0 flex-[0.9]"
         initialServiceId={serviceId}
         lockService
         variant="embedded"
       />
+      <TileScroll className="min-h-0 flex-1">
 
       <div className="mb-4 flex flex-wrap gap-2">
         {graph.deepLinks.map((d) => (
@@ -352,7 +356,9 @@ export default function ServiceOperatingBlueprintPage() {
           )}
         </Section>
       </div>
-    </div>
+      </TileScroll>
+      </div>
+    </PageFrame>
   );
 }
 

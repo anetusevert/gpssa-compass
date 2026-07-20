@@ -39,6 +39,11 @@ export async function seedOperatingSpine(prisma: PrismaClient) {
   }
   const serviceId = service.id;
 
+  await prisma.customerEpisode.updateMany({
+    where: { serviceId },
+    data: { isActive: false },
+  });
+
   const episode = await prisma.customerEpisode.upsert({
     where: { id: IDS.episode },
     create: {
@@ -47,9 +52,37 @@ export async function seedOperatingSpine(prisma: PrismaClient) {
       name: "Member claims end-of-service benefits",
       description:
         "Employer initiates EOS for a civil insured; member expects correct entitlement and timely payment.",
+      lifecycleCategory: "end-of-service",
+      personaKey: "emirati-govt-employee",
+      libraryId: "lib-eos-civil",
+      source: "gold",
+      isActive: true,
       sortOrder: 0,
     },
-    update: { serviceId, name: "Member claims end-of-service benefits" },
+    update: {
+      serviceId,
+      name: "Member claims end-of-service benefits",
+      lifecycleCategory: "end-of-service",
+      personaKey: "emirati-govt-employee",
+      libraryId: "lib-eos-civil",
+      source: "gold",
+      isActive: true,
+    },
+  });
+
+  await prisma.spineConfig.upsert({
+    where: { serviceId },
+    create: {
+      serviceId,
+      activeEpisodeId: episode.id,
+      activePersonaKey: "emirati-govt-employee",
+      activeJourneySource: "gold",
+    },
+    update: {
+      activeEpisodeId: episode.id,
+      activePersonaKey: "emirati-govt-employee",
+      activeJourneySource: "gold",
+    },
   });
 
   const stageDefs = [

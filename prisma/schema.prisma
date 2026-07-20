@@ -412,6 +412,7 @@ model GPSSAService {
   slaDefinitions         SLADefinition[]
   serviceCases           ServiceCase[]
   defects                Defect[]
+  spineConfig            SpineConfig?
   createdAt              DateTime                   @default(now())
   updatedAt              DateTime                   @updatedAt
 }
@@ -1743,17 +1744,23 @@ model CapabilityTransferItem {
 // ── Service Operating Spine (episode → journey → SOP → systems → QA) ──
 
 model CustomerEpisode {
-  id          String         @id @default(cuid())
-  serviceId   String
-  service     GPSSAService   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
-  sortOrder   Int            @default(0)
-  stages      JourneyStage[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id                String         @id @default(cuid())
+  serviceId         String
+  service           GPSSAService   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name              String
+  description       String?
+  lifecycleCategory String?
+  personaKey        String?
+  libraryId         String?
+  isActive          Boolean        @default(false)
+  source            String         @default("custom") // library | gold | custom
+  sortOrder         Int            @default(0)
+  stages            JourneyStage[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@index([serviceId])
+  @@index([serviceId, isActive])
 }
 
 model JourneyStage {
@@ -1765,6 +1772,7 @@ model JourneyStage {
   name        String
   actor       String             @default("agent") // customer | agent | system
   outcome     String?
+  source      String             @default("gold") // persona | research | gold | custom
   sortOrder   Int                @default(0)
   processLinks StageProcessLink[]
   createdAt   DateTime           @default(now())
@@ -1772,6 +1780,18 @@ model JourneyStage {
 
   @@index([serviceId])
   @@index([episodeId])
+}
+
+model SpineConfig {
+  id                  String       @id @default(cuid())
+  serviceId           String       @unique
+  service             GPSSAService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  activeEpisodeId     String?
+  activePersonaKey    String?
+  activeJourneySource String?
+  draftJson           String?
+  updatedAt           DateTime     @updatedAt
+  createdAt           DateTime     @default(now())
 }
 
 model OperatingProcess {

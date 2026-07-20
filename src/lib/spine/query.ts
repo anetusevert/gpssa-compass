@@ -71,7 +71,11 @@ export async function buildSpineGraph(serviceId: string): Promise<SpineGraphPayl
       prisma.operatingProcess.findMany({
         where: { serviceId },
         include: {
-          sops: { include: { steps: { orderBy: { sortOrder: "asc" } } }, take: 1, orderBy: { createdAt: "desc" } },
+          sops: {
+            include: { steps: { orderBy: { sortOrder: "asc" } } },
+            take: 1,
+            orderBy: { createdAt: "desc" },
+          },
           systemLinks: { include: { system: true } },
         },
       }),
@@ -93,16 +97,18 @@ export async function buildSpineGraph(serviceId: string): Promise<SpineGraphPayl
       }),
     ]);
 
-  const sopStepCount = processes.reduce(
-    (n, p) => n + (p.sops[0]?.steps.length ?? 0),
-    0
-  );
+  const activeEp = episodes.find((e) => e.isActive) ?? episodes[0] ?? null;
+  const stageRows = activeEp
+    ? stages.filter((s) => !s.episodeId || s.episodeId === activeEp.id)
+    : stages;
+
+  const sopStepCount = processes.reduce((n, p) => n + (p.sops[0]?.steps.length ?? 0), 0);
   const systemCount = processes.reduce((n, p) => n + p.systemLinks.length, 0);
   const capas = defects.flatMap((d) => d.correctiveActions);
 
   const litFlags: Record<SpineNodeId, boolean> = {
     episode: episodes.length > 0,
-    journey: stages.length > 0,
+    journey: stageRows.length > 0,
     process: processes.length > 0 && sopStepCount > 0,
     systems: systemCount > 0 || cases.length > 0 || slas.length > 0,
     qa: scorecards.length > 0 || defects.length > 0 || reviews > 0,
@@ -114,11 +120,11 @@ export async function buildSpineGraph(serviceId: string): Promise<SpineGraphPayl
     switch (m.id) {
       case "episode":
         count = episodes.length;
-        summary = episodes[0]?.name ?? summary;
+        summary = activeEp?.name ?? summary;
         break;
       case "journey":
-        count = stages.length;
-        summary = `${stages.length} stages`;
+        count = stageRows.length;
+        summary = `${stageRows.length} stages`;
         break;
       case "process":
         count = sopStepCount;
@@ -154,10 +160,6 @@ export async function buildSpineGraph(serviceId: string): Promise<SpineGraphPayl
     lit: litFlags[from] && litFlags[to],
   }));
 
-  const episode = episodes[0]
-    ? { id: episodes[0].id, name: episodes[0].name, description: episodes[0].description }
-    : null;
-
   return {
     service: {
       id: service.id,
@@ -168,8 +170,10 @@ export async function buildSpineGraph(serviceId: string): Promise<SpineGraphPayl
     isGoldPath: service.name === GOLD_SPINE_SERVICE_NAME,
     nodes,
     edges,
-    episode,
-    stages: stages.map((s) => ({
+    episode: activeEp
+      ? { id: activeEp.id, name: activeEp.name, description: activeEp.description }
+      : null,
+    stages: stageRows.map((s) => ({
       id: s.id,
       name: s.name,
       actor: s.actor,
