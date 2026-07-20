@@ -5,27 +5,20 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { GitBranch, Sparkles } from "lucide-react";
 import { useCompassTourStore } from "@/components/tour/tour-store";
-import {
-  HERO_MODULES,
-  CORE_MODULES,
-  OPS_MODULES,
-  findModule,
-} from "./home-modules";
-import { HeroRail } from "./HeroRail";
-import { ModuleTile } from "./ModuleTile";
-import { MorphStage } from "./MorphStage";
+import { HERO_MODULES, CORE_MODULES, OPS_MODULES } from "./home-modules";
 import {
   EngagementModeTrigger,
   EngagementModePanel,
-  EngagementPhaseStrip,
 } from "@/components/engagement/EngagementMode";
 import { OperatingSpine } from "@/components/spine/OperatingSpine";
 import { ENGAGEMENT_FIRST_KEY } from "@/lib/engagement/playbook";
 import { useEngagementStore } from "@/lib/engagement/store";
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
+
+const DOCK = [...HERO_MODULES, ...CORE_MODULES, ...OPS_MODULES];
 
 function greetingFor(date: Date): string {
   const h = date.getHours();
@@ -52,25 +45,23 @@ export function HomeTheater() {
   const rawName = (session?.user?.name ?? "there").split(" ")[0];
   const userName = rawName.split(".")[0];
 
-  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
+  const [firstVisitHint, setFirstVisitHint] = useState(false);
   const engagementOpen = useEngagementStore((s) => s.engagementOpen);
-  const phaseId = useEngagementStore((s) => s.phaseId);
-  const openDiscover = useEngagementStore((s) => s.openDiscover);
+  const setEngagementOpen = useEngagementStore((s) => s.setEngagementOpen);
 
   useEffect(() => {
     setNow(new Date());
   }, []);
 
-  // First visit: auto-open Engagement Mode on Discover
+  // Hint only — do not auto-open Engagement Mode (it crushed the service spine).
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!window.localStorage.getItem(ENGAGEMENT_FIRST_KEY)) {
-      openDiscover();
+      setFirstVisitHint(true);
     }
-  }, [openDiscover]);
+  }, []);
 
-  const focused = findModule(focusedId);
   const greeting = now ? greetingFor(now) : "";
   const dateString = now ? formatDate(now) : "\u00A0";
 
@@ -103,10 +94,10 @@ export function HomeTheater() {
           background: "radial-gradient(circle, rgba(45,74,140,0.08) 0%, transparent 70%)",
         }}
       />
-      <div className="grid-overlay pointer-events-none absolute inset-0 opacity-25" />
+      <div className="grid-overlay pointer-events-none absolute inset-0 opacity-20" />
 
       <motion.header
-        className="relative z-10 shrink-0 px-5 pt-3 pb-1.5 text-center sm:px-8 sm:pt-4"
+        className="relative z-10 shrink-0 px-5 pt-3 pb-2 text-center sm:px-8 sm:pt-4"
         initial={reduceMotion ? false : { opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE }}
@@ -134,116 +125,77 @@ export function HomeTheater() {
               ? `${greeting}, ${userName}`
               : `Hello, ${userName}`}
         </h1>
-        <p className="mx-auto mt-0.5 max-w-lg text-[12px] text-white/35">
+        <p className="mx-auto mt-0.5 max-w-xl text-[12px] text-white/35">
           {engagementOpen
-            ? "RFP journey for the project. The operating spine below stays on the service object."
-            : "Trace Episode → Journey → SOP → Systems → QA on a service. Engagement Mode runs the 20-week project."}
+            ? "20-week RFP journey — pick a phase, then Start."
+            : "One service object: Episode → Journey → Process → Systems → QA. Open Engagement Mode for the project path."}
         </p>
+        {firstVisitHint && !engagementOpen && (
+          <button
+            type="button"
+            onClick={() => {
+              setEngagementOpen(true);
+              setFirstVisitHint(false);
+            }}
+            className="mt-2 text-[11px] text-[var(--gpssa-green)] hover:underline"
+          >
+            First visit? Open Engagement Mode for the workshop path →
+          </button>
+        )}
       </motion.header>
 
-      <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-2 px-4 pb-2 sm:px-6 sm:gap-2.5">
-        <EngagementPhaseStrip />
-
+      <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-3 px-4 pb-2 sm:px-6">
         {engagementOpen ? (
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-black/25 px-4 py-4 sm:px-5">
             <EngagementModePanel />
-            <div className="flex min-h-[180px] flex-col gap-2 lg:min-h-0">
-              <div className="min-h-0 flex-1">
-                <MorphStage
-                  module={focused}
-                  phaseId={phaseId}
-                  engagementOpen
-                  onNavigate={navigate}
-                  dimmed={false}
-                />
-              </div>
-              <OperatingSpine compact className="shrink-0" />
-            </div>
           </div>
         ) : (
           <>
-            <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5">
-              {HERO_MODULES.map((mod, i) => (
-                <div key={mod.id} className="h-[68px] sm:h-[72px]">
-                  <HeroRail
-                    module={mod}
-                    index={i}
-                    active={focusedId === mod.id}
-                    onFocus={() => setFocusedId(mod.id)}
-                    onBlur={() => {}}
-                    onNavigate={() => navigate(mod.primaryHref)}
-                    tourId={
-                      mod.id === "atlas"
-                        ? "compass-atlas-bar"
-                        : mod.id === "mandate"
-                          ? "compass-mandate-bar"
-                          : undefined
-                    }
-                  />
-                </div>
-              ))}
-            </div>
+            <OperatingSpine variant="hero" className="min-h-0 flex-1" />
 
-            <OperatingSpine className="shrink-0" />
-
-            <div className="min-h-0 flex-1">
-              <MorphStage
-                module={focused}
-                phaseId={phaseId}
-                engagementOpen={false}
-                onNavigate={navigate}
-              />
-            </div>
-
-            <div className="shrink-0 space-y-1.5">
-              <div className="flex items-center gap-2 px-0.5">
-                <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
-                <span className="text-[9px] font-semibold uppercase tracking-[0.26em] text-white/35">
-                  Core Portfolio
-                </span>
-                <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
+            <nav
+              className="shrink-0 overflow-x-auto pb-0.5 scrollbar-none"
+              aria-label="Module shortcuts"
+              data-tour="compass-pillar-grid"
+            >
+              <div className="flex min-w-min items-stretch gap-1.5">
+                {DOCK.map((mod) => {
+                  const Icon = mod.icon;
+                  const tourId =
+                    mod.id === "atlas"
+                      ? "compass-atlas-bar"
+                      : mod.id === "mandate"
+                        ? "compass-mandate-bar"
+                        : undefined;
+                  return (
+                    <button
+                      key={mod.id}
+                      type="button"
+                      data-tour={tourId}
+                      onClick={() => navigate(mod.primaryHref)}
+                      className="flex min-w-[4.5rem] flex-1 flex-col items-center gap-1 rounded-xl border border-white/[0.06] bg-white/[0.03] px-2 py-2 transition hover:border-white/15 hover:bg-white/[0.06]"
+                      title={mod.valueLine}
+                    >
+                      <Icon size={14} style={{ color: `var(${mod.accentVar})` }} />
+                      <span className="truncate text-[9px] font-semibold uppercase tracking-[0.1em] text-white/55">
+                        {mod.title}
+                      </span>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => navigate("/dashboard/services/operating")}
+                  className="flex min-w-[4.5rem] flex-col items-center gap-1 rounded-xl border border-[var(--gpssa-green)]/30 bg-[var(--gpssa-green)]/10 px-2 py-2 transition hover:bg-[var(--gpssa-green)]/18"
+                  title="All operating blueprints"
+                >
+                  <GitBranch size={14} className="text-[var(--gpssa-green)]" />
+                  <span className="truncate text-[9px] font-semibold uppercase tracking-[0.1em] text-[var(--gpssa-green)]">
+                    Blueprint
+                  </span>
+                </button>
               </div>
-              <div
-                className="grid h-[72px] grid-cols-3 gap-2 sm:h-[80px] sm:gap-2.5"
-                data-tour="compass-pillar-grid"
-              >
-                {CORE_MODULES.map((mod, i) => (
-                  <ModuleTile
-                    key={mod.id}
-                    module={mod}
-                    index={i}
-                    active={focusedId === mod.id}
-                    onFocus={() => setFocusedId(mod.id)}
-                    onBlur={() => {}}
-                    onNavigate={() => navigate(mod.primaryHref)}
-                  />
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 px-0.5 pt-0.5">
-                <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
-                <span className="text-[9px] font-semibold uppercase tracking-[0.26em] text-white/35">
-                  Operational Excellence
-                </span>
-                <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
-              </div>
-              <div
-                className="grid h-[72px] grid-cols-2 gap-2 sm:h-[80px] sm:grid-cols-4 sm:gap-2.5"
-                data-tour="compass-ops-grid"
-              >
-                {OPS_MODULES.map((mod, i) => (
-                  <ModuleTile
-                    key={mod.id}
-                    module={mod}
-                    index={CORE_MODULES.length + i}
-                    active={focusedId === mod.id}
-                    onFocus={() => setFocusedId(mod.id)}
-                    onBlur={() => {}}
-                    onNavigate={() => navigate(mod.primaryHref)}
-                  />
-                ))}
-              </div>
-            </div>
+            </nav>
           </>
         )}
       </div>
@@ -252,7 +204,7 @@ export function HomeTheater() {
         className="relative z-10 flex shrink-0 items-center justify-center gap-2 py-2"
         initial={reduceMotion ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.7, duration: 0.5 }}
+        transition={{ delay: 0.5, duration: 0.5 }}
       >
         <span className="text-[10px] text-white/25">powered by</span>
         <Image

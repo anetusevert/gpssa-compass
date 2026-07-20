@@ -86,14 +86,15 @@ export const CORE_MODULES: HomeModule[] = [
   {
     id: "services",
     title: "Services",
-    subtitle: "Catalogue & channel capability",
-    valueLine: "ILO-aligned service catalogue with channel maturity and pain-point diagnostics.",
+    subtitle: "Catalogue, spine & channels",
+    valueLine: "Operating spine, ILO catalogue, and channel maturity — one service estate.",
     icon: Layers,
     accentVar: "--adl-blue",
     glowColor: "rgba(45,74,140,0.22)",
-    primaryHref: "/dashboard/services/catalog",
+    primaryHref: "/dashboard/services/operating",
     tier: "core",
     links: [
+      { label: "Operating Blueprint", href: "/dashboard/services/operating", icon: Workflow },
       { label: "Service Catalog", href: "/dashboard/services/catalog", icon: Layers },
       { label: "Channel Capabilities", href: "/dashboard/services/channels", icon: Radio },
     ],

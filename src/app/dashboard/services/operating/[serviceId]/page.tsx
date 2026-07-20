@@ -96,7 +96,12 @@ export default function ServiceOperatingBlueprintPage() {
         )}
       </header>
 
-      <OperatingSpine className="mb-6" initialServiceId={serviceId} lockService />
+      <OperatingSpine
+        className="mb-6"
+        initialServiceId={serviceId}
+        lockService
+        variant="embedded"
+      />
 
       <div className="mb-4 flex flex-wrap gap-2">
         {graph.deepLinks.map((d) => (

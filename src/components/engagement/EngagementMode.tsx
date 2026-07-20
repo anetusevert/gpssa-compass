@@ -223,7 +223,7 @@ export function EngagementModePanel() {
               </button>
               {showCoach && (
                 <p className="mt-2 text-[11px] text-white/40">
-                  Work only the screens below. Close Engagement Mode when you want the full command theater.
+                  Work only the screens below. Close Engagement Mode to return to the service operating spine.
                 </p>
               )}
             </div>
