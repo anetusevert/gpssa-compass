@@ -15,14 +15,13 @@ import {
 } from "./home-modules";
 import { HeroRail } from "./HeroRail";
 import { ModuleTile } from "./ModuleTile";
-import { FocusStage } from "./FocusStage";
-import { StoryVideoTrigger } from "./StoryVideoModal";
+import { MorphStage } from "./MorphStage";
 import {
   EngagementModeTrigger,
   EngagementModePanel,
   EngagementPhaseStrip,
 } from "@/components/engagement/EngagementMode";
-import { PLAYBOOK_ONE_LINER } from "@/lib/engagement/playbook";
+import { ENGAGEMENT_FIRST_KEY } from "@/lib/engagement/playbook";
 import { useEngagementStore } from "@/lib/engagement/store";
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
@@ -55,10 +54,20 @@ export function HomeTheater() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const engagementOpen = useEngagementStore((s) => s.engagementOpen);
+  const phaseId = useEngagementStore((s) => s.phaseId);
+  const openDiscover = useEngagementStore((s) => s.openDiscover);
 
   useEffect(() => {
     setNow(new Date());
   }, []);
+
+  // First visit: auto-open Engagement Mode on Discover
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.localStorage.getItem(ENGAGEMENT_FIRST_KEY)) {
+      openDiscover();
+    }
+  }, [openDiscover]);
 
   const focused = findModule(focusedId);
   const greeting = now ? greetingFor(now) : "";
@@ -73,7 +82,6 @@ export function HomeTheater() {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
-      {/* Atmosphere */}
       <div
         className="orb pointer-events-none"
         style={{
@@ -96,7 +104,6 @@ export function HomeTheater() {
       />
       <div className="grid-overlay pointer-events-none absolute inset-0 opacity-25" />
 
-      {/* Header */}
       <motion.header
         className="relative z-10 shrink-0 px-5 pt-3 pb-1.5 text-center sm:px-8 sm:pt-4"
         initial={reduceMotion ? false : { opacity: 0, y: 10 }}
@@ -115,7 +122,6 @@ export function HomeTheater() {
             <Sparkles size={10} className="text-[var(--gpssa-green)]/90" strokeWidth={2} />
             Guided tour
           </motion.button>
-          <StoryVideoTrigger />
         </div>
         <p className="mb-0.5 text-[10px] font-medium tracking-[0.22em] text-white/30 uppercase">
           {dateString}
@@ -127,21 +133,31 @@ export function HomeTheater() {
               ? `${greeting}, ${userName}`
               : `Hello, ${userName}`}
         </h1>
-        <p className="mx-auto mt-0.5 max-w-xl text-[12px] text-white/35">
-          {isDemo
-            ? PLAYBOOK_ONE_LINER
-            : "Run the engagement — diagnose, decide, design. Not a screen museum."}
+        <p className="mx-auto mt-0.5 max-w-lg text-[12px] text-white/35">
+          {engagementOpen
+            ? "You are in the RFP journey — pick a phase, then Start."
+            : "Open Engagement Mode to run the project. Hover modules to see the stage morph."}
         </p>
       </motion.header>
 
-      {/* Theater body */}
-      <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-2 px-4 pb-2 sm:px-6 sm:gap-2.5">
+      <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-2 px-4 pb-2 sm:px-6 sm:gap-2.5">
         <EngagementPhaseStrip />
-        <EngagementModePanel />
 
-        {!engagementOpen && (
+        {engagementOpen ? (
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[1.15fr_0.85fr]">
+            <EngagementModePanel />
+            <div className="min-h-[180px] lg:min-h-0">
+              <MorphStage
+                module={focused}
+                phaseId={phaseId}
+                engagementOpen
+                onNavigate={navigate}
+                dimmed={false}
+              />
+            </div>
+          </div>
+        ) : (
           <>
-            {/* Twin hero rails */}
             <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5">
               {HERO_MODULES.map((mod, i) => (
                 <div key={mod.id} className="h-[68px] sm:h-[72px]">
@@ -164,12 +180,15 @@ export function HomeTheater() {
               ))}
             </div>
 
-            {/* Focus stage */}
-            <div className="min-h-0 flex-[1.1]">
-              <FocusStage module={focused} onNavigate={navigate} />
+            <div className="min-h-0 flex-[1.2]">
+              <MorphStage
+                module={focused}
+                phaseId={phaseId}
+                engagementOpen={false}
+                onNavigate={navigate}
+              />
             </div>
 
-            {/* Core + Ops tiles */}
             <div className="shrink-0 space-y-1.5">
               <div className="flex items-center gap-2 px-0.5">
                 <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
@@ -179,7 +198,7 @@ export function HomeTheater() {
                 <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
               </div>
               <div
-                className="grid h-[88px] grid-cols-3 gap-2 sm:h-[96px] sm:gap-2.5"
+                className="grid h-[80px] grid-cols-3 gap-2 sm:h-[88px] sm:gap-2.5"
                 data-tour="compass-pillar-grid"
               >
                 {CORE_MODULES.map((mod, i) => (
@@ -203,7 +222,7 @@ export function HomeTheater() {
                 <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
               </div>
               <div
-                className="grid h-[88px] grid-cols-2 gap-2 sm:h-[96px] sm:grid-cols-4 sm:gap-2.5"
+                className="grid h-[80px] grid-cols-2 gap-2 sm:h-[88px] sm:grid-cols-4 sm:gap-2.5"
                 data-tour="compass-ops-grid"
               >
                 {OPS_MODULES.map((mod, i) => (
@@ -221,16 +240,8 @@ export function HomeTheater() {
             </div>
           </>
         )}
-
-        {engagementOpen && (
-          <div className="min-h-0 flex-1 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.015] p-4 text-center text-[12px] text-white/40">
-            Work only the screens above for this phase. Sidebar Focus mode mirrors them.
-            Close Engagement Mode to browse the full command theater.
-          </div>
-        )}
       </div>
 
-      {/* Footer */}
       <motion.footer
         className="relative z-10 flex shrink-0 items-center justify-center gap-2 py-2"
         initial={reduceMotion ? false : { opacity: 0 }}

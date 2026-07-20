@@ -84,7 +84,7 @@ npm run db:seed
 4. Executive Briefing — all 12 slides show numbers (Mandate, Atlas, Diagnose, Roadmap)  
 5. QA / Fulfilment / Planning populated  
 6. Unauthenticated `POST /api/research/run-all` returns **401**  
-7. Optional: **Watch the story** on Home (MP4 or Briefing fallback)
+7. Home → **Engagement Mode** (journey spine + What / How / Value)
 
 Smoke script (with app running + session cookie, or against local after login tooling):
 
@@ -109,7 +109,7 @@ Script + shot list: [`docs/video/LEAVE_BEHIND_SCRIPT.md`](docs/video/LEAVE_BEHIN
 1. Capture UI with OBS (gold seed)  
 2. Assemble in CapCut (free, 1080p)  
 3. Export to `public/videos/compass-leave-behind.mp4`  
-4. Home → **Watch the story** plays the file (or opens Briefing if missing)
+4. Optional leave-behind MP4 at `public/videos/compass-leave-behind.mp4` (ops/docs only — not linked from Home)
 
 ---
 

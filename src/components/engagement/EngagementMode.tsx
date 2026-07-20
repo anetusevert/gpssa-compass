@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Compass, X } from "lucide-react";
 import {
+  ENGAGEMENT_FIRST_KEY,
   ENGAGEMENT_PHASES,
-  PLAYBOOK_ONE_LINER,
-  PROJECT_JOBS,
   getPhase,
   type EngagementPhaseId,
 } from "@/lib/engagement/playbook";
@@ -37,17 +38,101 @@ export function EngagementModeTrigger() {
   );
 }
 
+function JourneySpine({
+  phaseId,
+  onSelect,
+}: {
+  phaseId: EngagementPhaseId;
+  onSelect: (id: EngagementPhaseId) => void;
+}) {
+  const activeIdx = ENGAGEMENT_PHASES.findIndex((p) => p.id === phaseId);
+  const progress = activeIdx <= 0 ? 0 : activeIdx / (ENGAGEMENT_PHASES.length - 1);
+
+  return (
+    <div className="relative" data-tour="compass-engagement-spine">
+      <div className="absolute left-[8%] right-[8%] top-[18px] h-px bg-white/10" />
+      <motion.div
+        className="absolute left-[8%] top-[18px] h-px origin-left bg-[var(--gpssa-green)]/70"
+        style={{ width: "84%" }}
+        initial={false}
+        animate={{ scaleX: progress }}
+        transition={{ duration: 0.45, ease: EASE }}
+      />
+      <div className="relative flex justify-between gap-1">
+        {ENGAGEMENT_PHASES.map((p, i) => {
+          const active = p.id === phaseId;
+          const done = i < activeIdx;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onSelect(p.id)}
+              className="group flex min-w-0 flex-1 flex-col items-center gap-1.5"
+            >
+              <span
+                className={`relative z-[1] flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-semibold transition ${
+                  active
+                    ? "scale-110 bg-[var(--gpssa-green)] text-[#071322] shadow-[0_0_24px_rgba(0,168,107,0.35)]"
+                    : done
+                      ? "bg-[var(--gpssa-green)]/25 text-[#9DE5C2] ring-1 ring-[var(--gpssa-green)]/40"
+                      : "bg-white/[0.04] text-white/40 ring-1 ring-white/10 group-hover:text-white/70"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <span
+                className={`truncate text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                  active ? "text-cream" : "text-white/40"
+                }`}
+              >
+                {p.label}
+              </span>
+              <span className="truncate text-[9px] text-white/25">
+                {p.weeks}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function EngagementModePanel() {
+  const router = useRouter();
   const open = useEngagementStore((s) => s.engagementOpen);
   const phaseId = useEngagementStore((s) => s.phaseId);
   const setPhaseId = useEngagementStore((s) => s.setPhaseId);
   const setOpen = useEngagementStore((s) => s.setEngagementOpen);
   const setNavMode = useEngagementStore((s) => s.setNavMode);
   const phase = getPhase(phaseId);
+  const [showCoach, setShowCoach] = useState(false);
+  const firstScreen = phase.screens[0];
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+    if (!window.localStorage.getItem(ENGAGEMENT_FIRST_KEY)) {
+      setShowCoach(true);
+    }
+  }, [open]);
 
   function selectPhase(id: EngagementPhaseId) {
     setPhaseId(id);
     setNavMode("focus");
+  }
+
+  function startPhase() {
+    if (!firstScreen) return;
+    setNavMode("focus");
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ENGAGEMENT_FIRST_KEY, "seen");
+      setShowCoach(false);
+    }
+    if (firstScreen.href === "/dashboard") {
+      setOpen(false);
+      return;
+    }
+    router.push(firstScreen.href);
   }
 
   return (
@@ -55,109 +140,132 @@ export function EngagementModePanel() {
       {open && (
         <motion.section
           key="engagement-panel"
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.35, ease: EASE }}
-          className="shrink-0 overflow-hidden"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          transition={{ duration: 0.4, ease: EASE }}
+          className="relative z-10 flex min-h-0 flex-1 flex-col"
           data-tour="compass-engagement-panel"
         >
-          <div className="rounded-2xl border border-white/[0.08] bg-black/25 px-3 py-3 backdrop-blur-sm sm:px-4">
-            <div className="mb-2.5 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[var(--gpssa-green)]">
-                  RFP GPSSA-016-2026 · Three jobs
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-0.5 pb-1">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.28em] text-[var(--gpssa-green)]">
+                  RFP GPSSA-016-2026
                 </p>
-                <p className="mt-0.5 truncate text-[11px] text-white/45">{PLAYBOOK_ONE_LINER}</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {PROJECT_JOBS.map((j) => (
-                    <span
-                      key={j.id}
-                      className="rounded-full bg-white/[0.04] px-2 py-0.5 text-[9px] text-white/55 ring-1 ring-white/10"
-                      title={j.blurb}
-                    >
-                      {j.label}
-                    </span>
-                  ))}
-                </div>
+                <h2 className="mt-0.5 font-playfair text-xl font-semibold text-cream sm:text-2xl">
+                  {phase.label}
+                  <span className="ml-2 text-[13px] font-sans font-normal tracking-normal text-white/35">
+                    {phase.weeks} · {phase.rfpRefs}
+                  </span>
+                </h2>
               </div>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg p-1 text-white/35 hover:bg-white/[0.06] hover:text-white/70"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.localStorage.setItem(ENGAGEMENT_FIRST_KEY, "seen");
+                    setShowCoach(false);
+                  }
+                  setOpen(false);
+                }}
+                className="rounded-lg p-1.5 text-white/35 hover:bg-white/[0.06] hover:text-white/70"
                 aria-label="Close Engagement Mode"
               >
-                <X size={14} />
+                <X size={16} />
               </button>
             </div>
 
-            {/* Phase strip */}
-            <div className="mb-3 flex gap-1 overflow-x-auto pb-0.5 scrollbar-none">
-              {ENGAGEMENT_PHASES.map((p) => {
-                const active = p.id === phaseId;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => selectPhase(p.id)}
-                    className={`shrink-0 rounded-xl px-2.5 py-1.5 text-left transition ${
-                      active
-                        ? "bg-[var(--gpssa-green)]/20 ring-1 ring-[var(--gpssa-green)]/45"
-                        : "bg-white/[0.03] ring-1 ring-white/10 hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    <div
-                      className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                        active ? "text-[#9DE5C2]" : "text-white/55"
-                      }`}
-                    >
-                      {p.label}
-                    </div>
-                    <div className="text-[9px] text-white/35">
-                      {p.weeks} · {p.rfpRefs}
-                    </div>
-                  </button>
-                );
-              })}
+            <JourneySpine phaseId={phaseId} onSelect={selectPhase} />
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={phase.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="grid gap-3 sm:grid-cols-3"
+              >
+                {(
+                  [
+                    { k: "What", v: phase.what },
+                    { k: "How", v: phase.how },
+                    { k: "Value", v: phase.value },
+                  ] as const
+                ).map((block) => (
+                  <div key={block.k} className="min-w-0">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-white/35">
+                      {block.k}
+                    </p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-cream/85 sm:text-[13px]">
+                      {block.v}
+                    </p>
+                  </div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+
+            <div>
+              <button
+                type="button"
+                onClick={startPhase}
+                disabled={!firstScreen}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-semibold text-[#071322] transition active:scale-[0.99] disabled:opacity-40 sm:w-auto"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--gpssa-green), color-mix(in srgb, var(--gpssa-green) 70%, #0a2840))",
+                  boxShadow: "0 10px 28px rgba(0,168,107,0.28)",
+                }}
+              >
+                Start: {firstScreen?.label ?? "phase"}
+                <ArrowRight size={14} />
+              </button>
+              {showCoach && (
+                <p className="mt-2 text-[11px] text-white/40">
+                  Work only the screens below. Close Engagement Mode when you want the full command theater.
+                </p>
+              )}
             </div>
 
-            <p className="mb-2 text-[11px] text-white/50">{phase.summary}</p>
-
-            <ul className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-              {phase.screens.map((s) => (
-                <li key={s.href}>
-                  <Link
-                    href={s.href}
-                    onClick={() => setNavMode("focus")}
-                    className="group flex h-full flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] px-2.5 py-2 transition hover:border-[var(--gpssa-green)]/35 hover:bg-white/[0.05]"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[12px] font-medium text-cream">{s.label}</span>
+            <div>
+              <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-white/30">
+                This phase · {phase.screens.length} screens
+              </p>
+              <ul className="divide-y divide-white/[0.05]">
+                {phase.screens.map((s) => (
+                  <li key={s.href}>
+                    <Link
+                      href={s.href}
+                      onClick={() => {
+                        setNavMode("focus");
+                        if (typeof window !== "undefined") {
+                          window.localStorage.setItem(ENGAGEMENT_FIRST_KEY, "seen");
+                          setShowCoach(false);
+                        }
+                      }}
+                      className="group flex items-center gap-3 py-2.5 transition hover:bg-white/[0.03]"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-[13px] font-medium text-cream group-hover:text-white">
+                            {s.label}
+                          </span>
+                          <span className="truncate text-[10px] uppercase tracking-[0.12em] text-white/25">
+                            {s.ownerHint}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] text-white/40">{s.why}</p>
+                      </div>
                       <ArrowRight
-                        size={12}
-                        className="shrink-0 text-white/25 transition group-hover:translate-x-0.5 group-hover:text-[var(--gpssa-green)]"
+                        size={14}
+                        className="shrink-0 text-white/20 transition group-hover:translate-x-0.5 group-hover:text-[var(--gpssa-green)]"
                       />
-                    </div>
-                    <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-white/40">{s.why}</p>
-                    <p className="mt-1 text-[9px] uppercase tracking-[0.14em] text-white/30">
-                      Owner · {s.ownerHint}
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            <details className="mt-3 rounded-lg border border-white/[0.05] bg-white/[0.015] px-2.5 py-2">
-              <summary className="cursor-pointer text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">
-                Walkthrough success check
-              </summary>
-              <ul className="mt-2 space-y-1 text-[11px] text-white/45">
-                <li>First useful screen in under 2 minutes</li>
-                <li>Can state the three jobs unprompted</li>
-                <li>Sees Gold seed banner on ops modules</li>
-                <li>Discover → 3 screens → one logged opportunity (no Atlas/Briefing)</li>
+                    </Link>
+                  </li>
+                ))}
               </ul>
-            </details>
+            </div>
           </div>
         </motion.section>
       )}

@@ -26,6 +26,14 @@ export interface EngagementPhase {
   weeks: string;
   rfpRefs: string;
   summary: string;
+  /** What the team does this phase */
+  what: string;
+  /** How to use Compass this week */
+  how: string;
+  /** Why it matters for the RFP / handover */
+  value: string;
+  /** Accent for morph stage */
+  accent: string;
   screens: PlaybookScreen[];
 }
 
@@ -54,6 +62,10 @@ export const ENGAGEMENT_PHASES: EngagementPhase[] = [
     weeks: "W1–4",
     rfpRefs: "A1 · B1",
     summary: "Current-state diagnostic across services, products, QA and fulfilment.",
+    what: "Map today’s service estate, channels, QA practices and case reality — and write down what you still don’t know.",
+    how: "Open Catalog → capture workshop notes → Channels → RFP Alignment. Stay on Focus nav; ignore the rest.",
+    value: "A shared baseline the room trusts — every later opportunity and QA design hangs off this.",
+    accent: "#00A86B",
     screens: [
       {
         href: "/dashboard/services/catalog",
@@ -98,6 +110,10 @@ export const ENGAGEMENT_PHASES: EngagementPhase[] = [
     weeks: "W2–5",
     rfpRefs: "A2",
     summary: "Customer and operational performance — breach, VoC, benefits gaps.",
+    what: "Quantify performance: breaches, ageing, VoC themes and benefits gaps from past initiatives.",
+    how: "Walk Breach → Analytics → VoC → Benefits. Treat gold seed as rehearsal until client extracts land.",
+    value: "Evidence that sponsors cannot dismiss — the case for change before you propose solutions.",
+    accent: "#E76363",
     screens: [
       {
         href: "/dashboard/fulfilment/breach",
@@ -135,6 +151,10 @@ export const ENGAGEMENT_PHASES: EngagementPhase[] = [
     weeks: "W6–14",
     rfpRefs: "A3–A4 · B2",
     summary: "Opportunities, prioritisation, and QA framework design.",
+    what: "Turn gaps into a ranked opportunity backlog and co-design the QA scorecard model.",
+    how: "Log opportunities with owner + RFP section → rank → open Scorecards / Reviews for B2 design.",
+    value: "A defensible shortlist and a QA blueprint the sector can pilot — not a slide deck of ideas.",
+    accent: "#E7B02E",
     screens: [
       {
         href: "/dashboard/planning/backlog",
@@ -172,6 +192,10 @@ export const ENGAGEMENT_PHASES: EngagementPhase[] = [
     weeks: "W13–17",
     rfpRefs: "A5 · B3",
     summary: "Lock the 12-month roadmap and run the QA pilot.",
+    what: "Freeze the 12-month roadmap and run QA / fulfilment controls on a named pilot set.",
+    how: "Confirm roadmap phases → set pilot services on QA Framework → run Reviews and Case Board on that set.",
+    value: "Proof the model works on real services before sector-wide rollout.",
+    accent: "#4899FF",
     screens: [
       {
         href: "/dashboard/planning",
@@ -209,6 +233,10 @@ export const ENGAGEMENT_PHASES: EngagementPhase[] = [
     weeks: "W16–20",
     rfpRefs: "A6 · B5",
     summary: "RACI, operating model, KPI/KQI, leave-behind operating picture.",
+    what: "Hand GPSSA a living operating picture: RACI, operating model, KPI/KQI and the leave-behind briefing.",
+    how: "Fill Governance & RACI → Operating Model → KPI catalogue → open Executive Briefing for sponsors.",
+    value: "Capability transfer they can run without the project team — the engagement’s lasting asset.",
+    accent: "#7DB9A4",
     screens: [
       {
         href: "/dashboard/planning/governance",
@@ -326,3 +354,5 @@ export function focusHrefsForPhase(phaseId: EngagementPhaseId): Set<string> {
 
 export const PLAYBOOK_ONE_LINER =
   "Catalogue → evidence → opportunities → roadmap → QA/fulfilment — tied to RFP GPSSA-016-2026.";
+
+export const ENGAGEMENT_FIRST_KEY = "gpssa_engagement_first_v1";

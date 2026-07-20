@@ -29,4 +29,4 @@ Follow [`LEAVE_BEHIND_SCRIPT.md`](./LEAVE_BEHIND_SCRIPT.md) for VO and shots.
 public/videos/compass-leave-behind.mp4
 ```
 
-Home → **Watch the story** auto-detects the file. If missing, it offers the live Executive Briefing.
+Leave-behind MP4 is optional for offline demos; Home no longer links a “Watch the story” control (use Executive Briefing from the sidebar).

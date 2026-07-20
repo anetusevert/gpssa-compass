@@ -13,8 +13,7 @@ export interface CompassTourStep {
 }
 
 /**
- * Shortened onboarding: sell the three jobs, then land in Engagement Mode.
- * Deep feature tours are out — the playbook replaces them.
+ * First-run tour: journey spine, What/How/Value, Morph stage — then Engagement Mode.
  */
 export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
   {
@@ -23,31 +22,31 @@ export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
     target: { kind: "center" },
     title: "This is the engagement working file",
     subtitle:
-      "GPSSA Intelligence runs RFP GPSSA-016-2026 — diagnose the estate, decide the roadmap, design/pilot QA & fulfilment. It is not a museum of thirty screens.",
+      "GPSSA Intelligence runs RFP GPSSA-016-2026. You don’t explore thirty screens — you walk a journey: Discover → Evidence → Shape → Lock → Handover.",
   },
   {
     id: "engagement",
     path: "/dashboard",
     target: { kind: "selector", query: '[data-tour="compass-engagement"]' },
-    title: "Start in Engagement Mode",
+    title: "Engagement Mode is your home base",
     subtitle:
-      "Open Engagement Mode, pick the RFP phase you are in (Discover → Evidence → Shape → Lock → Handover), and work only those three to five screens.",
+      "Open it to see the journey spine. Each phase tells you What to do, How to use Compass, and the Value — then Start jumps to the first screen.",
   },
   {
-    id: "mandate-entry",
+    id: "spine",
     path: "/dashboard",
-    target: { kind: "selector", query: '[data-tour="compass-mandate-bar"]' },
-    title: "Every call needs a mandate / RFP anchor",
+    target: { kind: "selector", query: '[data-tour="compass-engagement-spine"], [data-tour="compass-engagement-panel"]' },
+    title: "Flow first — inventory second",
     subtitle:
-      "Recommendations stay tied to GPSSA’s statutory remit and RFP alignment — open Mandate when you need legal traceability.",
+      "Click a phase on the spine. Read What / How / Value. Work only the listed screens. Sidebar Focus mirrors them.",
   },
   {
-    id: "ops",
+    id: "morph",
     path: "/dashboard",
-    target: { kind: "selector", query: '[data-tour="compass-ops-grid"]' },
-    title: "Three jobs, not every module",
+    target: { kind: "selector", query: '[data-tour="compass-focus-stage"]' },
+    title: "The stage morphs with you",
     subtitle:
-      "Quality, Fulfilment, Performance and Planning are the Workstream B / roadmap layer. Use them when the phase asks — ignore them until then.",
+      "The living form shifts with your phase (and with hovered modules when Engagement Mode is closed). Atmosphere that tracks where you are.",
   },
   {
     id: "sidebar",
@@ -55,15 +54,7 @@ export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
     target: { kind: "selector", query: '[data-tour="compass-sidebar-nav"]' },
     title: "Focus nav cuts the noise",
     subtitle:
-      "Sidebar Focus mode mirrors the current engagement phase. Switch to All modules only when you need the full catalogue.",
-  },
-  {
-    id: "catalog",
-    path: "/dashboard/services/catalog",
-    target: { kind: "selector", query: '[data-tour="compass-catalog-glance"]' },
-    title: "Job 1 — Diagnose starts here",
-    subtitle:
-      "Service catalogue is the discovery baseline. Capture workshop notes, then move via the Next action bar — not by wandering the rail.",
+      "Focus shows this phase only. Switch to All modules when you need the full rail — not before.",
   },
   {
     id: "finale",
@@ -71,7 +62,7 @@ export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
     target: { kind: "center" },
     title: "Ready to run the project",
     subtitle:
-      "Start Engagement Mode in Discover for the workshop path, or open the Executive Briefing when you need the sponsor pitch.",
+      "Start Engagement Mode in Discover for the workshop path, or open the Executive Briefing for sponsors.",
     finale: true,
   },
 ];
