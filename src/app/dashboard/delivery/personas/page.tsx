@@ -156,24 +156,20 @@ export default function CustomerPersonasPage() {
       variants={pageVariants}
       initial="initial"
       animate="animate"
-      className="h-full flex flex-col overflow-hidden"
+      className="flex h-full min-h-0 flex-col overflow-hidden"
       data-tour="compass-personas-surface"
     >
-      {/* Compact Header */}
-      <header className="flex-shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 border-b border-white/10 bg-navy/50 backdrop-blur-sm">
+      <header className="shrink-0 border-b border-white/10 bg-navy/50 px-4 py-2 backdrop-blur-sm sm:px-5">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-teal/20 to-gpssa-green/20 border border-teal/30 flex-shrink-0">
-              <Users2 className="w-4 h-4 sm:w-5 sm:h-5 text-teal" />
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="shrink-0 rounded-lg border border-teal/30 bg-gradient-to-br from-teal/20 to-gpssa-green/20 p-1.5">
+              <Users2 className="h-4 w-4 text-teal" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-sm sm:text-base font-bold text-cream font-playfair truncate">
-                GPSSA Social Insurance Personas
+              <h1 className="truncate font-playfair text-sm font-semibold text-cream sm:text-base">
+                Personas
               </h1>
-              <p className="text-[9px] sm:text-[10px] text-gray-muted truncate">
-                Ten segments aligned to ILO labor taxonomy — from full GPSSA pension to zero coverage.
-              </p>
-              <div className="mt-1 hidden sm:flex sm:items-center sm:gap-2 sm:flex-wrap">
+              <div className="mt-1 hidden flex-wrap items-center gap-2 sm:flex">
                 <StandardChips slugs={["ilo-c102", "ilo-r202"]} size="xs" max={2} />
                 <MandateBasisChip
                   screenPath="/dashboard/delivery/personas"
@@ -189,28 +185,27 @@ export default function CustomerPersonasPage() {
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-4 flex-shrink-0">
+          <div className="hidden shrink-0 items-center gap-4 sm:flex">
             <div className="flex items-center gap-3 sm:gap-4">
               <CoverageChip status="full" />
               <CoverageChip status="partial" />
               <CoverageChip status="none" />
             </div>
             {augmentedCount > 0 && (
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                <Sparkles className="w-3 h-3 text-purple-400" />
+              <div className="flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 px-2 py-1">
+                <Sparkles className="h-3 w-3 text-purple-400" />
                 <span className="text-[10px] text-purple-400">{augmentedCount} researched</span>
               </div>
             )}
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-navy-light/60 border border-white/10">
-              <Globe2 className="w-3.5 h-3.5 text-white/40" />
+            <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-navy-light/60 px-2 py-1">
+              <Globe2 className="h-3.5 w-3.5 text-white/40" />
               <span className="text-[10px] text-white/40">2025</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Cards Grid — fills remaining space */}
-      <main className="flex-1 min-h-0 flex flex-col items-center justify-start p-3 sm:p-4 lg:p-6 overflow-auto gap-4">
+      <main className="flex min-h-0 flex-1 flex-col items-center justify-start gap-4 overflow-y-auto p-3 sm:p-4 lg:p-5">
         <motion.div
           variants={gridVariants}
           className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 w-full max-w-[1600px]"

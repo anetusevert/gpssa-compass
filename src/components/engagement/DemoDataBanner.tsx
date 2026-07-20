@@ -1,28 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
 import { isDemoDataPath } from "@/lib/engagement/playbook";
 
+/** Compact demo chip — no walkthrough paragraph. */
 export function DemoDataBanner({ pathname }: { pathname: string }) {
   if (!isDemoDataPath(pathname)) return null;
 
   return (
     <div
       role="status"
-      className="flex items-center gap-2 border-b border-amber-500/25 bg-amber-500/[0.08] px-4 py-1.5 text-[11px] text-amber-100/90 md:px-6"
+      className="flex items-center justify-end gap-2 border-b border-white/[0.04] bg-black/15 px-4 py-1 md:px-6"
     >
-      <AlertTriangle size={12} className="shrink-0 text-amber-400" />
-      <span className="min-w-0 truncate">
-        <strong className="font-semibold text-amber-200">Gold seed</strong>
-        {" — "}
-        Rehearsal data for walkthroughs. Replace with client evidence before decisions.
-      </span>
       <Link
         href="/dashboard/data"
-        className="ml-auto shrink-0 font-medium text-amber-200/90 underline-offset-2 hover:underline"
+        title="Rehearsal data — replace with client evidence before decisions"
+        className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-200/90 transition hover:bg-amber-500/20"
       >
-        Import / sources
+        Demo
       </Link>
     </div>
   );

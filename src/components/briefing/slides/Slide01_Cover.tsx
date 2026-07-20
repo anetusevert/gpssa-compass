@@ -141,9 +141,9 @@ export function Slide01_Cover() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, ease: EASE, delay: 0.85 }}
         >
-          Intelligence for the
+          The operating
           <br />
-          <span className="text-gradient-green">next pension era.</span>
+          <span className="text-gradient-green">leave-behind.</span>
         </motion.h1>
 
         <motion.p
@@ -152,8 +152,8 @@ export function Slide01_Cover() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.7, delay: 1.2 }}
         >
-          A live operating system for GPSSA — mandate, global benchmarks,
-          portfolio design and operational excellence in one command surface.
+          Episode → Journey → Process → Systems → QA — one service operable
+          end to end, grounded in mandate and global research.
         </motion.p>
 
         <motion.div

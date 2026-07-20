@@ -62,9 +62,9 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[230px] rounded-2xl border bg-white/[0.015] transition-colors ${
+      className={`flex h-full min-h-0 min-w-[230px] flex-1 flex-col overflow-hidden rounded-2xl border bg-white/[0.015] transition-colors ${
         isOver ? "border-gpssa-green/40 bg-gpssa-green/[0.04]" : "border-white/[0.06]"
-      } flex flex-col`}
+      }`}
     >
       {children}
     </div>
@@ -218,11 +218,10 @@ export default function CaseBoardPage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* Header strip */}
-      <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-white/[0.06]">
-        <h1 className="font-playfair text-base font-semibold text-cream shrink-0">
-          Case Board
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-2">
+        <h1 className="shrink-0 font-playfair text-base font-semibold text-cream">
+          Cases
         </h1>
         <div className="h-4 w-px bg-white/10" />
         <div className="hidden md:block">
@@ -295,8 +294,7 @@ export default function CaseBoardPage() {
         )}
       </div>
 
-      {/* Board */}
-      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden px-5 py-3">
+      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-5 py-3">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -308,16 +306,16 @@ export default function CaseBoardPage() {
             setOverId(null);
           }}
         >
-          <div className="flex gap-3 h-full min-h-0">
+          <div className="flex h-full min-h-0 gap-3">
             {columns.map((col) => (
               <Column key={col.id} id={col.id} isOver={overId === col.id && groupBy === "status"}>
-                <div className={`shrink-0 flex items-center justify-between px-3 py-2 border-b ${col.accent}`}>
+                <div className={`flex shrink-0 items-center justify-between border-b px-3 py-2 ${col.accent}`}>
                   <span className="text-[11px] font-semibold text-cream">{col.label}</span>
-                  <span className="text-[10px] text-gray-muted tabular-nums px-1.5 py-0.5 rounded-md bg-white/[0.05]">
+                  <span className="rounded-md bg-white/[0.05] px-1.5 py-0.5 text-[10px] tabular-nums text-gray-muted">
                     {col.cases.length}
                   </span>
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-2 space-y-2">
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2 scrollbar-thin">
                   {col.cases.map((c) => (
                     <DraggableCase key={c.id} c={c} />
                   ))}

@@ -306,18 +306,16 @@ export default function DeliveryChannelsPage() {
   const fullyCovered = channels.length > 0 ? Math.max(...channels.map((c) => c.servicesAvailable)) : 0;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden px-4 lg:px-6 pb-4">
-      {/* Top KPI strip */}
+    <div className="flex h-full min-h-0 flex-col overflow-hidden px-4 pb-3 lg:px-6">
       <motion.div
-        className="flex items-center justify-between gap-4 py-3 flex-shrink-0"
+        className="flex shrink-0 items-center justify-between gap-4 py-2"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="min-w-0">
-          <h1 className="font-playfair text-lg font-bold text-cream">Channel Framework</h1>
-          <p className="text-[11px] text-gray-muted mt-0.5">Delivery landscape — channels, models & benchmarks</p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <h1 className="font-playfair text-base font-semibold text-cream">Channels</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             <StandardChips
               slugs={["un-egov-survey", "issa-service-quality", "wb-govtech-maturity"]}
               size="xs"
@@ -344,13 +342,11 @@ export default function DeliveryChannelsPage() {
         />
       </motion.div>
 
-      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent flex-shrink-0" />
+      <div className="h-px shrink-0 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
 
-      {/* Main content: grid + panel */}
-      <div className="flex-1 min-h-0 flex gap-4 pt-4">
-        {/* Channel grid */}
-        <div className="flex-[3] min-w-0 min-h-0 flex flex-col gap-3 overflow-y-auto">
-          <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 auto-rows-fr">
+      <div className="flex min-h-0 flex-1 gap-4 pt-3">
+        <div className="flex min-h-0 min-w-0 flex-[3] flex-col gap-3 overflow-y-auto">
+          <div className="grid auto-rows-fr grid-cols-2 gap-3 xl:grid-cols-3">
             {channels.map((channel, index) => (
               <ChannelTile
                 key={channel.id}
@@ -368,21 +364,21 @@ export default function DeliveryChannelsPage() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="glass-card rounded-xl p-3 border border-white/10"
+                className="glass-card rounded-xl border border-white/10 p-3"
               >
-                <div className="flex items-center gap-2 mb-2 text-[11px] text-gray-muted">
-                  <ArrowLeftRight className="w-3.5 h-3.5 text-gpssa-green" />
+                <div className="mb-2 flex items-center gap-2 text-[11px] text-gray-muted">
+                  <ArrowLeftRight className="h-3.5 w-3.5 text-gpssa-green" />
                   <span className="font-medium text-cream/90">
                     Comparator — {comparisonCountryName ?? comparisonCountry}
                   </span>
                   <span className="opacity-60">{intlChannelTiles.length} channels</span>
                 </div>
                 {intlChannelTiles.length === 0 ? (
-                  <div className="text-[11px] text-gray-muted py-3 text-center">
+                  <div className="py-3 text-center text-[11px] text-gray-muted">
                     No data yet — run the International Delivery Channels agent to populate this country.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
                     {intlChannelTiles.map((c, i) => (
                       <ChannelTile
                         key={c.id}
@@ -399,8 +395,7 @@ export default function DeliveryChannelsPage() {
           </AnimatePresence>
         </div>
 
-        {/* Dynamic panel */}
-        <div className="flex-[2] min-w-0">
+        <div className="min-h-0 min-w-0 flex-[2]">
           <DynamicPanel
             selectedChannel={selectedChannel}
             channels={channels}

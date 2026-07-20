@@ -89,7 +89,7 @@ export function OperatingSpine({
 }) {
   const engagementOpen = useEngagementStore((s) => s.engagementOpen);
   const phaseId = useEngagementStore((s) => s.phaseId);
-  const emphasis = useMemo(
+  const phaseEmphasis = useMemo(
     () => emphasizedNodes(phaseId, engagementOpen),
     [phaseId, engagementOpen]
   );
@@ -234,6 +234,21 @@ export function OperatingSpine({
   const litSelection =
     wizardOpen && wizardLitStep ? STEP_TO_NODE[wizardLitStep] : selected;
 
+  /** When an episode is active, outline the whole lit chain (Episode→QA). */
+  const chainEmphasis = useMemo(() => {
+    if (engagementOpen && phaseEmphasis.size > 0) return phaseEmphasis;
+    if (!graph) return new Set<SpineNodeId>();
+    const lit = new Set(
+      graph.nodes.filter((n) => n.lit).map((n) => n.id)
+    );
+    // Always include episode if any active episode exists
+    if (workspace?.episodes.some((e) => e.isActive)) lit.add("episode");
+    return lit;
+  }, [engagementOpen, phaseEmphasis, graph, workspace]);
+
+  const chainConducting =
+    engagementOpen || Boolean(workspace?.episodes.some((e) => e.isActive));
+
   // Never flip the whole spine back to loading while wizard/browse is open.
   if (loading && !graph) {
     return (
@@ -301,16 +316,16 @@ export function OperatingSpine({
           <SpineOrbCanvas
             selected={litSelection}
             hovered={hovered}
-            emphasized={emphasis}
-            conducting={engagementOpen}
-            accent={accent}
+            emphasized={chainEmphasis}
+            conducting={chainConducting}
+            accent={accent ?? (chainConducting ? "#00A86B" : null)}
           />
         </div>
         <div className="absolute inset-0 flex">
           {NODE_ORDER.map((id) => {
             const node = graph.nodes.find((n) => n.id === id)!;
-            const emp = emphasis.has(id);
-            const dim = engagementOpen && emphasis.size > 0 && !emp && litSelection !== id;
+            const emp = chainEmphasis.has(id);
+            const dim = chainConducting && chainEmphasis.size > 0 && !emp && litSelection !== id;
             const isSel = litSelection === id;
             return (
               <button
@@ -355,8 +370,14 @@ export function OperatingSpine({
             label="Journey"
             value={graph.stages.length ? `${graph.stages.length} stages` : "—"}
           />
+          <PresenceChip
+            label="Chain"
+            value={`${graph.nodes.filter((n) => n.lit).length}/5 lit`}
+          />
           <p className="ml-auto hidden text-[10px] text-white/25 sm:block">
-            Click a planet to view or set up
+            {activeEpisode
+              ? "Working unit outlined — click a planet"
+              : "Click a planet to view or set up"}
           </p>
         </motion.div>
       </div>

@@ -19,6 +19,7 @@ import type { LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 import { StandardChips } from "@/components/comparator/StandardChips";
@@ -216,141 +217,143 @@ export default function DeliveryModelsPage() {
   ];
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="shrink-0 flex items-center gap-3 px-5 py-2.5 border-b border-white/[0.06]">
-        <Network size={16} className="text-teal-400" />
-        <h1 className="font-playfair text-base font-semibold text-cream">Delivery Models</h1>
-        <span className="text-[11px] text-gray-muted">Go-to-market frameworks combining channels, partners, and outreach.</span>
-        <div className="ml-auto hidden md:flex items-center gap-2">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-gray-muted">Mapped to</span>
-          <StandardChips slugs={["wb-govtech-maturity", "issa-good-governance"]} size="xs" />
-          <CountrySelector
-            selected={comparisonCountries}
-            onChange={setComparisonCountries}
-            maxSelections={1}
-            variant="inline"
-          />
+    <PageFrame
+      header={
+        <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-2">
+          <Network size={16} className="text-teal-400" />
+          <h1 className="font-playfair text-base font-semibold text-cream">Delivery Models</h1>
+          <div className="ml-auto hidden items-center gap-2 md:flex">
+            <StandardChips slugs={["wb-govtech-maturity", "issa-good-governance"]} size="xs" />
+            <CountrySelector
+              selected={comparisonCountries}
+              onChange={setComparisonCountries}
+              maxSelections={1}
+              variant="inline"
+            />
+          </div>
         </div>
-      </div>
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col">
+        <TileScroll className="p-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {models.map((model, idx) => {
+              const Icon = MODEL_ICON_MAP[model.name] ?? Cpu;
+              const level = maturityLevel(model.maturity);
+              return (
+                <motion.button
+                  key={model.id}
+                  onClick={() => setDetail(model)}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 + idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                  className="rounded-2xl border border-white/[0.05] bg-white/[0.03] p-4 text-left transition-all hover:border-teal-400/30 hover:bg-white/[0.06]"
+                >
+                  <div className="mb-3 flex items-start gap-3">
+                    <div className="shrink-0 rounded-xl border border-teal-400/20 bg-teal-400/10 p-2">
+                      <Icon size={16} className="text-teal-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="truncate font-playfair text-sm font-semibold text-cream">{model.name}</h3>
+                        <Badge variant={maturityVariant(level)} size="sm" dot>
+                          {level}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 line-clamp-3 text-[11px] leading-relaxed text-gray-muted">{model.description}</p>
+                    </div>
+                  </div>
 
-      <div className="flex-1 min-h-0 overflow-auto p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {models.map((model, idx) => {
-            const Icon = MODEL_ICON_MAP[model.name] ?? Cpu;
-            const level = maturityLevel(model.maturity);
-            return (
-              <motion.button
-                key={model.id}
-                onClick={() => setDetail(model)}
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1.5 text-[10px] text-cream/70">
+                      <Layers size={10} className="text-adl-blue" />
+                      <span>{model.channelMix.length} channels</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-cream/70">
+                      <Users2 size={10} className="text-gold" />
+                      <span>{model.targetSegments.length} segments</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-cream/70">
+                      <TrendingUp size={10} className="text-gpssa-green" />
+                      <span>{model.enablers.length} enablers</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-cream/70">
+                      <AlertTriangle size={10} className="text-amber-400" />
+                      <span>{model.risks.length} risks</span>
+                    </div>
+                  </div>
+
+                  {model.benchmarkExamples.length > 0 && (
+                    <div className="mt-3 flex items-start gap-1.5 border-t border-white/[0.06] pt-3">
+                      <Globe2 size={10} className="mt-0.5 shrink-0 text-adl-blue" />
+                      <p className="line-clamp-2 text-[10px] text-cream/60">
+                        Benchmarks: {model.benchmarkExamples.slice(0, 2).join("; ")}
+                      </p>
+                    </div>
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
+
+          <AnimatePresence>
+            {comparisonCountry && (
+              <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 + idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                className="text-left rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-teal-400/30 p-4 transition-all"
+                exit={{ opacity: 0, y: 8 }}
+                className="glass-card mt-4 rounded-xl border border-white/10 p-4"
               >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="p-2 rounded-xl bg-teal-400/10 border border-teal-400/20 shrink-0">
-                    <Icon size={16} className="text-teal-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-playfair text-sm font-semibold text-cream truncate">{model.name}</h3>
-                      <Badge variant={maturityVariant(level)} size="sm" dot>
-                        {level}
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] text-gray-muted leading-relaxed mt-1 line-clamp-3">{model.description}</p>
-                  </div>
+                <div className="mb-3 flex items-center gap-2 text-xs text-gray-muted">
+                  <ArrowLeftRight className="h-3.5 w-3.5 text-gpssa-green" />
+                  <span className="font-medium text-cream/90">
+                    Comparator — {comparisonCountryName ?? comparisonCountry}
+                  </span>
+                  <span className="opacity-60">{intlModels.length} models</span>
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <div className="flex items-center gap-1.5 text-[10px] text-cream/70">
-                    <Layers size={10} className="text-adl-blue" />
-                    <span>{model.channelMix.length} channels</span>
+                {intlModels.length === 0 ? (
+                  <div className="py-4 text-center text-xs text-gray-muted">
+                    No data yet — run the International Delivery Models agent to populate this country.
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-cream/70">
-                    <Users2 size={10} className="text-gold" />
-                    <span>{model.targetSegments.length} segments</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-cream/70">
-                    <TrendingUp size={10} className="text-gpssa-green" />
-                    <span>{model.enablers.length} enablers</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-cream/70">
-                    <AlertTriangle size={10} className="text-amber-400" />
-                    <span>{model.risks.length} risks</span>
-                  </div>
-                </div>
-
-                {model.benchmarkExamples.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-start gap-1.5">
-                    <Globe2 size={10} className="text-adl-blue mt-0.5 shrink-0" />
-                    <p className="text-[10px] text-cream/60 line-clamp-2">
-                      Benchmarks: {model.benchmarkExamples.slice(0, 2).join("; ")}
-                    </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {intlModels.map((m) => {
+                      const lvl = maturityLevel(Number(m.maturity ?? 0));
+                      return (
+                        <div key={m.id} className="rounded-lg border border-white/10 bg-navy-light/40 p-3">
+                          <div className="mb-1.5 flex items-start justify-between gap-2">
+                            <div className="text-sm font-medium text-cream">{m.name}</div>
+                            <Badge variant={maturityVariant(lvl)} size="sm" dot>
+                              {lvl}
+                            </Badge>
+                          </div>
+                          {m.description && (
+                            <p className="mb-2 line-clamp-3 text-[11px] text-gray-muted">{m.description}</p>
+                          )}
+                          {m.channelMix && (
+                            <p className="text-[10px] text-cream/70">
+                              <span className="text-adl-blue">Channels: </span>
+                              {m.channelMix}
+                            </p>
+                          )}
+                          {m.benchmarkExamples && (
+                            <p className="mt-1 line-clamp-2 text-[10px] text-cream/60">
+                              <span className="text-gpssa-green">Benchmarks: </span>
+                              {m.benchmarkExamples}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-              </motion.button>
-            );
-          })}
-        </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </TileScroll>
 
-        <AnimatePresence>
-          {comparisonCountry && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              className="mt-4 glass-card rounded-xl p-4 border border-white/10"
-            >
-              <div className="flex items-center gap-2 mb-3 text-xs text-gray-muted">
-                <ArrowLeftRight className="w-3.5 h-3.5 text-gpssa-green" />
-                <span className="font-medium text-cream/90">
-                  Comparator delivery models — {comparisonCountryName ?? comparisonCountry}
-                </span>
-                <span className="opacity-60">{intlModels.length} models</span>
-              </div>
-              {intlModels.length === 0 ? (
-                <div className="text-xs text-gray-muted py-4 text-center">
-                  No data yet — run the International Delivery Models agent to populate this country.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {intlModels.map((m) => {
-                    const lvl = maturityLevel(Number(m.maturity ?? 0));
-                    return (
-                      <div key={m.id} className="rounded-lg p-3 bg-navy-light/40 border border-white/10">
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <div className="font-medium text-sm text-cream">{m.name}</div>
-                          <Badge variant={maturityVariant(lvl)} size="sm" dot>
-                            {lvl}
-                          </Badge>
-                        </div>
-                        {m.description && (
-                          <p className="text-[11px] text-gray-muted line-clamp-3 mb-2">{m.description}</p>
-                        )}
-                        {m.channelMix && (
-                          <p className="text-[10px] text-cream/70">
-                            <span className="text-adl-blue">Channels: </span>
-                            {m.channelMix}
-                          </p>
-                        )}
-                        {m.benchmarkExamples && (
-                          <p className="text-[10px] text-cream/60 mt-1 line-clamp-2">
-                            <span className="text-gpssa-green">Benchmarks: </span>
-                            {m.benchmarkExamples}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <StatBar items={stats} />
       </div>
-
-      <StatBar items={stats} />
 
       <Modal
         isOpen={!!detail}
@@ -359,11 +362,9 @@ export default function DeliveryModelsPage() {
         description={detail?.description ?? undefined}
         size="lg"
       >
-        {detail && (
-          <DeliveryModelDetail model={detail} />
-        )}
+        {detail && <DeliveryModelDetail model={detail} />}
       </Modal>
-    </div>
+    </PageFrame>
   );
 }
 

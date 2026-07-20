@@ -19,8 +19,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ARCHITECTURE, CONTROL_PILLARS } from "@/data/mandateScope";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
+import { EASE } from "@/lib/motion";
 
 interface StandardSummary {
   id: string;
@@ -74,21 +74,24 @@ export default function MandateGovernancePage() {
   );
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden">
-      {/* Compact header */}
-      <header className="shrink-0 px-4 pt-3 pb-2 md:px-6 md:pt-4">
-        <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-[#1B7A4A]">
-          <Landmark size={11} /> Mandate · Governance
-        </div>
-        <h1 className="mt-0.5 truncate font-playfair text-xl font-semibold text-cream md:text-2xl">
-          How the mandate is steered, supervised and audited
-        </h1>
-      </header>
-
-      {/* Three vertical bands */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6">
+    <PageFrame
+      className="relative"
+      contentClassName="flex flex-col"
+      header={
+        <header className="px-4 pt-3 pb-2 md:px-6 md:pt-4">
+          <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-[#1B7A4A]">
+            <Landmark size={11} /> Mandate · Governance
+          </div>
+          <h1 className="mt-0.5 truncate font-playfair text-xl font-semibold text-cream md:text-2xl">
+            Governance
+          </h1>
+          <p className="mt-0.5 text-[12px] text-white/55">Steered, supervised, and audited.</p>
+        </header>
+      }
+    >
+      <TileScroll className="flex flex-col gap-3 px-4 pb-4 md:px-6 md:pb-6">
         {/* Band 1: Institutional architecture (4-up) */}
-        <section className="flex min-h-0 shrink-0 flex-col">
+        <section className="flex shrink-0 flex-col">
           <div className="mb-1.5 text-[10px] uppercase tracking-[0.24em] text-white/55">
             Institutional architecture
           </div>
@@ -130,7 +133,7 @@ export default function MandateGovernancePage() {
         </section>
 
         {/* Band 2: Three control pillars (3-up) */}
-        <section className="flex min-h-0 shrink-0 flex-col">
+        <section className="flex shrink-0 flex-col">
           <div className="mb-1.5 text-[10px] uppercase tracking-[0.24em] text-white/55">
             Three control pillars
           </div>
@@ -170,8 +173,8 @@ export default function MandateGovernancePage() {
           </div>
         </section>
 
-        {/* Band 3: Governance instruments (fills remaining space) */}
-        <section className="flex min-h-0 flex-1 flex-col">
+        {/* Band 3: Governance instruments */}
+        <section className="flex flex-col">
           <div className="mb-1.5 flex items-end justify-between gap-3">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/55">
               <ScrollText size={10} /> Governance instruments
@@ -184,11 +187,11 @@ export default function MandateGovernancePage() {
             </Link>
           </div>
           {loading ? (
-            <div className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/[0.05] bg-white/[0.015] text-[12px] text-white/45">
+            <div className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.05] bg-white/[0.015] py-10 text-[12px] text-white/45">
               <Loader2 size={13} className="animate-spin" /> Loading instruments…
             </div>
           ) : governanceStandards.length === 0 ? (
-            <div className="flex flex-1 items-center rounded-xl border border-white/[0.05] bg-white/[0.015] p-4 text-[12px] text-white/55">
+            <div className="flex items-center rounded-xl border border-white/[0.05] bg-white/[0.015] p-4 text-[12px] text-white/55">
               <div>
                 <Sparkles size={13} className="mb-1.5 inline text-[#1B7A4A]" />
                 <p className="text-[11.5px]">
@@ -198,14 +201,13 @@ export default function MandateGovernancePage() {
               </div>
             </div>
           ) : (
-            <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
               {governanceStandards.map((s, i) => (
                 <motion.div
                   key={s.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.45, ease: EASE, delay: 0.04 * i }}
-                  className="min-h-0"
                 >
                   <Link
                     href={`/dashboard/mandate/legal?slug=${encodeURIComponent(s.slug)}`}
@@ -236,7 +238,7 @@ export default function MandateGovernancePage() {
             </div>
           )}
         </section>
-      </div>
-    </div>
+      </TileScroll>
+    </PageFrame>
   );
 }

@@ -126,12 +126,12 @@ function CompactMatrix({
   onRowClick?: (row: SegmentRow) => void;
 }) {
   return (
-    <div className="glass-card overflow-hidden border border-white/[0.06] flex flex-col h-full">
-      <div className="px-4 py-2.5 border-b border-white/5 flex items-center gap-2 shrink-0">
+    <div className="glass-card flex h-full min-h-0 flex-col overflow-hidden border border-white/[0.06]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-white/5 px-4 py-2">
         <CountryFlag code={iso3} size="sm" />
         <h2 className="font-playfair text-sm font-semibold text-cream">{title}</h2>
       </div>
-      <div className="flex-1 min-h-0 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full text-[10px]">
           <thead>
             <tr className="border-b border-white/5 bg-white/[0.02]">
@@ -299,10 +299,9 @@ export default function SegmentCoveragePage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* Header */}
-      <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-white/[0.06]">
-        <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Segment Coverage</h1>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-2">
+        <h1 className="shrink-0 font-playfair text-base font-semibold text-cream">Segments</h1>
         <div className="h-4 w-px bg-white/10" />
         <CountrySelector
           selected={comparisonCountries}
@@ -324,8 +323,7 @@ export default function SegmentCoveragePage() {
         )}
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 min-h-0 flex overflow-hidden p-4 gap-4">
+      <div className="relative flex min-h-0 flex-1 gap-4 overflow-hidden p-4">
         <AnimatePresence mode="wait">
           {comparisonCountry && intlMatrix && intlMatrix.length > 0 ? (
             <motion.div
@@ -334,9 +332,9 @@ export default function SegmentCoveragePage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="flex gap-4 w-full h-full min-h-0"
+              className="flex h-full min-h-0 w-full gap-4"
             >
-              <div className="flex-1 min-w-0 h-full">
+              <div className="h-full min-h-0 min-w-0 flex-1">
                 <CompactMatrix
                   title="GPSSA Coverage"
                   iso3="ARE"
@@ -346,7 +344,7 @@ export default function SegmentCoveragePage() {
                   onRowClick={(row) => setDetailRow({ row, scope: "GPSSA", iso3: "ARE" })}
                 />
               </div>
-              <div className="flex-1 min-w-0 h-full">
+              <div className="h-full min-h-0 min-w-0 flex-1">
                 <CompactMatrix
                   title={`${countryName} Coverage`}
                   iso3={comparisonCountry}
@@ -362,7 +360,7 @@ export default function SegmentCoveragePage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="w-full h-full"
+              className="h-full min-h-0 w-full"
             >
               <CompactMatrix
                 title="GPSSA Segment × Coverage Matrix"

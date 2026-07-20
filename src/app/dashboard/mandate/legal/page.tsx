@@ -15,8 +15,8 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Filter, Loader2, Scale } from "lucide-react";
 import { ArticleBrowser } from "@/components/mandate/ArticleBrowser";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { PageFrame } from "@/components/ui/PageFrame";
+import { EASE } from "@/lib/motion";
 
 interface StandardSummary {
   id: string;
@@ -76,48 +76,55 @@ function MandateLegalView() {
   }, [standards, tab]);
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden">
-      <motion.header
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: EASE }}
-        className="shrink-0 flex flex-wrap items-end justify-between gap-3 px-4 pt-3 pb-2 md:px-6 md:pt-4"
-      >
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-[#1B7A4A]">
-            <Scale size={11} /> Mandate · Legal Foundation
+    <PageFrame
+      className="relative"
+      contentClassName="flex min-h-0 flex-col overflow-hidden"
+      header={
+        <motion.header
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: EASE }}
+          className="flex flex-wrap items-end justify-between gap-3 px-4 pt-3 pb-2 md:px-6 md:pt-4"
+        >
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-[#1B7A4A]">
+              <Scale size={11} /> Mandate · Legal Foundation
+            </div>
+            <h1 className="mt-0.5 truncate font-playfair text-xl font-semibold text-cream md:text-2xl">
+              Legal Foundation
+            </h1>
+            <p className="mt-0.5 text-[12px] text-white/55">Laws, article by article.</p>
           </div>
-          <h1 className="mt-0.5 truncate font-playfair text-xl font-semibold text-cream md:text-2xl">
-            Read the law, article by article
-          </h1>
-        </div>
-        <div className="inline-flex items-center gap-1 rounded-full border border-white/[0.06] bg-white/[0.02] p-0.5">
-          <Filter size={10} className="ml-1.5 text-white/40" />
-          {CATEGORY_TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                tab === t.id
-                  ? "bg-[#1B7A4A]/20 text-cream"
-                  : "text-white/55 hover:bg-white/[0.04] hover:text-cream"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </motion.header>
-
-      <div className="min-h-0 flex-1 px-4 pb-4 md:px-6 md:pb-6">
+          <div className="inline-flex items-center gap-1 rounded-full border border-white/[0.06] bg-white/[0.02] p-0.5">
+            <Filter size={10} className="ml-1.5 text-white/40" />
+            {CATEGORY_TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                  tab === t.id
+                    ? "bg-[#1B7A4A]/20 text-cream"
+                    : "text-white/55 hover:bg-white/[0.04] hover:text-cream"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </motion.header>
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col overflow-hidden px-4 pb-4 md:px-6 md:pb-6">
         {loading ? (
-          <div className="flex h-full items-center justify-center text-white/45">
+          <div className="flex h-full min-h-0 items-center justify-center text-white/45">
             <Loader2 size={16} className="mr-2 animate-spin" /> Loading legal corpus…
           </div>
         ) : (
-          <ArticleBrowser standards={filtered} initialSlug={initialSlug} />
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ArticleBrowser standards={filtered} initialSlug={initialSlug} />
+          </div>
         )}
       </div>
-    </div>
+    </PageFrame>
   );
 }

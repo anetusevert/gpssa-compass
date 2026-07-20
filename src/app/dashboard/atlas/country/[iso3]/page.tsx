@@ -557,9 +557,9 @@ export default function CountryDetailPage() {
   ];
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-white/10 bg-[var(--bg-primary)]/50 px-4 py-2.5 backdrop-blur-sm xl:px-5 xl:py-3">
+      <header className="shrink-0 border-b border-white/10 bg-[var(--bg-primary)]/50 px-4 py-2.5 backdrop-blur-sm xl:px-5 xl:py-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={handleBack} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors group" title="Back to Global Atlas">
@@ -604,12 +604,12 @@ export default function CountryDetailPage() {
         autoDispatched={autoDispatched}
       />
 
-      {/* Main content — 3 rows */}
-      <main className="flex-1 min-h-0 overflow-y-auto p-3 lg:overflow-hidden lg:p-3 xl:p-4">
-        <div className="flex h-full min-h-0 flex-col gap-3 xl:gap-4">
+      {/* Main content — scrollable so every tile stays reachable */}
+      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-3 xl:p-4">
+        <div className="flex min-h-0 flex-col gap-3 xl:gap-4">
 
         {/* ── ROW 1: System Overview + Performance Metrics ── */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:flex-[1.25] xl:min-h-0 xl:gap-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:gap-4">
 
           {/* System Overview */}
           <Tile onClick={() => setSelectedCategory("system")} delay={0.1}>
@@ -697,12 +697,12 @@ export default function CountryDetailPage() {
         </div>
 
         {/* ── ROW 2: Key Features, Strategic Insights, Latest Reforms, Challenges, Fiscal ── */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5 xl:flex-1 xl:min-h-0 xl:gap-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5 xl:gap-4">
 
           {/* Key Features */}
           <Tile onClick={() => setSelectedCategory("features")} delay={0.2}>
             <TileHeader icon={Lightbulb} label="Key Features" color="text-gold" />
-            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3.5 xl:p-4">
               <BulletList items={profile.keyFeatures} max={3} color="#C5A572" />
             </div>
           </Tile>
@@ -710,7 +710,7 @@ export default function CountryDetailPage() {
           {/* Strategic Insights (atlas-insights output) */}
           <Tile onClick={() => setSelectedCategory("insights")} delay={0.225}>
             <TileHeader icon={Sparkles} label="Strategic Insights" color="text-purple-400/70" />
-            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3.5 xl:p-4">
               {profile.insights.length > 0 ? (
                 <BulletList items={profile.insights} max={3} color="#8B5CF6" />
               ) : dbData?.insightsStatus === "completed" ? (
@@ -728,7 +728,7 @@ export default function CountryDetailPage() {
           {/* Latest Reforms */}
           <Tile onClick={() => setSelectedCategory("reforms")} delay={0.25}>
             <TileHeader icon={RefreshCw} label="Latest Reforms" color="text-adl-blue/70" />
-            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3.5 xl:p-4">
               {(profile.recentReforms?.length ?? 0) > 0 ? (
                 <>
                   {profile.legislativeFramework && (
@@ -749,7 +749,7 @@ export default function CountryDetailPage() {
           {/* Challenges & Risks */}
           <Tile onClick={() => setSelectedCategory("challenges")} delay={0.3}>
             <TileHeader icon={AlertTriangle} label="Challenges & Risks" color="text-amber-400/70" />
-            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3.5 xl:p-4">
               <BulletList items={profile.challenges} max={3} color="#F59E0B" />
             </div>
           </Tile>
@@ -757,7 +757,7 @@ export default function CountryDetailPage() {
           {/* Fiscal & Demographics */}
           <Tile onClick={() => setSelectedCategory("fiscal")} delay={0.35}>
             <TileHeader icon={BarChart3} label="Fiscal & Demographics" color="text-teal-400/70" />
-            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden space-y-2">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3.5 xl:p-4">
               {profile.socialProtectionExpenditure || profile.dependencyRatio || profile.pensionFundAssets ? (
                 <>
                   <MetricSnippet label="Social Protection Expenditure" value={profile.socialProtectionExpenditure} />
@@ -776,12 +776,12 @@ export default function CountryDetailPage() {
         </div>
 
         {/* ── ROW 3: Benefit Design, Fund Management, Rankings, Compare ── */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 xl:flex-1 xl:min-h-0 xl:gap-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 xl:gap-4">
 
           {/* Benefit Design */}
           <Tile onClick={() => setSelectedCategory("benefit")} delay={0.4}>
             <TileHeader icon={Calculator} label="Benefit Design" color="text-purple-400/70" />
-            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden space-y-2">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3.5 xl:p-4">
               {profile.benefitCalculation || profile.vestingPeriod || profile.indexationMechanism ? (
                 <>
                   <MetricSnippet label="Benefit Formula" value={profile.benefitCalculation} />
@@ -801,9 +801,9 @@ export default function CountryDetailPage() {
           {/* Fund Management */}
           <Tile onClick={() => setSelectedCategory("fund")} delay={0.45}>
             <TileHeader icon={PiggyBank} label="Fund Management" color="text-emerald-400/70" />
-            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3.5 xl:p-4">
               {profile.fundManagement ? (
-                <p className="text-xs text-white/55 line-clamp-6 leading-relaxed">{profile.fundManagement}</p>
+                <p className="text-xs text-white/55 leading-relaxed">{profile.fundManagement}</p>
               ) : (
                 <TilePending
                   state={(dbData?.systemStatus as TilePendingState) ?? "pending"}
@@ -817,7 +817,7 @@ export default function CountryDetailPage() {
           {/* International Rankings */}
           <Tile onClick={() => setSelectedCategory("rankings")} delay={0.5}>
             <TileHeader icon={Award} label="International Rankings" color="text-gold/70" />
-            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden space-y-2">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3.5 xl:p-4">
               {profile.internationalRankings ? (
                 <>
                   {profile.internationalRankings.mercerIndex && (
@@ -856,7 +856,7 @@ export default function CountryDetailPage() {
               label={isGPSSA ? "Institutions" : "vs. GPSSA (UAE)"}
               color={isGPSSA ? "text-purple-400/70" : "text-gpssa-green/70"}
             />
-            <div className="flex-1 p-3.5 xl:p-4 overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3.5 xl:p-4">
               {isGPSSA ? (
                 <div className="space-y-2">
                   {institutions.length > 0 ? institutions.slice(0, 2).map((inst) => (

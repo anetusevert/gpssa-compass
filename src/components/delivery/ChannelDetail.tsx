@@ -78,10 +78,9 @@ export function ChannelDetail({ channel, models, onBack }: ChannelDetailProps) {
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="h-full flex flex-col overflow-hidden"
+      className="flex h-full min-h-0 flex-col overflow-hidden"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-center gap-3 mb-4 flex-shrink-0">
+      <motion.div variants={itemVariants} className="mb-4 flex shrink-0 items-center gap-3">
         <button
           onClick={onBack}
           className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
@@ -98,8 +97,7 @@ export function ChannelDetail({ channel, models, onBack }: ChannelDetailProps) {
         <MaturityGauge value={channel.maturity} size={48} strokeWidth={3} />
       </motion.div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 scrollbar-thin">
         {/* Capabilities */}
         <motion.div variants={itemVariants} className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3">
           <div className="flex items-center gap-1.5 mb-1.5">

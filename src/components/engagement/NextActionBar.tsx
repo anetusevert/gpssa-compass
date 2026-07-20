@@ -1,34 +1,28 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { getNextAction, getScreenMeta } from "@/lib/engagement/playbook";
+import { getScreenMeta } from "@/lib/engagement/playbook";
+
+/** Shorten playbook why-copy to a calm one-liner (≤14 words). */
+function shortWhy(why: string): string {
+  const cleaned = why.replace(/\s+/g, " ").trim();
+  const words = cleaned.split(" ");
+  if (words.length <= 14) return cleaned;
+  return `${words.slice(0, 14).join(" ")}…`;
+}
 
 export function NextActionBar({ pathname }: { pathname: string }) {
   if (pathname === "/dashboard") return null;
 
-  const action = getNextAction(pathname);
   const meta = getScreenMeta(pathname);
-  if (!action && !meta) return null;
+  if (!meta) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-white/[0.05] bg-black/20 px-4 py-1.5 text-[11px] md:px-6">
-      {meta && (
-        <p className="min-w-0 text-white/45">
-          <span className="text-white/30">Why here · </span>
-          {meta.why}
-          <span className="ml-2 text-white/25">({meta.ownerHint})</span>
-        </p>
-      )}
-      {action && (
-        <Link
-          href={action.next.href}
-          className="ml-auto inline-flex items-center gap-1 font-medium text-[var(--gpssa-green)] hover:text-[#9DE5C2]"
-        >
-          {action.label}
-          <ArrowRight size={12} />
-        </Link>
-      )}
+    <div className="flex items-center border-b border-white/[0.05] bg-black/20 px-4 py-1.5 text-[11px] md:px-6">
+      <p className="min-w-0 truncate text-white/45">
+        <span className="font-semibold text-white/35">Why here</span>
+        <span className="mx-1.5 text-white/20">·</span>
+        {shortWhy(meta.why)}
+      </p>
     </div>
   );
 }

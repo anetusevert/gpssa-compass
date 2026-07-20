@@ -29,7 +29,7 @@ export function DynamicPanel({ selectedChannel, models, onBack }: DynamicPanelPr
       variants={panelVariants}
       initial="hidden"
       animate="visible"
-      className="h-full flex flex-col rounded-2xl bg-white/[0.02] border border-white/[0.05] backdrop-blur-sm overflow-hidden"
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.05] bg-white/[0.02] backdrop-blur-sm"
     >
       <AnimatePresence mode="wait">
         {selectedChannel ? (
@@ -39,7 +39,7 @@ export function DynamicPanel({ selectedChannel, models, onBack }: DynamicPanelPr
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="flex-1 p-4 overflow-hidden"
+            className="min-h-0 flex-1 overflow-hidden p-4"
           >
             <ChannelDetail
               channel={selectedChannel}
@@ -54,26 +54,20 @@ export function DynamicPanel({ selectedChannel, models, onBack }: DynamicPanelPr
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="flex-1 flex flex-col p-4 overflow-hidden"
+            className="flex min-h-0 flex-1 flex-col overflow-hidden p-4"
           >
-            {/* Panel header */}
-            <div className="flex items-center gap-2.5 mb-4 flex-shrink-0">
-              <div className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+            <div className="mb-3 flex shrink-0 items-center gap-2.5">
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.04] p-2">
                 <Network size={15} className="text-teal-400" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <h3 className="font-playfair text-sm font-semibold text-cream">Delivery Models</h3>
                 <p className="text-[10px] text-gray-muted">GTM frameworks & channel strategy</p>
               </div>
-              <Sparkles size={14} className="text-gold/50 shrink-0" />
+              <Sparkles size={14} className="shrink-0 text-gold/50" />
             </div>
 
-            <p className="text-[11px] text-gray-muted leading-relaxed mb-4 flex-shrink-0">
-              Select a channel to see detailed performance and country benchmarks, or explore how delivery models group channels into coherent customer journeys.
-            </p>
-
-            {/* Models list */}
-            <div className="flex-1 overflow-y-auto space-y-2.5 pr-0.5 scrollbar-thin">
+            <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5 scrollbar-thin">
               {models.map((model, index) => (
                 <DeliveryModelCard key={model.id} model={model} index={index} />
               ))}

@@ -405,12 +405,12 @@ export default function GlobalAtlasPage() {
   }, [router]);
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
 
       {/* ── CINEMATIC MAP CONTAINER ── */}
       <div
         data-tour="compass-atlas-map"
-        className="relative w-full h-full rounded-2xl overflow-hidden"
+        className="relative h-full min-h-0 w-full flex-1 overflow-hidden rounded-2xl"
         style={{ background: "rgba(8,18,38,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}
       >
         {/* Ambient orbs inside map */}
@@ -567,11 +567,11 @@ export default function GlobalAtlasPage() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: "100%", opacity: 0 }}
               transition={{ duration: 0.38, ease: EASE }}
-              className="absolute right-0 top-0 bottom-0 z-40 flex flex-col w-[300px]"
+              className="absolute bottom-0 right-0 top-0 z-40 flex w-[300px] min-h-0 flex-col overflow-hidden"
               style={{ background: "rgba(8,18,38,0.96)", borderLeft: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }}
             >
               {/* Panel header */}
-              <div className="flex items-center justify-between px-4 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+              <div className="flex shrink-0 items-center justify-between border-b px-4 py-4" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
                 <h3 className="font-playfair text-sm font-semibold text-cream">
                   Countries <span className="ml-1 text-xs text-gray-muted font-normal">({filteredList.length})</span>
                 </h3>
@@ -584,7 +584,7 @@ export default function GlobalAtlasPage() {
               </div>
 
               {/* Search + filters */}
-              <div className="px-3 py-3 space-y-2 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+              <div className="shrink-0 space-y-2 border-b px-3 py-3" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
                 <div className="relative">
                   <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-muted" />
                   <input
@@ -616,7 +616,7 @@ export default function GlobalAtlasPage() {
               </div>
 
               {/* Country list */}
-              <div className="flex-1 overflow-y-auto px-2 py-2" style={{ scrollbarWidth: "thin" }}>
+              <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2" style={{ scrollbarWidth: "thin" }}>
                 <AnimatePresence mode="popLayout">
                   {filteredList.map((p, i) => (
                     <motion.button

@@ -91,7 +91,7 @@ export default function ServiceOperatingBlueprintPage() {
             {graph.isGoldPath && (
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-100">
                 <Star size={12} className="text-amber-300" />
-                Gold path · seed rehearsal
+                Gold path
               </span>
             )}
           </div>

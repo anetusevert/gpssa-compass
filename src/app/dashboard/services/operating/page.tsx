@@ -22,14 +22,20 @@ export default function OperatingBlueprintsPage() {
   return (
     <PageFrame
       header={
-        <div className="px-6 pt-4 pb-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gpssa-green)]">
-            Service operating spine
-          </p>
-          <h1 className="font-playfair text-2xl font-bold text-cream">Operating Blueprints</h1>
-          <p className="mt-1 text-[12px] text-white/40">
-            Episode → journey → process → systems → QA. Gold path lights all five.
-          </p>
+        <div className="flex items-end justify-between gap-3 px-6 pt-4 pb-2">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--gpssa-green)]">
+              Service operating spine
+            </p>
+            <h1 className="font-playfair text-2xl font-bold text-cream">Operating Blueprints</h1>
+            <p className="mt-1 text-[12px] text-white/40">Service operating spines</p>
+          </div>
+          <Link
+            href="/dashboard/services/operating/estate"
+            className="shrink-0 rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-white/60 transition hover:border-[var(--gpssa-green)]/40 hover:text-cream"
+          >
+            Estate matrix →
+          </Link>
         </div>
       }
     >

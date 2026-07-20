@@ -26,14 +26,18 @@ export default function FulfilmentLayout({
   const isFullViewport = FULL_VIEWPORT.includes(pathname);
 
   if (isFullViewport) {
-    // Render full-bleed: the page supplies its own h-full flex chrome + scroll.
-    return <>{children}</>;
+    // Full-bleed board: page owns chrome + scroll; slot still needs height chain.
+    return (
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+        {children}
+      </div>
+    );
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 p-6 lg:p-8">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-5 lg:p-6">
       <SectionTabs items={fulfilmentTabs} pillar="products" className="shrink-0" />
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
     </div>
   );
 }

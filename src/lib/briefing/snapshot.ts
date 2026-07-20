@@ -14,9 +14,11 @@ import type {
   ProductsSection,
   ServicesSection,
   SourcesSection,
+  SpineSection,
   StandardAggregate,
   StandardsSection,
 } from "./types";
+import { personas } from "@/data/personas";
 
 const MANDATE_CATEGORIES = ["legal-mandate", "circular", "policy"] as const;
 
@@ -809,6 +811,92 @@ async function buildMandate(): Promise<MandateSection> {
   };
 }
 
+async function buildSpine(): Promise<SpineSection> {
+  const empty: SpineSection = {
+    goldServiceId: null,
+    goldServiceName: null,
+    episodeCount: 0,
+    stageCount: 0,
+    sopStepCount: 0,
+    systemLinkCount: 0,
+    openCaseCount: 0,
+    scorecardCount: 0,
+    capaCount: 0,
+    litNodes: [],
+    activeEpisodeName: null,
+    activePersonaName: null,
+  };
+
+  try {
+    const { GOLD_SPINE_SERVICE_NAME } = await import("@/lib/spine/seed");
+    const gold = await prisma.gPSSAService.findFirst({
+      where: { name: GOLD_SPINE_SERVICE_NAME },
+      include: {
+        episodes: { where: { isActive: true }, take: 1 },
+        journeyStages: true,
+        operatingProcesses: {
+          include: {
+            sops: { include: { steps: true } },
+            systemLinks: true,
+          },
+        },
+        _count: {
+          select: {
+            episodes: true,
+            serviceCases: true,
+            qaScorecards: true,
+            defects: true,
+          },
+        },
+      },
+    });
+
+    if (!gold) return empty;
+
+    const capaCount = await prisma.correctiveAction
+      .count({
+        where: { defect: { serviceId: gold.id } },
+      })
+      .catch(() => 0);
+
+    const active = gold.episodes[0] ?? null;
+    const sopSteps = gold.operatingProcesses.reduce(
+      (n, p) => n + p.sops.reduce((m, s) => m + s.steps.length, 0),
+      0
+    );
+    const systemLinks = gold.operatingProcesses.reduce(
+      (n, p) => n + p.systemLinks.length,
+      0
+    );
+    const personaKey = active?.personaKey ?? null;
+    const persona = personaKey ? personas.find((p) => p.id === personaKey) : null;
+
+    const litNodes: string[] = [];
+    if (gold._count.episodes > 0) litNodes.push("episode");
+    if (gold.journeyStages.length > 0) litNodes.push("journey");
+    if (sopSteps > 0) litNodes.push("process");
+    if (systemLinks > 0 || gold._count.serviceCases > 0) litNodes.push("systems");
+    if (gold._count.qaScorecards > 0 || capaCount > 0) litNodes.push("qa");
+
+    return {
+      goldServiceId: gold.id,
+      goldServiceName: gold.name,
+      episodeCount: gold._count.episodes,
+      stageCount: gold.journeyStages.length,
+      sopStepCount: sopSteps,
+      systemLinkCount: systemLinks,
+      openCaseCount: gold._count.serviceCases,
+      scorecardCount: gold._count.qaScorecards,
+      capaCount,
+      litNodes,
+      activeEpisodeName: active?.name ?? null,
+      activePersonaName: persona?.name ?? null,
+    };
+  } catch {
+    return empty;
+  }
+}
+
 async function buildSources(): Promise<SourcesSection> {
   const [count, allPubs] = await Promise.all([
     prisma.dataSource.count(),
@@ -840,6 +928,7 @@ export async function buildBriefingSnapshot(): Promise<BriefingSnapshot> {
     opportunities,
     sources,
     mandate,
+    spine,
   ] = await Promise.all([
     buildMeta(),
     buildCompleteness(),
@@ -852,6 +941,7 @@ export async function buildBriefingSnapshot(): Promise<BriefingSnapshot> {
     buildOpportunities(),
     buildSources(),
     buildMandate(),
+    buildSpine(),
   ]);
 
   return {
@@ -866,5 +956,6 @@ export async function buildBriefingSnapshot(): Promise<BriefingSnapshot> {
     opportunities,
     sources,
     mandate,
+    spine,
   };
 }

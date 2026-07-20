@@ -11,8 +11,8 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Network as NetworkIcon, ShieldCheck, Users } from "lucide-react";
 import { BRANCHES, COVERAGE_CLASSES } from "@/data/mandateScope";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
+import { EASE } from "@/lib/motion";
 
 interface StandardSummary {
   id: string;
@@ -80,113 +80,119 @@ export default function MandateScopePage() {
   }, [details]);
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden">
-      {/* Compact header band */}
-      <header className="shrink-0 px-4 pt-3 pb-2 md:px-6 md:pt-4">
-        <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-[#1B7A4A]">
-          <ShieldCheck size={11} /> Mandate · Scope
-        </div>
-        <h1 className="mt-0.5 truncate font-playfair text-xl font-semibold text-cream md:text-2xl">
-          Who is covered, where, by which contingency
-        </h1>
-      </header>
-
-      {/* Side-by-side grid: 3fr + 2fr */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 px-4 pb-4 md:px-6 md:pb-6 lg:grid-cols-[3fr_2fr]">
-        {/* LEFT: Six branches 3x2 */}
-        <section className="flex min-h-0 flex-col">
-          <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/55">
-            <NetworkIcon size={10} /> Six branches
+    <PageFrame
+      className="relative"
+      contentClassName="flex flex-col"
+      header={
+        <header className="px-4 pt-3 pb-2 md:px-6 md:pt-4">
+          <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-[#1B7A4A]">
+            <ShieldCheck size={11} /> Mandate · Scope
           </div>
-          <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-3 gap-2 lg:grid-cols-3 lg:grid-rows-2">
-            {BRANCHES.map((b, i) => {
-              const Icon = b.Icon;
-              const count = branchCounts[b.pillar] ?? 0;
-              return (
+          <h1 className="mt-0.5 truncate font-playfair text-xl font-semibold text-cream md:text-2xl">
+            Scope
+          </h1>
+          <p className="mt-0.5 text-[12px] text-white/55">Who is covered, by contingency.</p>
+        </header>
+      }
+    >
+      <TileScroll className="px-4 pb-4 md:px-6 md:pb-6">
+        {/* Side-by-side grid: 3fr + 2fr — grows naturally, scrolls when needed */}
+        <div className="grid min-h-0 grid-cols-1 gap-3 lg:h-full lg:grid-cols-[3fr_2fr] lg:grid-rows-1">
+          {/* LEFT: Six branches 3x2 */}
+          <section className="flex min-h-0 flex-col">
+            <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/55">
+              <NetworkIcon size={10} /> Six branches
+            </div>
+            <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-3 gap-2 lg:grid-cols-3 lg:grid-rows-2">
+              {BRANCHES.map((b, i) => {
+                const Icon = b.Icon;
+                const count = branchCounts[b.pillar] ?? 0;
+                return (
+                  <motion.div
+                    key={b.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: EASE, delay: i * 0.04 }}
+                    className="glass-panel relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/[0.05] p-3"
+                    style={{
+                      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.28), 0 0 24px ${b.accent}10`,
+                    }}
+                  >
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-50"
+                      style={{ background: `radial-gradient(circle, ${b.accent}28 0%, transparent 70%)` }}
+                    />
+                    <div className="relative z-10 flex items-start gap-2">
+                      <div
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                        style={{ background: `linear-gradient(135deg, ${b.accent}28, ${b.accent}08)` }}
+                      >
+                        <Icon size={14} style={{ color: b.accent }} strokeWidth={1.7} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="truncate font-playfair text-[14px] font-semibold leading-tight text-cream">{b.label}</h3>
+                        <div className="mt-0.5 truncate text-[9px] uppercase tracking-[0.18em] text-white/45">
+                          {b.ilo}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="relative z-10 mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-white/65">
+                      {b.description}
+                    </p>
+                    <div className="relative z-10 mt-auto pt-1.5 text-[10px] text-white/45">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-1 w-1 rounded-full" style={{ background: b.accent }} />
+                        {loading
+                          ? "Counting…"
+                          : count > 0
+                          ? `${count} indexed articles`
+                          : "Awaiting indexing"}
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* RIGHT: Coverage classes 2x2 */}
+          <section className="flex min-h-0 flex-col">
+            <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/55">
+              <Users size={10} /> Coverage classes
+            </div>
+            <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
+              {COVERAGE_CLASSES.map((c, i) => (
                 <motion.div
-                  key={b.id}
-                  initial={{ opacity: 0, y: 12 }}
+                  key={c.id}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, ease: EASE, delay: i * 0.04 }}
+                  transition={{ duration: 0.4, ease: EASE, delay: 0.1 + i * 0.05 }}
                   className="glass-panel relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/[0.05] p-3"
                   style={{
-                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.28), 0 0 24px ${b.accent}10`,
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.28), 0 0 24px ${c.accent}10`,
                   }}
                 >
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-50"
-                    style={{ background: `radial-gradient(circle, ${b.accent}28 0%, transparent 70%)` }}
+                    className="pointer-events-none absolute -left-10 -bottom-10 h-24 w-24 rounded-full opacity-40"
+                    style={{ background: `radial-gradient(circle, ${c.accent}28 0%, transparent 70%)` }}
                   />
-                  <div className="relative z-10 flex items-start gap-2">
-                    <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                      style={{ background: `linear-gradient(135deg, ${b.accent}28, ${b.accent}08)` }}
-                    >
-                      <Icon size={14} style={{ color: b.accent }} strokeWidth={1.7} />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="truncate font-playfair text-[14px] font-semibold leading-tight text-cream">{b.label}</h3>
-                      <div className="mt-0.5 truncate text-[9px] uppercase tracking-[0.18em] text-white/45">
-                        {b.ilo}
-                      </div>
-                    </div>
+                  <div className="relative z-10 text-[9px] uppercase tracking-[0.22em]" style={{ color: c.accent }}>
+                    Coverage class
                   </div>
-                  <p className="relative z-10 mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-white/65">
-                    {b.description}
+                  <h4 className="relative z-10 mt-0.5 font-playfair text-[14px] font-semibold leading-tight text-cream">
+                    {c.label}
+                  </h4>
+                  <p className="relative z-10 mt-1 line-clamp-3 text-[11.5px] leading-snug text-white/60">
+                    {c.note}
                   </p>
-                  <div className="relative z-10 mt-auto pt-1.5 text-[10px] text-white/45">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1 w-1 rounded-full" style={{ background: b.accent }} />
-                      {loading
-                        ? "Counting…"
-                        : count > 0
-                        ? `${count} indexed articles`
-                        : "Awaiting indexing"}
-                    </span>
-                  </div>
                 </motion.div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* RIGHT: Coverage classes 2x2 */}
-        <section className="flex min-h-0 flex-col">
-          <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/55">
-            <Users size={10} /> Coverage classes
-          </div>
-          <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2">
-            {COVERAGE_CLASSES.map((c, i) => (
-              <motion.div
-                key={c.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, ease: EASE, delay: 0.1 + i * 0.05 }}
-                className="glass-panel relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/[0.05] p-3"
-                style={{
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.28), 0 0 24px ${c.accent}10`,
-                }}
-              >
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -left-10 -bottom-10 h-24 w-24 rounded-full opacity-40"
-                  style={{ background: `radial-gradient(circle, ${c.accent}28 0%, transparent 70%)` }}
-                />
-                <div className="relative z-10 text-[9px] uppercase tracking-[0.22em]" style={{ color: c.accent }}>
-                  Coverage class
-                </div>
-                <h4 className="relative z-10 mt-0.5 font-playfair text-[14px] font-semibold leading-tight text-cream">
-                  {c.label}
-                </h4>
-                <p className="relative z-10 mt-1 line-clamp-3 text-[11.5px] leading-snug text-white/60">
-                  {c.note}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      </div>
-    </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </TileScroll>
+    </PageFrame>
   );
 }

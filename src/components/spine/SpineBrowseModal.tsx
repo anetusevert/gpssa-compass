@@ -123,11 +123,18 @@ function JourneyBrowse({
   busy: boolean;
   onAction: (action: string, payload?: Record<string, unknown>) => Promise<void>;
 }) {
+  const existing = (workspace?.journeyCandidates ?? []).filter(
+    (c) => c.source === "gold" || c.id.startsWith("existing-")
+  );
+  const setupNew = (workspace?.journeyCandidates ?? []).filter(
+    (c) => c.source !== "gold" && !c.id.startsWith("existing-")
+  );
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <div>
+    <div className="space-y-4">
+      <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
         <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
-          Current stages
+          Applied on this episode
         </p>
         <ol className="space-y-1.5">
           {(graph?.stages ?? []).map((s, i) => (
@@ -137,43 +144,80 @@ function JourneyBrowse({
             </li>
           ))}
           {!graph?.stages.length && (
-            <p className="text-[12px] text-white/35">No journey applied</p>
+            <p className="text-[12px] text-white/35">No journey applied yet</p>
           )}
         </ol>
       </div>
-      <div>
-        <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
-          Candidates
-        </p>
-        <ul className="space-y-1.5">
-          {(workspace?.journeyCandidates ?? []).map((c) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() =>
-                  onAction("apply-journey", {
-                    stages: c.stages.map((s) => ({
-                      name: s.name,
-                      actor: s.actor,
-                      outcome: s.outcome ?? undefined,
-                    })),
-                    source: c.source,
-                  })
-                }
-                className="w-full rounded-lg border border-white/[0.06] px-3 py-2 text-left transition hover:border-[var(--gpssa-green)]/40"
-              >
-                <p className="text-[12px] font-medium text-cream">{c.label}</p>
-                <p className="text-[10px] text-white/35">
-                  {c.stages.length} stages · {c.source}
-                </p>
-              </button>
-            </li>
-          ))}
-          {!workspace?.journeyCandidates?.length && (
-            <p className="text-[12px] text-white/35">Activate an episode first</p>
-          )}
-        </ul>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+            Choose existing
+          </p>
+          <ul className="space-y-1.5">
+            {existing.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    onAction("apply-journey", {
+                      stages: c.stages.map((s) => ({
+                        name: s.name,
+                        actor: s.actor,
+                        outcome: s.outcome ?? undefined,
+                      })),
+                      source: c.source,
+                    })
+                  }
+                  className="w-full rounded-lg border border-white/[0.06] px-3 py-2 text-left transition hover:border-[var(--gpssa-green)]/40"
+                >
+                  <p className="text-[12px] font-medium text-cream">{c.label}</p>
+                  <p className="text-[10px] text-white/35">{c.stages.length} stages</p>
+                </button>
+              </li>
+            ))}
+            {!existing.length && (
+              <p className="text-[12px] text-white/35">None saved yet</p>
+            )}
+          </ul>
+        </div>
+        <div>
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+            Set up new
+          </p>
+          <ul className="space-y-1.5">
+            {setupNew.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    onAction("apply-journey", {
+                      stages: c.stages.map((s) => ({
+                        name: s.name,
+                        actor: s.actor,
+                        outcome: s.outcome ?? undefined,
+                      })),
+                      source: c.source,
+                    })
+                  }
+                  className="w-full rounded-lg border border-[var(--gpssa-green)]/25 bg-[var(--gpssa-green)]/5 px-3 py-2 text-left transition hover:border-[var(--gpssa-green)]/50"
+                >
+                  <p className="text-[12px] font-medium text-cream">{c.label}</p>
+                  <p className="text-[10px] text-white/35">
+                    {c.stages.length} stages · from {c.source}
+                  </p>
+                </button>
+              </li>
+            ))}
+            {!setupNew.length && (
+              <p className="text-[12px] text-white/35">
+                Set persona + episode for candidates
+              </p>
+            )}
+          </ul>
+        </div>
       </div>
     </div>
   );

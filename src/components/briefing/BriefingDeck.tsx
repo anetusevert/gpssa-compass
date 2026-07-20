@@ -10,16 +10,20 @@ import type { BriefingSnapshot } from "@/lib/briefing/types";
 
 import { Slide01_Cover } from "./slides/Slide01_Cover";
 import { Slide02_Ambition } from "./slides/Slide02_Ambition";
-import { Slide03_OperatingSystem } from "./slides/Slide03_OperatingSystem";
+import { Slide03_Spine } from "./slides/Slide03_Spine";
+import { Slide04_SpineGold } from "./slides/Slide04_SpineGold";
+import { Slide05_PersonaEpisode } from "./slides/Slide05_PersonaEpisode";
+import { Slide06_Journey } from "./slides/Slide06_Journey";
+import { Slide07_ProcessSOP } from "./slides/Slide07_ProcessSOP";
+import { Slide09_Fulfilment } from "./slides/Slide09_Fulfilment";
+import { Slide08_Quality } from "./slides/Slide08_Quality";
 import { Slide04_Mandate } from "./slides/Slide04_Mandate";
 import { Slide05_GlobalBar } from "./slides/Slide05_GlobalBar";
 import { Slide06_Diagnose } from "./slides/Slide06_Diagnose";
 import { Slide07_Roadmap } from "./slides/Slide07_Roadmap";
-import { Slide08_Quality } from "./slides/Slide08_Quality";
-import { Slide09_Fulfilment } from "./slides/Slide09_Fulfilment";
 import { Slide10_Performance } from "./slides/Slide10_Performance";
 import { Slide11_Decision } from "./slides/Slide11_Decision";
-import { Slide12_Close } from "./slides/Slide12_Close";
+import { Slide16_Close } from "./slides/Slide16_Close";
 import { SlidePlaceholder } from "./SlidePlaceholder";
 import { ComparatorPicker } from "./ComparatorPicker";
 
@@ -50,19 +54,24 @@ function dataReadySlide(
   };
 }
 
+/** 16-slide spine-centric leave-behind. */
 const SLIDES: SlideRenderer[] = [
   () => <Slide01_Cover />,
   () => <Slide02_Ambition />,
-  () => <Slide03_OperatingSystem />,
+  () => <Slide03_Spine />,
+  dataReadySlide(({ snapshot }) => <Slide04_SpineGold snapshot={snapshot} />, "Gold path"),
+  dataReadySlide(({ snapshot }) => <Slide05_PersonaEpisode snapshot={snapshot} />, "Persona"),
+  dataReadySlide(({ snapshot }) => <Slide06_Journey snapshot={snapshot} />, "Journey"),
+  dataReadySlide(({ snapshot }) => <Slide07_ProcessSOP snapshot={snapshot} />, "Process"),
+  () => <Slide09_Fulfilment />,
+  () => <Slide08_Quality />,
   dataReadySlide(({ snapshot }) => <Slide04_Mandate snapshot={snapshot} />, "Mandate"),
   dataReadySlide(({ snapshot }) => <Slide05_GlobalBar snapshot={snapshot} />, "Global Atlas"),
   dataReadySlide(({ snapshot }) => <Slide06_Diagnose snapshot={snapshot} />, "Diagnose"),
   dataReadySlide(({ snapshot }) => <Slide07_Roadmap snapshot={snapshot} />, "Roadmap"),
-  () => <Slide08_Quality />,
-  () => <Slide09_Fulfilment />,
   () => <Slide10_Performance />,
   dataReadySlide(({ snapshot }) => <Slide11_Decision snapshot={snapshot} />, "Decision"),
-  dataReadySlide(({ snapshot }) => <Slide12_Close snapshot={snapshot} />, "Close"),
+  dataReadySlide(({ snapshot }) => <Slide16_Close snapshot={snapshot} />, "Close"),
 ];
 
 export function BriefingDeck() {

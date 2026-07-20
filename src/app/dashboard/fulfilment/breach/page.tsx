@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { SectionTabs } from "@/components/ui/SectionTabs";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { AgingBoard, type AgingBucket } from "@/components/fulfilment/AgingBoard";
 import { Badge } from "@/components/ui/Badge";
 
@@ -85,27 +86,27 @@ export default function BreachPage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* Header */}
-      <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-white/[0.06]">
-        <h1 className="font-playfair text-base font-semibold text-cream shrink-0">
-          Breach &amp; Aging
-        </h1>
-        <div className="h-4 w-px bg-white/10" />
-        <div className="hidden md:block">
-          <SectionTabs items={fulfilmentTabs} pillar="products" />
+    <PageFrame
+      header={
+        <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-2">
+          <h1 className="shrink-0 font-playfair text-base font-semibold text-cream">
+            Breach &amp; Aging
+          </h1>
+          <div className="h-4 w-px bg-white/10" />
+          <div className="hidden md:block">
+            <SectionTabs items={fulfilmentTabs} pillar="products" />
+          </div>
+          <div className="ml-auto flex items-center gap-2 text-[10px] text-gray-muted">
+            <span className={`flex items-center gap-1.5 ${pulse ? "text-gpssa-green" : ""}`}>
+              <RefreshCw size={11} className={pulse ? "animate-spin" : ""} />
+              Live · 20s
+            </span>
+          </div>
         </div>
-        <div className="ml-auto flex items-center gap-2 text-[10px] text-gray-muted">
-          <span className={`flex items-center gap-1.5 ${pulse ? "text-gpssa-green" : ""}`}>
-            <RefreshCw size={11} className={pulse ? "animate-spin" : ""} />
-            Live · auto-refresh 20s
-          </span>
-        </div>
-      </div>
-
-      {/* Body scroll */}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-5 py-4 space-y-5">
-        {/* Aging board */}
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col">
+        <TileScroll className="space-y-5 px-5 py-4">
         <section>
           <div className="flex items-center justify-between mb-2.5">
             <h2 className="text-sm font-semibold text-cream font-playfair flex items-center gap-2">
@@ -199,8 +200,9 @@ export default function BreachPage() {
             </table>
           </div>
         </section>
+        </TileScroll>
       </div>
-    </div>
+    </PageFrame>
   );
 }
 

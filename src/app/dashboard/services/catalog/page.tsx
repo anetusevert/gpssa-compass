@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CountryFlag } from "@/components/ui/CountryFlag";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
@@ -953,40 +954,38 @@ export default function ServiceCatalogPage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* ─── Header ─── */}
-      <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-white/[0.06]">
-        <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Service Catalog</h1>
-        <div className="h-4 w-px bg-white/10" />
-
-        {/* Section navigation chips */}
-        <nav className="flex items-center gap-1">
-          {[
-            { id: "overview", label: "1. At a Glance", ref: overviewRef },
-            { id: "browse", label: "2. Browse Services", ref: browseRef },
-            { id: "benchmark", label: "3. Compare", ref: benchmarkRef },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => tab.ref.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="px-2.5 py-1 rounded-md text-[11px] font-medium text-gray-muted hover:text-cream hover:bg-white/[0.04] transition-colors"
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-2">
-          <MandateBasisChip
-            screenPath="/dashboard/services/catalog"
-            entityIds={services.map((s) => s.id)}
-          />
+    <PageFrame
+      header={
+        <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-2">
+          <h1 className="shrink-0 font-playfair text-base font-semibold text-cream">Catalog</h1>
+          <div className="h-4 w-px bg-white/10" />
+          <nav className="flex items-center gap-1">
+            {[
+              { id: "overview", label: "1. Glance", ref: overviewRef },
+              { id: "browse", label: "2. Browse", ref: browseRef },
+              { id: "benchmark", label: "3. Compare", ref: benchmarkRef },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => tab.ref.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="rounded-md px-2.5 py-1 text-[11px] font-medium text-gray-muted transition-colors hover:bg-white/[0.04] hover:text-cream"
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-2">
+            <MandateBasisChip
+              screenPath="/dashboard/services/catalog"
+              entityIds={services.map((s) => s.id)}
+            />
+          </div>
         </div>
-      </div>
-
-      {/* ─── Content (single scroll) ─── */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="px-5 py-5 space-y-10 max-w-[1480px] mx-auto">
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col">
+        <TileScroll>
+          <div className="mx-auto max-w-[1480px] space-y-10 px-5 py-5">
 
           {/* ╔════ Section 1 — At a Glance ════╗ */}
           <section
@@ -1256,13 +1255,12 @@ export default function ServiceCatalogPage() {
               loading={loading}
             />
           </section>
-        </div>
+          </div>
+        </TileScroll>
+
+        <StatBar items={statBarItems} />
       </div>
 
-      {/* ─── Stat Bar ─── */}
-      <StatBar items={statBarItems} />
-
-      {/* ─── Detail Modal ─── */}
       <Modal isOpen={!!detailModal} onClose={() => setDetailModal(null)} title={detailModal?.name} description={detailModal?.category} size="xl">
         {detailModal && (
           <div className="space-y-4">
@@ -1396,6 +1394,6 @@ export default function ServiceCatalogPage() {
           </div>
         )}
       </Modal>
-    </div>
+    </PageFrame>
   );
 }

@@ -22,8 +22,8 @@ import {
   Scale,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
+import { EASE } from "@/lib/motion";
 
 interface OverviewPayload {
   counts: {
@@ -185,7 +185,43 @@ export default function MandateHubPage() {
   ];
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden">
+    <PageFrame
+      className="relative"
+      contentClassName="flex flex-col"
+      header={
+        <header className="px-4 pt-4 pb-2 md:px-6 md:pt-5">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: EASE }}
+            className="text-[10px] uppercase tracking-[0.32em] text-[#1B7A4A]"
+          >
+            Mandate
+          </motion.div>
+          <motion.h1
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: EASE, delay: 0.05 }}
+            className="mt-1 font-playfair text-xl font-semibold leading-tight text-cream md:text-2xl"
+          >
+            <Scale
+              size={18}
+              className="-mt-0.5 mr-2 inline text-[#1B7A4A]"
+              strokeWidth={2}
+            />
+            Mandate
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: EASE, delay: 0.12 }}
+            className="mt-0.5 text-[12px] text-white/55"
+          >
+            Laws, branches, governance, and milestones.
+          </motion.p>
+        </header>
+      }
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
@@ -194,49 +230,14 @@ export default function MandateHubPage() {
             "radial-gradient(circle at 18% 14%, rgba(27,122,74,0.08) 0%, transparent 55%), radial-gradient(circle at 85% 88%, rgba(45,74,140,0.07) 0%, transparent 60%)",
         }}
       />
-
-      {/* Header — entry hero */}
-      <header className="shrink-0 px-4 pt-5 pb-3 md:px-6 md:pt-6">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: EASE }}
-          className="text-[10px] uppercase tracking-[0.32em] text-[#1B7A4A]"
-        >
-          Mandate
-        </motion.div>
-        <motion.h1
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: EASE, delay: 0.05 }}
-          className="mt-1.5 font-playfair text-2xl font-semibold leading-tight text-cream md:text-3xl"
-        >
-          <Scale
-            size={22}
-            className="-mt-1 mr-2 inline text-[#1B7A4A]"
-            strokeWidth={2}
-          />
-          The mandate that anchors every service, product and channel.
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: EASE, delay: 0.12 }}
-          className="mt-2 max-w-2xl text-[13px] leading-relaxed text-white/55"
-        >
-          Every law, branch, governance role and milestone behind GPSSA — explore each pillar.
-        </motion.p>
-      </header>
-
-      {/* Centered 4-tile grid (home-page PillarTile style) */}
-      <div className="flex min-h-0 flex-1 items-center justify-center px-4 pb-4 pt-2 md:px-6 md:pb-6">
+      <TileScroll className="flex items-center justify-center px-4 pb-4 pt-2 md:px-6 md:pb-6">
         <div className="mx-auto grid w-full max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {tiles.map((tile, i) => (
             <PillarTile key={tile.href} tile={tile} index={i} />
           ))}
         </div>
-      </div>
-    </div>
+      </TileScroll>
+    </PageFrame>
   );
 }
 

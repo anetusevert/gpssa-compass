@@ -17,8 +17,7 @@ import {
   type AlignmentPayload,
 } from "@/components/mandate/AlignmentBoard";
 import { RFI_REFERENCE } from "@/lib/mandate/rfi-sections";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { EASE } from "@/lib/motion";
 
 export default function MandateRfiAlignmentPage() {
   const [payload, setPayload] = useState<AlignmentPayload | null>(null);
@@ -42,7 +41,7 @@ export default function MandateRfiAlignmentPage() {
 
   return (
     <div
-      className="relative flex h-full flex-col overflow-hidden"
+      className="relative flex h-full min-h-0 flex-col overflow-hidden"
       data-tour="compass-mandate-rfi"
     >
       <div
@@ -66,10 +65,10 @@ export default function MandateRfiAlignmentPage() {
               <Network size={10} /> Mandate · RFP Alignment
             </div>
             <h1 className="mt-0.5 truncate font-playfair text-base font-semibold text-cream md:text-lg">
-              How RFP {RFI_REFERENCE.number} maps to the legal mandate &amp; GPSSA Intelligence
+              RFP Alignment
             </h1>
-            <p className="mt-0.5 hidden truncate text-[11px] text-white/45 md:block">
-              {RFI_REFERENCE.title} · {RFI_REFERENCE.city}, {RFI_REFERENCE.year}
+            <p className="mt-0.5 truncate text-[11px] text-white/45">
+              Maps RFP {RFI_REFERENCE.number} to mandate.
             </p>
           </div>
           <div className="hidden items-center gap-2 text-[10px] text-white/55 md:flex">
@@ -81,13 +80,15 @@ export default function MandateRfiAlignmentPage() {
 
       <div className="min-h-0 flex-1 overflow-hidden p-2 md:p-3">
         {loading ? (
-          <div className="flex h-full items-center justify-center text-white/45">
+          <div className="flex h-full min-h-0 items-center justify-center text-white/45">
             <Loader2 size={16} className="mr-2 animate-spin" /> Loading alignment graph…
           </div>
         ) : payload ? (
-          <AlignmentBoard payload={payload} />
+          <div className="h-full min-h-0 overflow-hidden">
+            <AlignmentBoard payload={payload} />
+          </div>
         ) : (
-          <div className="flex h-full items-center justify-center text-[13px] text-white/55">
+          <div className="flex h-full min-h-0 items-center justify-center text-[13px] text-white/55">
             Could not load alignment payload.
           </div>
         )}

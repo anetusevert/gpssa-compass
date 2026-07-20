@@ -267,9 +267,9 @@ export default function MandateHistoryPage() {
   }, [milestones]);
 
   return (
-    <div className="relative h-full overflow-hidden">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       {loading && data.length === 0 ? (
-        <div className="flex h-full items-center justify-center text-white/45">
+        <div className="flex h-full min-h-0 items-center justify-center text-white/45">
           <Loader2 size={16} className="mr-2 animate-spin" /> Loading the story…
         </div>
       ) : (
@@ -336,7 +336,7 @@ function StoryMode({ milestones, usingFallback }: { milestones: Milestone[]; usi
 
   return (
     <div
-      className="relative h-full overflow-hidden"
+      className="relative flex h-full min-h-0 flex-col overflow-hidden"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -361,7 +361,8 @@ function StoryMode({ milestones, usingFallback }: { milestones: Milestone[]; usi
         )}
       </div>
 
-      {/* Scene */}
+      {/* Scene — growing region scrolls when copy overflows */}
+      <div className="min-h-0 flex-1 overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.div
           key={current.id}
@@ -369,7 +370,7 @@ function StoryMode({ milestones, usingFallback }: { milestones: Milestone[]; usi
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.7, ease: EASE }}
-          className="relative grid h-full grid-cols-1 items-center gap-6 px-6 pb-24 pt-14 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:px-12 md:pb-28"
+          className="relative grid h-full min-h-0 grid-cols-1 items-center gap-6 overflow-y-auto px-6 pb-24 pt-14 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:px-12 md:pb-28"
         >
           {/* Year (parallax drift) */}
           <motion.div
@@ -431,6 +432,7 @@ function StoryMode({ milestones, usingFallback }: { milestones: Milestone[]; usi
           </motion.div>
         </motion.div>
       </AnimatePresence>
+      </div>
 
       {/* Floating control bar (bottom-center) */}
       <div className="absolute bottom-3 left-1/2 z-30 w-[min(960px,calc(100%-2rem))] -translate-x-1/2 md:bottom-5">

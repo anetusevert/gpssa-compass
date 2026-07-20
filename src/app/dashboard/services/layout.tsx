@@ -15,11 +15,11 @@ export default function ServicesLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="shrink-0 px-6 pt-5 pb-2">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="shrink-0 px-5 pt-4 pb-2 lg:px-6">
         <SectionTabs items={servicesTabs} pillar="services" />
       </div>
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {children}
       </div>
     </div>

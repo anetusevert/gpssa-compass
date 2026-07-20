@@ -563,12 +563,11 @@ export default function ProductPortfolioPage() {
 
   return (
     <div
-      className="flex h-full flex-col overflow-hidden"
+      className="flex h-full min-h-0 flex-col overflow-hidden"
       data-tour="compass-products-portfolio"
     >
-      {/* Header */}
-      <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-b border-white/[0.06]">
-        <h1 className="font-playfair text-base font-semibold text-cream shrink-0">Product Portfolio</h1>
+      <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-5 py-2">
+        <h1 className="shrink-0 font-playfair text-base font-semibold text-cream">Portfolio</h1>
         <div className="h-4 w-px bg-white/10" />
         <CountrySelector selected={comparisonCountries} onChange={setComparisonCountries} pillar="products" variant="inline" />
         <MandateBasisChip
@@ -625,10 +624,8 @@ export default function ProductPortfolioPage() {
         )}
       </AnimatePresence>
 
-      {/* Main content */}
-      <div className="flex-1 min-h-0 flex overflow-hidden">
-        {/* Left panel */}
-        <div className={`shrink-0 border-r border-white/[0.06] overflow-y-auto scrollbar-thin ${
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className={`min-h-0 shrink-0 overflow-y-auto border-r border-white/[0.06] scrollbar-thin ${
           isComparing ? "w-[280px]" : "w-[300px]"
         }`}>
           <AnimatePresence mode="wait">
@@ -667,10 +664,9 @@ export default function ProductPortfolioPage() {
           </AnimatePresence>
         </div>
 
-        {/* Right panel */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {isComparing && activeTier && (
-            <div className="shrink-0 flex items-center gap-1 px-4 py-2 border-b border-white/[0.04]">
+            <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.04] px-4 py-2">
               {([
                 { id: "list" as VizMode, icon: List, label: "List" },
                 { id: "bar" as VizMode, icon: BarChart3, label: "Bars" },
@@ -695,7 +691,7 @@ export default function ProductPortfolioPage() {
             </div>
           )}
 
-          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
             <AnimatePresence mode="wait">
               {activeTier ? (
                 <motion.div key={`tier-${activeTier}-${isComparing ? vizMode : "browse"}`} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.22 }} className="h-full">

@@ -290,6 +290,23 @@ export interface MandateSection {
   latestMilestones: MandateLatestMilestone[];
 }
 
+// ── Operating Spine ──────────────────────────────────────────────────────
+
+export interface SpineSection {
+  goldServiceId: string | null;
+  goldServiceName: string | null;
+  episodeCount: number;
+  stageCount: number;
+  sopStepCount: number;
+  systemLinkCount: number;
+  openCaseCount: number;
+  scorecardCount: number;
+  capaCount: number;
+  litNodes: string[];
+  activeEpisodeName: string | null;
+  activePersonaName: string | null;
+}
+
 // ── Root ─────────────────────────────────────────────────────────────────
 
 export interface BriefingSnapshot {
@@ -304,4 +321,5 @@ export interface BriefingSnapshot {
   opportunities: OpportunitiesSection;
   sources: SourcesSection;
   mandate: MandateSection;
+  spine: SpineSection;
 }
