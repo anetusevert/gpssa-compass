@@ -6,6 +6,12 @@ Powered by Arthur D. Little.
 
 ---
 
+## How to use this for the project
+
+Read **[docs/PROJECT_PLAYBOOK.md](docs/PROJECT_PLAYBOOK.md)** first.
+
+Compass is the engagement working file for **RFP GPSSA-016-2026** — three jobs only: diagnose the estate, decide the roadmap, design/pilot QA & fulfilment. Start on Home → **Engagement Mode** (Discover). Sidebar **Focus** mirrors the current phase; **All modules** shows the full rail. Ops modules show a **Gold seed** banner until client evidence is imported (Data & Sources).
+
 ## Roles
 
 | Role | Can |

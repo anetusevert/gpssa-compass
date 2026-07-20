@@ -44,6 +44,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { create } from "zustand";
+import { focusHrefsForPhase } from "@/lib/engagement/playbook";
+import { useEngagementStore } from "@/lib/engagement/store";
 
 interface SidebarState {
   collapsed: boolean;
@@ -200,11 +202,27 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 const SIDEBAR_EXPANDED = 260;
 const SIDEBAR_COLLAPSED = 56;
 
+function hrefInFocus(href: string, focusHrefs: Set<string>): boolean {
+  if (focusHrefs.has(href)) return true;
+  // Home is special — only exact match
+  if (href === "/dashboard") return focusHrefs.has("/dashboard");
+  for (const f of Array.from(focusHrefs)) {
+    if (f !== "/dashboard" && (href === f || href.startsWith(`${f}/`) || f.startsWith(`${href}/`))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const userRole = (session?.user as { role?: string } | undefined)?.role;
   const { collapsed, toggle } = useSidebarStore();
+  const navMode = useEngagementStore((s) => s.navMode);
+  const setNavMode = useEngagementStore((s) => s.setNavMode);
+  const phaseId = useEngagementStore((s) => s.phaseId);
+  const focusHrefs = focusHrefsForPhase(phaseId);
 
   const width = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
 
@@ -265,6 +283,25 @@ export function Sidebar() {
         <BriefingTrigger collapsed={collapsed} />
       </div>
 
+      {!collapsed && (
+        <div className="mx-3 mb-1 flex rounded-lg border border-white/[0.06] bg-white/[0.02] p-0.5">
+          {(["focus", "all"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setNavMode(mode)}
+              className={`flex-1 rounded-md py-1 text-[9px] font-semibold uppercase tracking-[0.16em] transition ${
+                navMode === mode
+                  ? "bg-[var(--gpssa-green)]/20 text-[#9DE5C2]"
+                  : "text-white/35 hover:text-white/60"
+              }`}
+            >
+              {mode === "focus" ? "Focus" : "All modules"}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="mx-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       {/* Nav */}
@@ -274,6 +311,13 @@ export function Sidebar() {
       >
         {NAV_SECTIONS.map((section) => {
           if (section.adminOnly && userRole !== "admin") return null;
+
+          const visibleItems =
+            navMode === "all"
+              ? section.items
+              : section.items.filter((item) => hrefInFocus(item.href, focusHrefs));
+
+          if (visibleItems.length === 0) return null;
 
           return (
             <div
@@ -293,7 +337,7 @@ export function Sidebar() {
               )}
 
               <ul className="space-y-px">
-                {section.items.map((item) => {
+                {visibleItems.map((item) => {
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                   const Icon = item.icon;
 
@@ -335,6 +379,11 @@ export function Sidebar() {
             </div>
           );
         })}
+        {navMode === "focus" && !collapsed && (
+          <p className="px-2 pt-2 text-[10px] leading-snug text-white/30">
+            Focus shows this phase only. Switch to All modules for the full rail.
+          </p>
+        )}
       </nav>
 
       {/* Collapse toggle */}

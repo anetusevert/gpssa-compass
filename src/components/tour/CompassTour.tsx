@@ -13,6 +13,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { useBriefingStore } from "@/components/briefing/store";
+import { useEngagementStore } from "@/lib/engagement/store";
 import { useCompassTourStore } from "./tour-store";
 import { COMPASS_TOUR_STEPS, COMPASS_TOUR_STEP_COUNT } from "./tour-steps";
 import { shouldAutoStartTour } from "./tour-storage";
@@ -194,9 +195,15 @@ export function CompassTour() {
     });
   }, [complete]);
 
-  const exploreApplication = useCallback(() => {
+  const startEngagementAndFinish = useCallback(() => {
     complete();
-  }, [complete]);
+    queueMicrotask(() => {
+      useEngagementStore.getState().openDiscover();
+      if (!pathMatches("/dashboard", pathname)) {
+        router.push("/dashboard");
+      }
+    });
+  }, [complete, pathname, router]);
 
   const goNext = useCallback(() => {
     if (step.finale) return;
@@ -402,7 +409,7 @@ export function CompassTour() {
                       <button
                         ref={finaleBriefingRef}
                         type="button"
-                        onClick={openBriefingAndFinish}
+                        onClick={startEngagementAndFinish}
                         disabled={pendingStep !== null}
                         className="w-full rounded-xl px-4 py-3 text-xs font-semibold text-[#071322] disabled:opacity-40 disabled:pointer-events-none transition-transform active:scale-[0.98]"
                         style={{
@@ -411,15 +418,15 @@ export function CompassTour() {
                           boxShadow: "0 8px 24px rgba(0,168,107,0.25)",
                         }}
                       >
-                        Open Executive Briefing
+                        Start Engagement Mode (Discover)
                       </button>
                       <button
                         type="button"
-                        onClick={exploreApplication}
+                        onClick={openBriefingAndFinish}
                         disabled={pendingStep !== null}
                         className="w-full rounded-xl border border-white/[0.12] px-4 py-3 text-xs font-semibold text-cream/90 hover:bg-white/[0.06] disabled:opacity-40 disabled:pointer-events-none transition-colors"
                       >
-                        Explore the application
+                        Open Executive Briefing
                       </button>
                     </div>
                   ) : null}
@@ -467,7 +474,6 @@ export function CompassTour() {
   }, [
     active,
     closeSkip,
-    exploreApplication,
     goNext,
     goPrev,
     handleDialogPointerDown,
@@ -475,6 +481,7 @@ export function CompassTour() {
     isFinale,
     mounted,
     openBriefingAndFinish,
+    startEngagementAndFinish,
     pendingStep,
     reduceMotion,
     step.id,

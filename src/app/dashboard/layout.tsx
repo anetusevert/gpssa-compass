@@ -6,6 +6,8 @@ import { Sidebar, useSidebarStore } from "@/components/layout/Sidebar";
 import { PageTransitionLoader } from "@/components/ui/PageTransitionLoader";
 import { BriefingDeck } from "@/components/briefing/BriefingDeck";
 import { CompassTour } from "@/components/tour/CompassTour";
+import { DemoDataBanner } from "@/components/engagement/DemoDataBanner";
+import { NextActionBar } from "@/components/engagement/NextActionBar";
 
 const SIDEBAR_EXPANDED = 260;
 const SIDEBAR_COLLAPSED = 56;
@@ -33,24 +35,31 @@ export default function DashboardLayout({
     || isMandatePage
     || isAtlasCountryPage;
   const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
+  const showChrome = pathname !== "/dashboard";
 
   return (
     <div className="flex min-h-screen bg-navy">
       <Sidebar />
 
       <motion.main
-        className={`flex-1 ${
+        className={`flex flex-1 flex-col ${
           isFullViewport ? "h-screen overflow-hidden" : "overflow-y-auto"
         }`}
         animate={{ marginLeft: sidebarWidth }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
+        {showChrome && (
+          <>
+            <DemoDataBanner pathname={pathname} />
+            <NextActionBar pathname={pathname} />
+          </>
+        )}
         <motion.div
           key="dashboard-content"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className={isFullViewport ? "h-full overflow-hidden" : ""}
+          className={isFullViewport ? "min-h-0 flex-1 overflow-hidden" : ""}
         >
           {children}
         </motion.div>

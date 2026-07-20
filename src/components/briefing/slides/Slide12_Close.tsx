@@ -6,6 +6,7 @@ import { ArrowRight, Globe, Layers, ShieldCheck, Map } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { SlideLayout } from "./SlideLayout";
 import { useBriefingStore } from "../store";
+import { useEngagementStore } from "@/lib/engagement/store";
 import type { BriefingSnapshot } from "@/lib/briefing/types";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -24,11 +25,11 @@ interface CTA {
 
 const CTAS: CTA[] = [
   {
-    label: "Global Atlas",
-    href: "/dashboard/atlas",
-    icon: Globe,
+    label: "Engagement Mode",
+    href: "/dashboard",
+    icon: Map,
     color: "rgba(0,168,107,0.85)",
-    badge: (s) => `${s.atlas.countryCount} nations`,
+    badge: () => "Start Discover",
   },
   {
     label: "Service Catalog",
@@ -42,17 +43,17 @@ const CTAS: CTA[] = [
     href: "/dashboard/quality/framework",
     icon: ShieldCheck,
     color: "rgba(45,212,191,0.85)",
-    badge: () => "COPC framework",
+    badge: () => "Design / pilot",
   },
   {
-    label: "Roadmap & Plan",
-    href: "/dashboard/planning",
-    icon: Map,
+    label: "Opportunity Backlog",
+    href: "/dashboard/planning/backlog",
+    icon: Globe,
     color: "rgba(197,165,114,0.85)",
     badge: (s) =>
       s.opportunities.count
         ? `${s.opportunities.count} opportunities`
-        : "12-month plan",
+        : "Decide roadmap",
   },
 ];
 
@@ -115,17 +116,19 @@ function AmbientBackdrop() {
 export function Slide12_Close({ snapshot }: Props) {
   const router = useRouter();
   const closeDeck = useBriefingStore((s) => s.closeDeck);
+  const openDiscover = useEngagementStore((s) => s.openDiscover);
 
   function handleNav(href: string) {
     closeDeck();
+    if (href === "/dashboard") openDiscover();
     router.push(href);
   }
 
   return (
     <SlideLayout
-      eyebrow="Adopt the Compass"
-      title="Operating system for the next pension era."
-      subtitle="Already comparing. Already assuring. Already proposing the next move — open any module and keep going."
+      eyebrow="Run the engagement"
+      title="Three jobs. One working file."
+      subtitle="Diagnose the estate → decide the roadmap → design/pilot QA & fulfilment. Start Engagement Mode on Home — do not wander all thirty screens."
     >
       <div className="relative flex h-full flex-col items-center justify-center">
         <AmbientBackdrop />
@@ -136,7 +139,7 @@ export function Slide12_Close({ snapshot }: Props) {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="relative z-10 mb-8 text-[11px] uppercase tracking-[0.32em] text-white/40"
         >
-          Continue exploring
+          Continue with purpose
         </motion.div>
 
         <div className="relative z-10 grid w-full max-w-5xl grid-cols-2 gap-5 md:grid-cols-4">

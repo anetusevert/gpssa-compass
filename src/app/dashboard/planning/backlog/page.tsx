@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { ListOrdered, Sparkles } from "lucide-react";
+import { ListOrdered, Sparkles, Download } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
@@ -20,10 +20,17 @@ import { Tabs } from "@/components/ui/Tabs";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BacklogTable, type BacklogItem } from "@/components/roadmap/BacklogTable";
+import {
+  OpportunityWorkflow,
+  type WorkflowItem,
+} from "@/components/engagement/OpportunityWorkflow";
 
 interface BacklogRow extends BacklogItem {
   description: string | null;
   conceptSheet: string | null;
+  owner?: string | null;
+  sourceSection?: string | null;
+  decisionLoggedAt?: string | null;
 }
 
 const EFFORT_X: Record<string, number> = { low: 1, medium: 2, high: 3 };
@@ -75,18 +82,26 @@ export default function BacklogPage() {
     <div className="space-y-6">
       <PageHeader
         title="Opportunity Backlog"
-        description="Prioritised with RICE and WSJF (RFP Part C). Drag to re-rank, toggle the scoring lens, and open concept sheets."
+        description="Job 2 — Decide. Rank with RICE/WSJF, assign owner + RFP section, log the room’s decision."
         badge={{ label: "Prioritisation", variant: "gold" }}
         actions={
-          <Tabs
-            variant="pills"
-            tabs={[
-              { id: "rice", label: "RICE" },
-              { id: "wsjf", label: "WSJF" },
-            ]}
-            activeTab={sortBy}
-            onChange={(id) => setSortBy(id as "rice" | "wsjf")}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href="/api/engagement/export/pack"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] text-cream/80 hover:bg-white/[0.08]"
+            >
+              <Download size={12} /> Board pack
+            </a>
+            <Tabs
+              variant="pills"
+              tabs={[
+                { id: "rice", label: "RICE" },
+                { id: "wsjf", label: "WSJF" },
+              ]}
+              activeTab={sortBy}
+              onChange={(id) => setSortBy(id as "rice" | "wsjf")}
+            />
+          </div>
         }
       />
 
@@ -98,7 +113,13 @@ export default function BacklogPage() {
         <EmptyState
           icon={ListOrdered}
           title="No opportunities yet"
-          description="Seed the Roadmap & Governance module to populate the backlog."
+          description="Import a CSV from Data & Sources, or capture the first opportunity from Discover workshops."
+          action={{
+            label: "Open Data & Sources",
+            onClick: () => {
+              window.location.href = "/dashboard/data";
+            },
+          }}
         />
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -111,6 +132,24 @@ export default function BacklogPage() {
               onReorder={(next) => setOrder(next as BacklogRow[])}
               onOpenConcept={setConceptId}
             />
+            <div className="mt-4 space-y-3">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">
+                Soft workflow — owner · RFP · decision
+              </p>
+              {order.slice(0, 8).map((row) => (
+                <div key={row.id}>
+                  <p className="truncate text-[12px] font-medium text-cream">{row.title}</p>
+                  <OpportunityWorkflow
+                    item={row as WorkflowItem}
+                    onUpdated={(updated) => {
+                      setItems((prev) =>
+                        prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+                      );
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
           </Card>
 
           <Card padding="lg">

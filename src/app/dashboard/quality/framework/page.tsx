@@ -18,6 +18,8 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CopcFamilyBadge } from "@/components/quality/CopcFamilyBadge";
+import { PilotServiceSet } from "@/components/engagement/PilotServiceSet";
+import { WorkshopCapture } from "@/components/engagement/WorkshopCapture";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -99,9 +101,19 @@ export default function QualityFrameworkPage() {
     <div className="space-y-6">
       <PageHeader
         title="Quality Framework"
-        description="Six dimensions of quality, the QA policy & governance, and the COPC three-metric model that the Pension Sector is assured against."
+        description="Job 3 — Design/pilot QA. Dimensions, policy, and the pilot service set before sector rollout."
         badge={{ label: "COPC · ISO · ISSA", variant: "green" }}
       />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <PilotServiceSet />
+        <WorkshopCapture
+          entityType="general"
+          entityId="qa-framework-workshop"
+          label="QA discovery notes (B1–B2)"
+          placeholder="Current quality practices, gaps, and design decisions from workshops…"
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Quality dimensions" value={dimensions.length} icon={Layers} trend="neutral" />

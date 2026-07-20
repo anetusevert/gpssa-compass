@@ -38,6 +38,7 @@ import { CountryFlag } from "@/components/ui/CountryFlag";
 import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
+import { WorkshopCapture } from "@/components/engagement/WorkshopCapture";
 
 import {
   SERVICE_FUNCTIONS,
@@ -973,6 +974,13 @@ export default function ServiceCatalogPage() {
             className="scroll-mt-4"
             data-tour="compass-catalog-glance"
           >
+            <WorkshopCapture
+              entityType="general"
+              entityId="catalog-workshop"
+              label="Discover workshop capture"
+              placeholder="What we know / don’t know about the service estate — capture live in the room…"
+              className="mb-5"
+            />
             <div className="flex items-end justify-between gap-4 mb-4">
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">

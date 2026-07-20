@@ -18,6 +18,11 @@ export async function PATCH(
     if (body.wsjfScore !== undefined) data.wsjfScore = body.wsjfScore;
     if (body.impact !== undefined) data.impact = body.impact;
     if (body.effort !== undefined) data.effort = body.effort;
+    if (body.owner !== undefined) data.owner = body.owner || null;
+    if (body.sourceSection !== undefined) data.sourceSection = body.sourceSection || null;
+    if (body.workshopNotes !== undefined) data.workshopNotes = body.workshopNotes || null;
+    if (body.logDecision === true) data.decisionLoggedAt = new Date();
+    if (body.decisionLoggedAt === null) data.decisionLoggedAt = null;
 
     const updated = await prisma.opportunity.update({
       where: { id: params.id },

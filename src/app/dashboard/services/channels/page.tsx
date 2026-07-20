@@ -53,6 +53,7 @@ import { RangeBandRadar } from "@/components/comparator/RangeBandRadar";
 import { useComparators } from "@/lib/comparator/hooks";
 import type { ComparatorOption, ComparatorMetric } from "@/lib/comparator/types";
 import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
+import { WorkshopCapture } from "@/components/engagement/WorkshopCapture";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Types
@@ -770,6 +771,13 @@ export default function ChannelCapabilitiesPage() {
 
           {/* Section 1 — Channel Mix at a Glance */}
           <section ref={overviewRef} className="scroll-mt-4">
+            <WorkshopCapture
+              entityType="general"
+              entityId="channels-workshop"
+              label="Channel workshop capture"
+              placeholder="Channel gaps, partner constraints, API readiness notes from the room…"
+              className="mb-5"
+            />
             <div className="flex items-end justify-between gap-4 mb-4">
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-gpssa-green/80 mb-1">

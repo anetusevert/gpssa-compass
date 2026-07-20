@@ -8,122 +8,70 @@ export interface CompassTourStep {
   target: TourSpotTarget;
   title: string;
   subtitle: string;
-  /** Final step: two CTAs (Executive Briefing vs explore app), no Next button */
+  /** Final step: Engagement Mode + Briefing CTAs, no Next button */
   finale?: boolean;
 }
 
+/**
+ * Shortened onboarding: sell the three jobs, then land in Engagement Mode.
+ * Deep feature tours are out — the playbook replaces them.
+ */
 export const COMPASS_TOUR_STEPS: CompassTourStep[] = [
   {
     id: "welcome",
     path: "/dashboard",
     target: { kind: "center" },
-    title: "One operating system for pension intelligence",
+    title: "This is the engagement working file",
     subtitle:
-      "GPSSA Intelligence puts mandate, global benchmarks, portfolio design and operational excellence on a single command surface—no tool-switching.",
+      "GPSSA Intelligence runs RFP GPSSA-016-2026 — diagnose the estate, decide the roadmap, design/pilot QA & fulfilment. It is not a museum of thirty screens.",
   },
   {
-    id: "atlas-entry",
+    id: "engagement",
     path: "/dashboard",
-    target: { kind: "selector", query: '[data-tour="compass-atlas-bar"]' },
-    title: "Global evidence, on demand",
+    target: { kind: "selector", query: '[data-tour="compass-engagement"]' },
+    title: "Start in Engagement Mode",
     subtitle:
-      "The Atlas is your operating context: countries, maturity, and peer benchmarks. Hover to preview; click to enter the world map.",
+      "Open Engagement Mode, pick the RFP phase you are in (Discover → Evidence → Shape → Lock → Handover), and work only those three to five screens.",
   },
   {
     id: "mandate-entry",
     path: "/dashboard",
     target: { kind: "selector", query: '[data-tour="compass-mandate-bar"]' },
-    title: "Mandate-grounded decisions",
+    title: "Every call needs a mandate / RFP anchor",
     subtitle:
-      "Every recommendation sits on GPSSA’s statutory remit and RFP alignment—open the Mandate hub when you need legal traceability.",
-  },
-  {
-    id: "pillars",
-    path: "/dashboard",
-    target: { kind: "selector", query: '[data-tour="compass-pillar-grid"]' },
-    title: "Core portfolio lenses",
-    subtitle:
-      "Services, Products, and Delivery — drill from catalogue to channels, segments and personas. Hover any tile to preview deep links in the focus stage.",
+      "Recommendations stay tied to GPSSA’s statutory remit and RFP alignment — open Mandate when you need legal traceability.",
   },
   {
     id: "ops",
     path: "/dashboard",
     target: { kind: "selector", query: '[data-tour="compass-ops-grid"]' },
-    title: "Operational excellence",
+    title: "Three jobs, not every module",
     subtitle:
-      "Quality, Fulfilment, Performance and Roadmap & Governance — the Workstream B layer that turns strategy into assured delivery.",
+      "Quality, Fulfilment, Performance and Planning are the Workstream B / roadmap layer. Use them when the phase asks — ignore them until then.",
   },
   {
     id: "sidebar",
     path: "/dashboard",
     target: { kind: "selector", query: '[data-tour="compass-sidebar-nav"]' },
-    title: "Persistent navigation",
+    title: "Focus nav cuts the noise",
     subtitle:
-      "Every pillar stays one click away in the rail. Use it to move fast in workshops or board prep without losing place.",
-  },
-  {
-    id: "world-map",
-    path: "/dashboard/atlas",
-    target: { kind: "selector", query: '[data-tour="compass-atlas-map"]' },
-    title: "196 countries, one choropleth",
-    subtitle:
-      "Pick a metric, scan leaders, then drop into a country profile. The map is the executive summary; detail is one click deep.",
-  },
-  {
-    id: "benchmarking",
-    path: "/dashboard/atlas/benchmarking",
-    target: { kind: "selector", query: '[data-tour="compass-benchmark-workspace"]' },
-    title: "Benchmarks you can defend",
-    subtitle:
-      "Stack institutions, dimensions, and evidence here—so you quantify gaps before you commit the narrative.",
+      "Sidebar Focus mode mirrors the current engagement phase. Switch to All modules only when you need the full catalogue.",
   },
   {
     id: "catalog",
     path: "/dashboard/services/catalog",
     target: { kind: "selector", query: '[data-tour="compass-catalog-glance"]' },
-    title: "The full service portfolio, classified",
+    title: "Job 1 — Diagnose starts here",
     subtitle:
-      "ILO-aligned branches, KPIs, and benchmark rails—see what GPSSA runs today and how it stacks up before you redesign anything.",
-  },
-  {
-    id: "portfolio",
-    path: "/dashboard/products/portfolio",
-    target: { kind: "selector", query: '[data-tour="compass-products-portfolio"]' },
-    title: "Products, tiered and comparable",
-    subtitle:
-      "Portfolio view ties core, complementary, and pilot offers to segments and mandate—then lets you contrast international peers in one cockpit.",
-  },
-  {
-    id: "personas",
-    path: "/dashboard/delivery/personas",
-    target: { kind: "selector", query: '[data-tour="compass-personas-surface"]' },
-    title: "Delivery through real people",
-    subtitle:
-      "Ten personas encode coverage and channel reality—how segments experience GPSSA today, and where journeys still break.",
-  },
-  {
-    id: "mandate-rfi",
-    path: "/dashboard/mandate/rfi-alignment",
-    target: { kind: "selector", query: '[data-tour="compass-mandate-rfi"]' },
-    title: "Mandate meets RFP",
-    subtitle:
-      "Statutory articles, RFP GPSSA-016-2026 sections, and application pillars connect here—traceability you can take into governance or sponsor reviews.",
-  },
-  {
-    id: "briefing",
-    path: "/dashboard",
-    target: { kind: "selector", query: '[data-tour="compass-briefing"]' },
-    title: "Executive Briefing, ready to present",
-    subtitle:
-      "A twelve-slide McKinsey-grade pitch of what Compass does for GPSSA—live data, cinematic motion, ready for the room.",
+      "Service catalogue is the discovery baseline. Capture workshop notes, then move via the Next action bar — not by wandering the rail.",
   },
   {
     id: "finale",
     path: "/dashboard",
     target: { kind: "center" },
-    title: "GPSSA Intelligence is ready when you are",
+    title: "Ready to run the project",
     subtitle:
-      "Open the Executive Briefing to present with the deck, or step straight into the application and keep working.",
+      "Start Engagement Mode in Discover for the workshop path, or open the Executive Briefing when you need the sponsor pitch.",
     finale: true,
   },
 ];

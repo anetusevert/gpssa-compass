@@ -1,4 +1,5 @@
-export const COMPASS_TOUR_STORAGE_KEY = "gpssa_compass_tour_v1" as const;
+/** Bumped when tour structure changes so returning users see the new path. */
+export const COMPASS_TOUR_STORAGE_KEY = "gpssa_compass_tour_v2" as const;
 
 export type TourCompletionStatus = "done" | "skipped";
 

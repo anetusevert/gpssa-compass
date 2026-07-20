@@ -37,6 +37,7 @@ import {
   Globe2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ImportOpportunitiesPanel } from "@/components/engagement/ImportOpportunitiesPanel";
 
 interface DataCounts {
   services: number;
@@ -401,6 +402,10 @@ export default function DataHubPage() {
           </div>
         )}
       </motion.div>
+
+      <div className="mb-8">
+        <ImportOpportunitiesPanel />
+      </div>
 
       {/* ═══ STANDARDS BROWSER FEATURED STRIP ═══ */}
       <motion.div

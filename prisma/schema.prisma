@@ -420,23 +420,40 @@ model ServiceAnalysis {
 }
 
 model Opportunity {
-  id              String                      @id @default(cuid())
-  title           String
-  category        String
-  description     String?
-  impact          String                      @default("medium")
-  effort          String                      @default("medium")
-  strategicFit    Float?
-  feasibility     Float?
-  status          String                      @default("identified")
-  sourceSection   String?
+  id                String                      @id @default(cuid())
+  title             String
+  category          String
+  description       String?
+  impact            String                      @default("medium")
+  effort            String                      @default("medium")
+  strategicFit      Float?
+  feasibility       Float?
+  status            String                      @default("identified")
+  sourceSection     String?
+  // Soft PMO workflow (engagement working file).
+  owner             String?
+  decisionLoggedAt  DateTime?
+  workshopNotes     String?
   // Workstream B: explicit prioritisation scoring (RICE / WSJF).
-  riceScore       Float?
-  wsjfScore       Float?
-  conceptSheet    ConceptSheet?
-  sourceCitations OpportunitySourceCitation[]
-  createdAt       DateTime                    @default(now())
-  updatedAt       DateTime                    @updatedAt
+  riceScore         Float?
+  wsjfScore         Float?
+  conceptSheet      ConceptSheet?
+  sourceCitations   OpportunitySourceCitation[]
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+}
+
+/// Lightweight workshop / pilot captures (services, pilot set, free notes).
+model EngagementCapture {
+  id         String   @id @default(cuid())
+  entityType String // service | pilot-set | general
+  entityId   String?
+  body       String
+  author     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([entityType, entityId])
 }
 
 model ConceptSheet {

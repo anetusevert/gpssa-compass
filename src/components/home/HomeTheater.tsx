@@ -17,6 +17,13 @@ import { HeroRail } from "./HeroRail";
 import { ModuleTile } from "./ModuleTile";
 import { FocusStage } from "./FocusStage";
 import { StoryVideoTrigger } from "./StoryVideoModal";
+import {
+  EngagementModeTrigger,
+  EngagementModePanel,
+  EngagementPhaseStrip,
+} from "@/components/engagement/EngagementMode";
+import { PLAYBOOK_ONE_LINER } from "@/lib/engagement/playbook";
+import { useEngagementStore } from "@/lib/engagement/store";
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
 
@@ -47,6 +54,7 @@ export function HomeTheater() {
 
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
+  const engagementOpen = useEngagementStore((s) => s.engagementOpen);
 
   useEffect(() => {
     setNow(new Date());
@@ -90,12 +98,13 @@ export function HomeTheater() {
 
       {/* Header */}
       <motion.header
-        className="relative z-10 shrink-0 px-5 pt-4 pb-2 text-center sm:px-8 sm:pt-5"
+        className="relative z-10 shrink-0 px-5 pt-3 pb-1.5 text-center sm:px-8 sm:pt-4"
         initial={reduceMotion ? false : { opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE }}
       >
-        <div className="mb-1.5 flex justify-center gap-2">
+        <div className="mb-1.5 flex flex-wrap justify-center gap-2">
+          <EngagementModeTrigger />
           <motion.button
             type="button"
             onClick={() => replayTour()}
@@ -118,93 +127,107 @@ export function HomeTheater() {
               ? `${greeting}, ${userName}`
               : `Hello, ${userName}`}
         </h1>
-        <p className="mt-0.5 text-[12px] text-white/35">
+        <p className="mx-auto mt-0.5 max-w-xl text-[12px] text-white/35">
           {isDemo
-            ? "Explore the GPSSA Intelligence operating system."
-            : "Social Insurance & Pension Knowledge Intelligence"}
+            ? PLAYBOOK_ONE_LINER
+            : "Run the engagement — diagnose, decide, design. Not a screen museum."}
         </p>
       </motion.header>
 
       {/* Theater body */}
-      <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-2.5 px-4 pb-2 sm:px-6 sm:gap-3">
-        {/* Twin hero rails */}
-        <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5">
-          {HERO_MODULES.map((mod, i) => (
-            <div key={mod.id} className="h-[68px] sm:h-[72px]">
-              <HeroRail
-                module={mod}
-                index={i}
-                active={focusedId === mod.id}
-                onFocus={() => setFocusedId(mod.id)}
-                onBlur={() => {}}
-                onNavigate={() => navigate(mod.primaryHref)}
-                tourId={
-                  mod.id === "atlas"
-                    ? "compass-atlas-bar"
-                    : mod.id === "mandate"
-                      ? "compass-mandate-bar"
-                      : undefined
-                }
-              />
+      <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-2 px-4 pb-2 sm:px-6 sm:gap-2.5">
+        <EngagementPhaseStrip />
+        <EngagementModePanel />
+
+        {!engagementOpen && (
+          <>
+            {/* Twin hero rails */}
+            <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5">
+              {HERO_MODULES.map((mod, i) => (
+                <div key={mod.id} className="h-[68px] sm:h-[72px]">
+                  <HeroRail
+                    module={mod}
+                    index={i}
+                    active={focusedId === mod.id}
+                    onFocus={() => setFocusedId(mod.id)}
+                    onBlur={() => {}}
+                    onNavigate={() => navigate(mod.primaryHref)}
+                    tourId={
+                      mod.id === "atlas"
+                        ? "compass-atlas-bar"
+                        : mod.id === "mandate"
+                          ? "compass-mandate-bar"
+                          : undefined
+                    }
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Focus stage */}
-        <div className="min-h-0 flex-[1.1]">
-          <FocusStage module={focused} onNavigate={navigate} />
-        </div>
+            {/* Focus stage */}
+            <div className="min-h-0 flex-[1.1]">
+              <FocusStage module={focused} onNavigate={navigate} />
+            </div>
 
-        {/* Core + Ops tiles */}
-        <div className="shrink-0 space-y-1.5">
-          <div className="flex items-center gap-2 px-0.5">
-            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
-            <span className="text-[9px] font-semibold uppercase tracking-[0.26em] text-white/35">
-              Core Portfolio
-            </span>
-            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
-          </div>
-          <div
-            className="grid h-[88px] grid-cols-3 gap-2 sm:h-[96px] sm:gap-2.5"
-            data-tour="compass-pillar-grid"
-          >
-            {CORE_MODULES.map((mod, i) => (
-              <ModuleTile
-                key={mod.id}
-                module={mod}
-                index={i}
-                active={focusedId === mod.id}
-                onFocus={() => setFocusedId(mod.id)}
-                onBlur={() => {}}
-                onNavigate={() => navigate(mod.primaryHref)}
-              />
-            ))}
-          </div>
+            {/* Core + Ops tiles */}
+            <div className="shrink-0 space-y-1.5">
+              <div className="flex items-center gap-2 px-0.5">
+                <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
+                <span className="text-[9px] font-semibold uppercase tracking-[0.26em] text-white/35">
+                  Core Portfolio
+                </span>
+                <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
+              </div>
+              <div
+                className="grid h-[88px] grid-cols-3 gap-2 sm:h-[96px] sm:gap-2.5"
+                data-tour="compass-pillar-grid"
+              >
+                {CORE_MODULES.map((mod, i) => (
+                  <ModuleTile
+                    key={mod.id}
+                    module={mod}
+                    index={i}
+                    active={focusedId === mod.id}
+                    onFocus={() => setFocusedId(mod.id)}
+                    onBlur={() => {}}
+                    onNavigate={() => navigate(mod.primaryHref)}
+                  />
+                ))}
+              </div>
 
-          <div className="flex items-center gap-2 px-0.5 pt-0.5">
-            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
-            <span className="text-[9px] font-semibold uppercase tracking-[0.26em] text-white/35">
-              Operational Excellence
-            </span>
-            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
+              <div className="flex items-center gap-2 px-0.5 pt-0.5">
+                <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
+                <span className="text-[9px] font-semibold uppercase tracking-[0.26em] text-white/35">
+                  Operational Excellence
+                </span>
+                <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
+              </div>
+              <div
+                className="grid h-[88px] grid-cols-2 gap-2 sm:h-[96px] sm:grid-cols-4 sm:gap-2.5"
+                data-tour="compass-ops-grid"
+              >
+                {OPS_MODULES.map((mod, i) => (
+                  <ModuleTile
+                    key={mod.id}
+                    module={mod}
+                    index={CORE_MODULES.length + i}
+                    active={focusedId === mod.id}
+                    onFocus={() => setFocusedId(mod.id)}
+                    onBlur={() => {}}
+                    onNavigate={() => navigate(mod.primaryHref)}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {engagementOpen && (
+          <div className="min-h-0 flex-1 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.015] p-4 text-center text-[12px] text-white/40">
+            Work only the screens above for this phase. Sidebar Focus mode mirrors them.
+            Close Engagement Mode to browse the full command theater.
           </div>
-          <div
-            className="grid h-[88px] grid-cols-2 gap-2 sm:h-[96px] sm:grid-cols-4 sm:gap-2.5"
-            data-tour="compass-ops-grid"
-          >
-            {OPS_MODULES.map((mod, i) => (
-              <ModuleTile
-                key={mod.id}
-                module={mod}
-                index={CORE_MODULES.length + i}
-                active={focusedId === mod.id}
-                onFocus={() => setFocusedId(mod.id)}
-                onBlur={() => {}}
-                onNavigate={() => navigate(mod.primaryHref)}
-              />
-            ))}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Footer */}
