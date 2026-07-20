@@ -1,10 +1,11 @@
 "use client";
 
-import { Layers, Radio } from "lucide-react";
+import { Layers, Radio, GitBranch } from "lucide-react";
 import { SectionTabs } from "@/components/ui/SectionTabs";
 
 const servicesTabs = [
   { id: "catalog", label: "Service Catalog", href: "/dashboard/services/catalog", icon: Layers },
+  { id: "operating", label: "Operating Blueprint", href: "/dashboard/services/operating", icon: GitBranch },
   { id: "channels", label: "Channel Capabilities", href: "/dashboard/services/channels", icon: Radio },
 ];
 

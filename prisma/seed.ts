@@ -13,6 +13,7 @@ import { seedQualityAssurance } from "../src/lib/qa/seed";
 import { seedFulfilment } from "../src/lib/fulfilment/seed";
 import { seedPerformance } from "../src/lib/kpi/seed";
 import { seedGoldChannelMatrix } from "../src/lib/seed/gold-channel-matrix";
+import { seedOperatingSpine } from "../src/lib/spine/seed";
 
 const prisma = new PrismaClient();
 
@@ -377,6 +378,8 @@ async function main() {
   console.log("  Quality Assurance framework seeded (dimensions, scorecards, reviews, calibration, taxonomy, CAPA)");
   await seedFulfilment(prisma);
   console.log("  Service fulfilment seeded (SLA/OLA, cases, breaches, fulfilment snapshots)");
+  await seedOperatingSpine(prisma);
+  console.log("  Service Operating Spine seeded (episode → journey → SOP → systems → QA)");
   await seedPerformance(prisma);
   console.log("  Performance & VoC seeded (KPI/KQI, measurements, CSAT/NPS, benefits realisation)");
 

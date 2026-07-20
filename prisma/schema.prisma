@@ -404,6 +404,14 @@ model GPSSAService {
   analyses               ServiceAnalysis[]
   channelCapabilities    ServiceChannelCapability[]
   sourceCitations        ServiceSourceCitation[]
+  // Service Operating Spine (RFP leave-behind ops chain)
+  episodes               CustomerEpisode[]
+  journeyStages          JourneyStage[]
+  operatingProcesses     OperatingProcess[]
+  qaScorecards           QAScorecard[]
+  slaDefinitions         SLADefinition[]
+  serviceCases           ServiceCase[]
+  defects                Defect[]
   createdAt              DateTime                   @default(now())
   updatedAt              DateTime                   @updatedAt
 }
@@ -1349,7 +1357,9 @@ model QAScorecard {
   id              String                      @id @default(cuid())
   name            String
   description     String?
-  serviceScope    String? // service name / queue this scorecard governs
+  serviceScope    String? // legacy free-text; prefer serviceId
+  serviceId       String?
+  service         GPSSAService?               @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   status          String                      @default("draft") // draft | active | archived
   criteria        QAScorecardCriterion[]
   samplingPlans   QASamplingPlan[]
@@ -1358,6 +1368,8 @@ model QAScorecard {
   sourceCitations QAScorecardSourceCitation[]
   createdAt       DateTime                    @default(now())
   updatedAt       DateTime                    @updatedAt
+
+  @@index([serviceId])
 }
 
 model QAScorecardCriterion {
@@ -1399,6 +1411,8 @@ model QAReview {
   scorecard         QAScorecard    @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
   serviceName       String?
   caseRef           String
+  caseId            String?
+  case              ServiceCase?   @relation(fields: [caseId], references: [id], onDelete: SetNull)
   reviewer          String?
   totalScore        Float          @default(0)
   customerAccuracy  Boolean        @default(true) // COPC: free of customer-critical error
@@ -1411,6 +1425,7 @@ model QAReview {
   createdAt         DateTime       @default(now())
 
   @@index([scorecardId])
+  @@index([caseId])
 }
 
 model QAReviewItem {
@@ -1476,6 +1491,8 @@ model Defect {
   taxonomyNode     ErrorTaxonomyNode? @relation(fields: [taxonomyNodeId], references: [id], onDelete: SetNull)
   source           String             @default("qa") // qa | fulfilment
   serviceName      String?
+  serviceId        String?
+  service          GPSSAService?      @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   caseRef          String?
   severity         String             @default("major")
   detectedAt       DateTime           @default(now())
@@ -1485,6 +1502,7 @@ model Defect {
   createdAt        DateTime           @default(now())
 
   @@index([taxonomyNodeId])
+  @@index([serviceId])
 }
 
 model CorrectiveAction {
@@ -1526,6 +1544,8 @@ model QAScorecardSourceCitation {
 model SLADefinition {
   id             String          @id @default(cuid())
   serviceName    String?
+  serviceId      String?
+  service        GPSSAService?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   name           String
   tier           String          @default("standard") // bronze | silver | gold | standard
   type           String          @default("sla") // sla | ola
@@ -1539,11 +1559,15 @@ model SLADefinition {
   breaches       Breach[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+
+  @@index([serviceId])
 }
 
 model ServiceCase {
   id              String         @id @default(cuid())
   serviceName     String?
+  serviceId       String?
+  service         GPSSAService?  @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   caseRef         String         @unique
   segment         String         @default("manual-review") // straight-through | manual-review | specialist
   impact          String         @default("medium") // low | medium | high
@@ -1559,9 +1583,11 @@ model ServiceCase {
   breached        Boolean        @default(false)
   breachRiskLevel String         @default("green") // green | amber | red
   breaches        Breach[]
+  qaReviews       QAReview[]
   createdAt       DateTime       @default(now())
 
   @@index([slaId])
+  @@index([serviceId])
 }
 
 model Breach {
@@ -1712,4 +1738,116 @@ model CapabilityTransferItem {
   sortOrder         Int      @default(0)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+
+// ── Service Operating Spine (episode → journey → SOP → systems → QA) ──
+
+model CustomerEpisode {
+  id          String         @id @default(cuid())
+  serviceId   String
+  service     GPSSAService   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  sortOrder   Int            @default(0)
+  stages      JourneyStage[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([serviceId])
+}
+
+model JourneyStage {
+  id          String             @id @default(cuid())
+  serviceId   String
+  service     GPSSAService       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  episodeId   String?
+  episode     CustomerEpisode?   @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  name        String
+  actor       String             @default("agent") // customer | agent | system
+  outcome     String?
+  sortOrder   Int                @default(0)
+  processLinks StageProcessLink[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([serviceId])
+  @@index([episodeId])
+}
+
+model OperatingProcess {
+  id           String              @id @default(cuid())
+  serviceId    String
+  service      GPSSAService        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  ownerHint    String?
+  sops         SopDocument[]
+  systemLinks  ProcessSystemLink[]
+  stageLinks   StageProcessLink[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([serviceId])
+}
+
+model SopDocument {
+  id        String            @id @default(cuid())
+  processId String
+  process   OperatingProcess  @relation(fields: [processId], references: [id], onDelete: Cascade)
+  version   String            @default("1.0")
+  title     String
+  status    String            @default("active") // draft | active | archived
+  steps     SopStep[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([processId])
+}
+
+model SopStep {
+  id            String      @id @default(cuid())
+  sopId         String
+  sop           SopDocument @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  sortOrder     Int         @default(0)
+  title         String
+  instruction   String?
+  qaCheckpoint  Boolean     @default(false)
+  checkpointNote String?
+  createdAt     DateTime    @default(now())
+
+  @@index([sopId])
+}
+
+model BackofficeSystem {
+  id          String              @id @default(cuid())
+  code        String              @unique
+  name        String
+  kind        String              @default("core") // core | crm | channel | other
+  description String?
+  processLinks ProcessSystemLink[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model ProcessSystemLink {
+  id        String           @id @default(cuid())
+  processId String
+  process   OperatingProcess @relation(fields: [processId], references: [id], onDelete: Cascade)
+  systemId  String
+  system    BackofficeSystem @relation(fields: [systemId], references: [id], onDelete: Cascade)
+  role      String           @default("system-of-record") // system-of-record | intake | notify | workflow
+
+  @@unique([processId, systemId])
+  @@index([systemId])
+}
+
+model StageProcessLink {
+  id        String           @id @default(cuid())
+  stageId   String
+  stage     JourneyStage     @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  processId String
+  process   OperatingProcess @relation(fields: [processId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, processId])
+  @@index([processId])
 }

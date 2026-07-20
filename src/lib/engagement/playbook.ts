@@ -75,6 +75,13 @@ export const ENGAGEMENT_PHASES: EngagementPhase[] = [
         job: "diagnose",
       },
       {
+        href: "/dashboard/services/operating",
+        label: "Operating Blueprint",
+        why: "Prove one service end-to-end: episode → SOP → systems → QA.",
+        ownerHint: "Service / QA lead",
+        job: "diagnose",
+      },
+      {
         href: "/dashboard/services/channels",
         label: "Channel Capabilities",
         why: "Map where each service is delivered today.",
@@ -275,6 +282,7 @@ const DEMO_PATH_PREFIXES = [
   "/dashboard/fulfilment",
   "/dashboard/performance",
   "/dashboard/planning",
+  "/dashboard/services/operating",
 ] as const;
 
 export function isDemoDataPath(pathname: string): boolean {

@@ -39,6 +39,8 @@ import { StatBar, type StatBarItem } from "@/components/ui/StatBar";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
 import { MandateBasisChip } from "@/components/mandate/MandateBasisChip";
 import { WorkshopCapture } from "@/components/engagement/WorkshopCapture";
+import { GOLD_SPINE_SERVICE_NAME } from "@/lib/spine/seed";
+import Link from "next/link";
 
 import {
   SERVICE_FUNCTIONS,
@@ -317,14 +319,23 @@ function ServiceCard({
   const score = svcScore(svc);
   const topPain = svc.painPoints?.[0];
   const topOpp = svc.opportunities?.[0];
+  const isGoldSpine = svc.name === GOLD_SPINE_SERVICE_NAME;
   return (
-    <motion.button
+    <motion.div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: Math.min(index, 12) * 0.02 }}
       whileHover={{ y: -2 }}
-      className="relative w-full text-left rounded-xl bg-white/[0.025] border border-white/[0.06] p-3.5 hover:bg-white/[0.05] hover:border-white/[0.14] transition-colors overflow-hidden"
+      className="relative w-full cursor-pointer text-left rounded-xl bg-white/[0.025] border border-white/[0.06] p-3.5 hover:bg-white/[0.05] hover:border-white/[0.14] transition-colors overflow-hidden"
     >
       <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ backgroundColor: fn.color }} />
       <div className="pl-2">
@@ -342,6 +353,15 @@ function ServiceCard({
           </span>
           {aud && (
             <span className="text-[9px] uppercase tracking-wider text-gray-muted">· {aud.shortLabel}</span>
+          )}
+          {isGoldSpine && (
+            <Link
+              href={`/dashboard/services/operating/${svc.id}`}
+              className="rounded bg-[var(--gpssa-green)]/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--gpssa-green)] hover:bg-[var(--gpssa-green)]/25"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Operating spine →
+            </Link>
           )}
         </div>
 
@@ -364,7 +384,7 @@ function ServiceCard({
           )}
         </div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 
@@ -1247,6 +1267,16 @@ export default function ServiceCatalogPage() {
         {detailModal && (
           <div className="space-y-4">
             {detailModal.description && <p className="text-sm text-gray-muted">{detailModal.description}</p>}
+
+            {detailModal.name === GOLD_SPINE_SERVICE_NAME && (
+              <Link
+                href={`/dashboard/services/operating/${detailModal.id}`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--gpssa-green)]/30 bg-[var(--gpssa-green)]/10 px-3 py-2 text-[12px] font-medium text-[var(--gpssa-green)] hover:bg-[var(--gpssa-green)]/20"
+              >
+                View operating spine
+                <ArrowRight size={12} />
+              </Link>
+            )}
 
             {(detailModal.digitalReadiness != null || detailModal.maturityLevel) && (
               <div className="flex items-center gap-4 glass rounded-lg p-3">

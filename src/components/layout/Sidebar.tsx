@@ -90,6 +90,7 @@ const NAV_SECTIONS: NavSection[] = [
     glow: "rgba(45,74,140,0.14)",
     items: [
       { label: "Service Catalog", href: "/dashboard/services/catalog", icon: Layers },
+      { label: "Operating Blueprint", href: "/dashboard/services/operating", icon: GitBranch },
       { label: "Channel Capabilities", href: "/dashboard/services/channels", icon: Radio },
     ],
   },

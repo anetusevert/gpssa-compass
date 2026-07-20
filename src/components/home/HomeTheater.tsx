@@ -21,6 +21,7 @@ import {
   EngagementModePanel,
   EngagementPhaseStrip,
 } from "@/components/engagement/EngagementMode";
+import { OperatingSpine } from "@/components/spine/OperatingSpine";
 import { ENGAGEMENT_FIRST_KEY } from "@/lib/engagement/playbook";
 import { useEngagementStore } from "@/lib/engagement/store";
 
@@ -135,8 +136,8 @@ export function HomeTheater() {
         </h1>
         <p className="mx-auto mt-0.5 max-w-lg text-[12px] text-white/35">
           {engagementOpen
-            ? "You are in the RFP journey — pick a phase, then Start."
-            : "Open Engagement Mode to run the project. Hover modules to see the stage morph."}
+            ? "RFP journey for the project. The operating spine below stays on the service object."
+            : "Trace Episode → Journey → SOP → Systems → QA on a service. Engagement Mode runs the 20-week project."}
         </p>
       </motion.header>
 
@@ -146,14 +147,17 @@ export function HomeTheater() {
         {engagementOpen ? (
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[1.15fr_0.85fr]">
             <EngagementModePanel />
-            <div className="min-h-[180px] lg:min-h-0">
-              <MorphStage
-                module={focused}
-                phaseId={phaseId}
-                engagementOpen
-                onNavigate={navigate}
-                dimmed={false}
-              />
+            <div className="flex min-h-[180px] flex-col gap-2 lg:min-h-0">
+              <div className="min-h-0 flex-1">
+                <MorphStage
+                  module={focused}
+                  phaseId={phaseId}
+                  engagementOpen
+                  onNavigate={navigate}
+                  dimmed={false}
+                />
+              </div>
+              <OperatingSpine compact className="shrink-0" />
             </div>
           </div>
         ) : (
@@ -180,7 +184,9 @@ export function HomeTheater() {
               ))}
             </div>
 
-            <div className="min-h-0 flex-[1.2]">
+            <OperatingSpine className="shrink-0" />
+
+            <div className="min-h-0 flex-1">
               <MorphStage
                 module={focused}
                 phaseId={phaseId}
@@ -198,7 +204,7 @@ export function HomeTheater() {
                 <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
               </div>
               <div
-                className="grid h-[80px] grid-cols-3 gap-2 sm:h-[88px] sm:gap-2.5"
+                className="grid h-[72px] grid-cols-3 gap-2 sm:h-[80px] sm:gap-2.5"
                 data-tour="compass-pillar-grid"
               >
                 {CORE_MODULES.map((mod, i) => (
@@ -222,7 +228,7 @@ export function HomeTheater() {
                 <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
               </div>
               <div
-                className="grid h-[80px] grid-cols-2 gap-2 sm:h-[88px] sm:grid-cols-4 sm:gap-2.5"
+                className="grid h-[72px] grid-cols-2 gap-2 sm:h-[80px] sm:grid-cols-4 sm:gap-2.5"
                 data-tour="compass-ops-grid"
               >
                 {OPS_MODULES.map((mod, i) => (
