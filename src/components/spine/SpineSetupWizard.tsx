@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -33,7 +33,7 @@ export const WIZARD_STEPS: { id: WizardStep; label: string }[] = [
 export function SpineSetupWizard({
   isOpen,
   onClose,
-  initialStep = "persona",
+  entryStep = "persona",
   serviceId,
   serviceName,
   graph,
@@ -50,7 +50,8 @@ export function SpineSetupWizard({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  initialStep?: WizardStep;
+  /** Set only when opening — ignored while the wizard stays open. */
+  entryStep?: WizardStep;
   serviceId: string;
   serviceName: string;
   graph: SpineGraphPayload | null;
@@ -63,14 +64,20 @@ export function SpineSetupWizard({
   onAction: (action: string, payload?: Record<string, unknown>) => Promise<void>;
   onGenerate: () => Promise<void>;
   onApply: () => Promise<void>;
+  /** One-way: lights the matching planet. Does not feed back into entryStep. */
   onStepChange?: (step: WizardStep) => void;
 }) {
-  const [step, setStep] = useState<WizardStep>(initialStep);
+  const [step, setStep] = useState<WizardStep>(entryStep);
   const [category, setCategory] = useState<LifecycleCategory | "all">("all");
+  const wasOpen = useRef(false);
 
+  // One-shot init when the modal opens; ignore entryStep churn while open.
   useEffect(() => {
-    if (isOpen) setStep(initialStep);
-  }, [isOpen, initialStep]);
+    if (isOpen && !wasOpen.current) {
+      setStep(entryStep);
+    }
+    wasOpen.current = isOpen;
+  }, [isOpen, entryStep]);
 
   useEffect(() => {
     if (isOpen) onStepChange?.(step);
@@ -292,7 +299,7 @@ function PersonaStep({
                 }`}
               >
                 {full ? (
-                  <PersonaAvatar persona={full} size="sm" showGlow={active} />
+                  <PersonaAvatar persona={full} size="sm" showGlow={false} />
                 ) : (
                   <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-cream">
                     {p.name.charAt(0)}
