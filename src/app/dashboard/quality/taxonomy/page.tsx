@@ -3,13 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronDown, Network, BarChart3 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { SeverityChip } from "@/components/quality/RiskChip";
 import { ParetoChart, type ParetoDatum } from "@/components/quality/ParetoChart";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { staggerChildren, tileItem } from "@/lib/motion";
 
 interface TaxNode {
   id: string;
@@ -65,94 +63,119 @@ export default function TaxonomyPage() {
     });
   }, [tree]);
 
+  const totalDefects = useMemo(
+    () => tree.reduce((s, n) => s + n.defectCount, 0),
+    [tree]
+  );
+
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Error Taxonomy"
-        description="A shared, severity-tiered defect taxonomy across QA and fulfilment — analysed with Pareto to focus corrective action on the vital few."
-        badge={{ label: "Pareto 80/20", variant: "gold" }}
-      />
-
-      {/* Pareto chart */}
-      <Card variant="glass" padding="md">
-        <div className="mb-3 flex items-center gap-2">
-          <BarChart3 size={16} className="text-teal-400" />
-          <h3 className="font-playfair text-base font-semibold text-cream">
-            Defect Pareto — the vital few
-          </h3>
+    <PageFrame
+      header={
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Network size={16} className="text-teal-400" />
+            <h1 className="font-playfair text-sm font-semibold text-cream sm:text-base">
+              Error Taxonomy
+            </h1>
+          </div>
+          <span className="text-xs text-gray-muted">Pareto 80/20 on shared defects</span>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+              <span className="text-[9px] uppercase tracking-[0.16em] text-white/40">Categories </span>
+              <span className="text-xs font-semibold text-cream">{tree.length}</span>
+            </div>
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+              <span className="text-[9px] uppercase tracking-[0.16em] text-white/40">Defects </span>
+              <span className="text-xs font-semibold text-cream">{totalDefects}</span>
+            </div>
+          </div>
         </div>
-        {pareto.length > 0 ? (
-          <ParetoChart data={pareto} />
-        ) : (
-          <p className="text-sm text-gray-muted">No defects recorded yet.</p>
-        )}
-        <p className="mt-2 text-[11px] text-gray-muted">
-          Highlighted bars are the categories that together account for roughly the first 80% of defect
-          volume — the focus list for root-cause and corrective action.
-        </p>
-      </Card>
-
-      {/* Collapsible tree */}
-      <Card variant="glass" padding="md">
-        <div className="mb-3 flex items-center gap-2">
-          <Network size={16} className="text-teal-400" />
-          <h3 className="font-playfair text-base font-semibold text-cream">Taxonomy tree</h3>
-        </div>
-        <div className="space-y-2">
-          {tree.map((node, i) => {
-            const open = expanded[node.id] ?? false;
-            return (
-              <motion.div
-                key={node.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.03 * i, ease: EASE }}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02]"
-              >
-                <button
-                  onClick={() => setExpanded((m) => ({ ...m, [node.id]: !open }))}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
-                >
-                  {open ? (
-                    <ChevronDown size={15} className="shrink-0 text-gray-muted" />
-                  ) : (
-                    <ChevronRight size={15} className="shrink-0 text-gray-muted" />
-                  )}
-                  <span className="font-mono text-[10px] text-cream/50">{node.code}</span>
-                  <span className="font-medium text-cream">{node.name}</span>
-                  <SeverityChip severity={node.severity} />
-                  <span className="ml-auto text-xs text-gray-muted">
-                    {node.defectCount} defect{node.defectCount === 1 ? "" : "s"}
-                  </span>
-                </button>
-                {open && node.children.length > 0 && (
-                  <div className="space-y-1 px-3 pb-3 pl-9">
-                    {node.children.map((child) => (
-                      <div
-                        key={child.id}
-                        className="flex items-center gap-2 rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2"
-                      >
-                        <span className="font-mono text-[10px] text-cream/40">{child.code}</span>
-                        <span className="text-sm text-cream/80">{child.name}</span>
-                        <SeverityChip severity={child.severity} />
-                        <span className="ml-auto text-xs text-gray-muted">{child.defectCount}</span>
+      }
+    >
+      <div className="grid h-full min-h-0 grid-cols-1 gap-3 overflow-y-auto pb-4 lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)] lg:overflow-visible lg:pb-0">
+        {/* Left: collapsible tree, scrolling */}
+        <div className="glass-card flex min-h-0 flex-col p-4">
+          <div className="mb-2 flex shrink-0 items-center gap-2">
+            <Network size={15} className="text-teal-400" />
+            <h3 className="font-playfair text-sm font-semibold text-cream">Taxonomy tree</h3>
+          </div>
+          <TileScroll className="pr-1">
+            <motion.div variants={staggerChildren} initial="hidden" animate="show" className="space-y-2">
+              {tree.map((node) => {
+                const open = expanded[node.id] ?? false;
+                return (
+                  <motion.div
+                    key={node.id}
+                    variants={tileItem}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.02]"
+                  >
+                    <button
+                      onClick={() => setExpanded((m) => ({ ...m, [node.id]: !open }))}
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+                    >
+                      {open ? (
+                        <ChevronDown size={15} className="shrink-0 text-gray-muted" />
+                      ) : (
+                        <ChevronRight size={15} className="shrink-0 text-gray-muted" />
+                      )}
+                      <span className="font-mono text-[10px] text-cream/50">{node.code}</span>
+                      <span className="font-medium text-cream">{node.name}</span>
+                      <SeverityChip severity={node.severity} />
+                      <span className="ml-auto text-xs text-gray-muted">
+                        {node.defectCount} defect{node.defectCount === 1 ? "" : "s"}
+                      </span>
+                    </button>
+                    {open && node.children.length > 0 && (
+                      <div className="space-y-1 px-3 pb-3 pl-9">
+                        {node.children.map((child) => (
+                          <div
+                            key={child.id}
+                            className="flex items-center gap-2 rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2"
+                          >
+                            <span className="font-mono text-[10px] text-cream/40">{child.code}</span>
+                            <span className="text-sm text-cream/80">{child.name}</span>
+                            <SeverityChip severity={child.severity} />
+                            <span className="ml-auto text-xs text-gray-muted">{child.defectCount}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            );
-          })}
+                    )}
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </TileScroll>
         </div>
-      </Card>
-    </div>
+
+        {/* Right: Pareto chart, fixed tile */}
+        <div className="glass-card flex min-h-0 flex-col p-4">
+          <div className="mb-2 flex shrink-0 items-center gap-2">
+            <BarChart3 size={15} className="text-teal-400" />
+            <h3 className="font-playfair text-sm font-semibold text-cream">
+              Defect Pareto — the vital few
+            </h3>
+          </div>
+          <TileScroll className="pr-1">
+            {pareto.length > 0 ? (
+              <ParetoChart data={pareto} />
+            ) : (
+              <p className="text-sm text-gray-muted">No defects recorded yet.</p>
+            )}
+          </TileScroll>
+          <p className="mt-2 shrink-0 text-[11px] text-gray-muted">
+            Highlighted bars cover the first ~80% of defect volume — the focus list for
+            corrective action.
+          </p>
+        </div>
+      </div>
+    </PageFrame>
   );
 }

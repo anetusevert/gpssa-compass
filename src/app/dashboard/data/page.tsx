@@ -1,19 +1,9 @@
 "use client";
 
 /**
- * Data & Sources — Cinematic RAG Library
- *
- * The unified knowledge layer of the application. Every dataset, source,
- * standard and computed reference is exposed here as a searchable,
- * pivotable, evidence-traceable corpus.
- *
- * Layout:
- *   - Hero: animated counters + universal search
- *   - Constellation: pivot tiles for each entity domain (institutions,
- *     services, products, segments, channels, sources, standards,
- *     computed references), each glowing with a count and live preview.
- *   - Standards Browser highlight strip
- *   - Recent activity / freshness widget
+ * Data & Sources — RAG Library hub.
+ * Slim header (search + counts) with the entity constellation,
+ * standards strip and knowledge graph inside a tile scroll.
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -28,16 +18,16 @@ import {
   Users2,
   ArrowRight,
   Download,
-  Database,
   Search,
   Scale,
   Sigma,
-  Sparkles,
   Network,
   Globe2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ImportOpportunitiesPanel } from "@/components/engagement/ImportOpportunitiesPanel";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
+import { EASE, staggerChildren, tileItem } from "@/lib/motion";
 
 interface DataCounts {
   services: number;
@@ -76,8 +66,6 @@ interface ComputedLite {
   scope: string;
   cohortSize: number;
 }
-
-const EASE = [0.16, 1, 0.3, 1] as const;
 
 const TILES = [
   {
@@ -188,6 +176,17 @@ interface SearchHit {
   href: string;
   color: string;
   icon: typeof Scale;
+}
+
+function StatChip({ label, value, loading }: { label: string; value: number; loading: boolean }) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+      <p className="text-[9px] uppercase tracking-[0.16em] text-white/40">{label}</p>
+      <p className="text-sm font-semibold text-cream tabular-nums">
+        {loading ? "…" : <AnimatedNumber value={value} />}
+      </p>
+    </div>
+  );
 }
 
 export default function DataHubPage() {
@@ -318,205 +317,158 @@ export default function DataHubPage() {
     counts.sources + counts.standards + counts.computed + counts.countries;
 
   return (
-    <div className="relative">
-      {/* ── Ambient glow ── */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden -z-10">
-        <div style={{ position: "absolute", width: 720, height: 720, top: -180, right: -200, background: "radial-gradient(circle,rgba(14,165,233,0.10) 0%,transparent 65%)" }} />
-        <div style={{ position: "absolute", width: 560, height: 560, bottom: -180, left: -180, background: "radial-gradient(circle,rgba(168,85,247,0.10) 0%,transparent 65%)" }} />
-        <div style={{ position: "absolute", width: 480, height: 480, top: 240, left: "30%", background: "radial-gradient(circle,rgba(34,211,238,0.07) 0%,transparent 60%)" }} />
-      </div>
-
-      {/* ═══ HERO ═══ */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: EASE }}
-        className="relative rounded-3xl border border-white/[0.06] p-8 md:p-10 mb-8 overflow-hidden"
-        style={{ background: "radial-gradient(ellipse at top left, rgba(14,165,233,0.10), transparent 50%), radial-gradient(ellipse at bottom right, rgba(168,85,247,0.08), transparent 55%), rgba(8,18,38,0.6)" }}
-      >
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div className="flex-1 min-w-[280px]">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gpssa-green/10 border border-gpssa-green/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-gpssa-green">
-                <Sparkles size={10} /> RAG Library
-              </span>
-              <span className="text-[10px] uppercase tracking-[0.2em] text-gray-muted">v2 · standards-grounded</span>
-            </div>
-            <h1 className="font-playfair text-3xl md:text-4xl font-bold text-cream leading-tight">
-              The single source of truth.
-            </h1>
-            <p className="mt-2 text-sm text-gray-muted leading-relaxed max-w-xl">
-              Every datapoint, every standard, every reference, every citation — all
-              searchable and traceable in one corpus. The data layer that powers
-              every dashboard, every agent and every benchmark in this platform.
-            </p>
-
-            {/* ── Universal search trigger ── */}
-            <button
-              onClick={() => { setSearchOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
-              className="mt-5 inline-flex items-center gap-3 rounded-2xl border border-white/[0.1] bg-white/[0.04] px-4 py-3 text-sm text-gray-muted hover:text-cream hover:bg-white/[0.06] hover:border-white/[0.18] transition-all w-full max-w-md text-left"
-            >
-              <Search size={14} className="text-gpssa-green" />
-              <span className="flex-1">Search the entire knowledge corpus…</span>
-              <span className="hidden sm:inline-flex items-center gap-1 rounded border border-white/10 bg-black/20 px-1.5 py-0.5 text-[10px] font-mono">
-                ⌘ K
-              </span>
-            </button>
+    <PageFrame
+      header={
+        <div className="flex items-center gap-3 border-b border-white/[0.06] pb-3">
+          <div className="shrink-0 rounded-lg border border-gpssa-green/20 bg-gpssa-green/10 p-1.5">
+            <Search size={14} className="text-gpssa-green" />
           </div>
-
-          {/* ── Live count panel ── */}
-          <div className="grid grid-cols-2 gap-3 min-w-[260px]">
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-gray-muted">Total Records</p>
-              <p className="font-playfair text-3xl font-bold text-cream mt-1">
-                {loading ? "…" : <AnimatedNumber value={totalRecords} />}
-              </p>
-            </div>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-gpssa-green/80">Standards</p>
-              <p className="font-playfair text-3xl font-bold text-cream mt-1">
-                {loading ? "…" : <AnimatedNumber value={counts.standards} />}
-              </p>
-            </div>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-400/80">Computed Refs</p>
-              <p className="font-playfair text-3xl font-bold text-cream mt-1">
-                {loading ? "…" : <AnimatedNumber value={counts.computed} />}
-              </p>
-            </div>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-teal-400/80">Sources</p>
-              <p className="font-playfair text-3xl font-bold text-cream mt-1">
-                {loading ? "…" : <AnimatedNumber value={counts.sources} />}
-              </p>
-            </div>
+          <div className="min-w-0">
+            <h1 className="font-playfair text-sm font-bold leading-tight text-cream sm:text-base">Data &amp; Sources</h1>
+            <p className="hidden truncate text-[10px] text-gray-muted sm:block">One searchable, traceable corpus</p>
           </div>
-        </div>
-
-        {isAdmin && (
-          <div className="mt-6 flex items-center gap-2">
-            <Button onClick={handleExport} loading={exporting} variant="secondary" size="sm">
-              <Download size={14} /> Export entire corpus
+          <button
+            onClick={() => { setSearchOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
+            className="ml-2 hidden items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs text-gray-muted transition-all hover:border-white/[0.18] hover:bg-white/[0.06] hover:text-cream md:inline-flex"
+          >
+            <Search size={12} className="text-gpssa-green" />
+            <span>Search corpus…</span>
+            <span className="rounded border border-white/10 bg-black/20 px-1.5 py-0.5 font-mono text-[10px]">⌘K</span>
+          </button>
+          {isAdmin && (
+            <Button onClick={handleExport} loading={exporting} variant="secondary" size="sm" className="hidden lg:inline-flex">
+              <Download size={14} /> Export
             </Button>
-            <span className="text-[10px] text-gray-muted">JSON · all entities · all citations</span>
-          </div>
-        )}
-      </motion.div>
-
-      <div className="mb-8">
-        <ImportOpportunitiesPanel />
-      </div>
-
-      {/* ═══ STANDARDS BROWSER FEATURED STRIP ═══ */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
-        className="mb-8 rounded-2xl border border-cyan-400/15 p-5 overflow-hidden cursor-pointer group"
-        style={{ background: "linear-gradient(120deg, rgba(14,165,233,0.10), rgba(168,85,247,0.06) 60%, rgba(34,211,238,0.08))" }}
-        onClick={() => router.push("/dashboard/data/standards")}
-      >
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="p-3 rounded-xl bg-cyan-400/10 border border-cyan-400/20">
-            <Scale size={22} className="text-cyan-400" />
-          </div>
-          <div className="flex-1 min-w-[260px]">
-            <div className="flex items-center gap-2">
-              <h2 className="font-playfair text-lg font-bold text-cream">Standards Browser</h2>
-              <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-400/10 border border-cyan-400/20">New</span>
-            </div>
-            <p className="text-xs text-gray-muted mt-0.5">
-              Browse every requirement of every globally accepted reference framework — ILO C102 / C128 / R202, ISSA SQ / ICT / Gov, World Bank GTMI, OECD PaaG, Mercer GPI, UN E-Gov.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {standards.slice(0, 10).map((s) => (
-                <span
-                  key={s.slug}
-                  className="rounded-md px-1.5 py-0.5 text-[10px] font-medium border border-cyan-400/20 text-cyan-300 bg-cyan-400/5"
-                >
-                  {s.code ?? s.bodyShort ?? s.title}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 text-cyan-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-            Open browser <ArrowRight size={14} />
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <StatChip label="Records" value={totalRecords} loading={loading} />
+            <StatChip label="Standards" value={counts.standards} loading={loading} />
+            <StatChip label="Refs" value={counts.computed} loading={loading} />
+            <StatChip label="Sources" value={counts.sources} loading={loading} />
           </div>
         </div>
-      </motion.div>
+      }
+    >
+      <TileScroll className="relative pt-4">
+        {/* ── Ambient glow ── */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div style={{ position: "absolute", width: 720, height: 720, top: -180, right: -200, background: "radial-gradient(circle,rgba(14,165,233,0.10) 0%,transparent 65%)" }} />
+          <div style={{ position: "absolute", width: 560, height: 560, bottom: -180, left: -180, background: "radial-gradient(circle,rgba(168,85,247,0.10) 0%,transparent 65%)" }} />
+        </div>
 
-      {/* ═══ ENTITY CONSTELLATION ═══ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {TILES.map((tile, i) => {
-          const Icon = tile.icon;
-          const count = counts[tile.countKey];
-          return (
-            <motion.button
-              key={tile.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: EASE, delay: 0.05 + i * 0.04 }}
-              onClick={() => router.push(tile.href)}
-              className="group relative rounded-2xl border border-white/[0.06] p-4 text-left transition-all duration-300 hover:border-white/[0.18] hover:bg-white/[0.03] overflow-hidden"
-              style={{ background: `linear-gradient(135deg, ${tile.color}06, transparent 60%), rgba(8,18,38,0.5)` }}
-            >
-              <div
-                className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                style={{ background: `radial-gradient(ellipse at top left, ${tile.color}15, transparent 60%)` }}
-              />
-              <div className="relative z-10">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="p-2 rounded-lg" style={{ background: `${tile.color}1a`, border: `1px solid ${tile.color}33` }}>
-                    <Icon size={16} style={{ color: tile.color }} />
-                  </div>
-                  <p className="font-playfair text-2xl font-bold text-cream tabular-nums">
-                    {loading ? "…" : <AnimatedNumber value={count} />}
-                  </p>
-                </div>
-                <h3 className="text-sm font-semibold text-cream">{tile.label}</h3>
-                <p className="text-[11px] text-gray-muted leading-snug mt-1 line-clamp-2">
-                  {tile.description}
-                </p>
-                <div className="mt-3 flex items-center gap-1 text-[11px] font-medium opacity-70 group-hover:opacity-100 transition-opacity" style={{ color: tile.color }}>
-                  Open <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
-                </div>
+        <div className="mb-6">
+          <ImportOpportunitiesPanel />
+        </div>
+
+        {/* ═══ STANDARDS BROWSER FEATURED STRIP ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
+          className="group mb-6 cursor-pointer overflow-hidden rounded-2xl border border-cyan-400/15 p-4"
+          style={{ background: "linear-gradient(120deg, rgba(14,165,233,0.10), rgba(168,85,247,0.06) 60%, rgba(34,211,238,0.08))" }}
+          onClick={() => router.push("/dashboard/data/standards")}
+        >
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-2.5">
+              <Scale size={18} className="text-cyan-400" />
+            </div>
+            <div className="min-w-[240px] flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="font-playfair text-base font-bold text-cream">Standards Browser</h2>
+                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-400">New</span>
               </div>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* ═══ KNOWLEDGE GRAPH HINT (links between entities) ═══ */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-        className="rounded-2xl border border-white/[0.06] bg-black/20 p-5"
-      >
-        <div className="flex items-start gap-3">
-          <Network size={20} className="text-purple-400 mt-1" />
-          <div className="flex-1">
-            <h3 className="font-playfair text-base font-bold text-cream">Knowledge Graph</h3>
-            <p className="text-xs text-gray-muted mt-1 leading-relaxed">
-              Every entity in this corpus is linked. Services cite Standards. Standards cite Sources.
-              Countries inherit Computed References. Products map to Segments. Click any record to
-              traverse the citation chain backwards to the original publisher.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-              <Badge color="#10B981" label="Institutions" count={counts.institutions} />
-              <ArrowRight size={10} className="text-gray-muted" />
-              <Badge color="#3B82F6" label="Services" count={counts.services} />
-              <ArrowRight size={10} className="text-gray-muted" />
-              <Badge color="#0EA5E9" label="Standards" count={counts.standards} />
-              <ArrowRight size={10} className="text-gray-muted" />
-              <Badge color="#2DD4BF" label="Sources" count={counts.sources} />
-              <span className="ml-auto text-gray-muted/60">
-                ≈ {Math.round(totalRecords * 1.6).toLocaleString()} edges
-              </span>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {standards.slice(0, 10).map((s) => (
+                  <span
+                    key={s.slug}
+                    className="rounded-md border border-cyan-400/20 bg-cyan-400/5 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300"
+                  >
+                    {s.code ?? s.bodyShort ?? s.title}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm font-medium text-cyan-400 transition-transform group-hover:translate-x-1">
+              Open browser <ArrowRight size={14} />
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+
+        {/* ═══ ENTITY CONSTELLATION ═══ */}
+        <motion.div
+          variants={staggerChildren}
+          initial="hidden"
+          animate="show"
+          className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {TILES.map((tile) => {
+            const Icon = tile.icon;
+            const count = counts[tile.countKey];
+            return (
+              <motion.button
+                key={tile.id}
+                variants={tileItem}
+                onClick={() => router.push(tile.href)}
+                className="group relative overflow-hidden rounded-2xl border border-white/[0.06] p-4 text-left transition-all duration-300 hover:border-white/[0.18] hover:bg-white/[0.03]"
+                style={{ background: `linear-gradient(135deg, ${tile.color}06, transparent 60%), rgba(8,18,38,0.5)` }}
+              >
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                  style={{ background: `radial-gradient(ellipse at top left, ${tile.color}15, transparent 60%)` }}
+                />
+                <div className="relative z-10">
+                  <div className="mb-3 flex items-start justify-between">
+                    <div className="rounded-lg p-2" style={{ background: `${tile.color}1a`, border: `1px solid ${tile.color}33` }}>
+                      <Icon size={16} style={{ color: tile.color }} />
+                    </div>
+                    <p className="font-playfair text-2xl font-bold tabular-nums text-cream">
+                      {loading ? "…" : <AnimatedNumber value={count} />}
+                    </p>
+                  </div>
+                  <h3 className="text-sm font-semibold text-cream">{tile.label}</h3>
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-gray-muted">
+                    {tile.description}
+                  </p>
+                  <div className="mt-3 flex items-center gap-1 text-[11px] font-medium opacity-70 transition-opacity group-hover:opacity-100" style={{ color: tile.color }}>
+                    Open <ArrowRight size={11} className="transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                </div>
+              </motion.button>
+            );
+          })}
+        </motion.div>
+
+        {/* ═══ KNOWLEDGE GRAPH HINT (links between entities) ═══ */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="rounded-2xl border border-white/[0.06] bg-black/20 p-5"
+        >
+          <div className="flex items-start gap-3">
+            <Network size={20} className="mt-1 text-purple-400" />
+            <div className="flex-1">
+              <h3 className="font-playfair text-base font-bold text-cream">Knowledge Graph</h3>
+              <p className="mt-1 text-xs leading-relaxed text-gray-muted">
+                Every entity is linked — traverse any citation chain back to its publisher.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+                <Badge color="#10B981" label="Institutions" count={counts.institutions} />
+                <ArrowRight size={10} className="text-gray-muted" />
+                <Badge color="#3B82F6" label="Services" count={counts.services} />
+                <ArrowRight size={10} className="text-gray-muted" />
+                <Badge color="#0EA5E9" label="Standards" count={counts.standards} />
+                <ArrowRight size={10} className="text-gray-muted" />
+                <Badge color="#2DD4BF" label="Sources" count={counts.sources} />
+                <span className="ml-auto text-gray-muted/60">
+                  ≈ {Math.round(totalRecords * 1.6).toLocaleString()} edges
+                </span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </TileScroll>
 
       {/* ═══ UNIVERSAL SEARCH MODAL ═══ */}
       <AnimatePresence>
@@ -585,7 +537,7 @@ export default function DataHubPage() {
           </>
         )}
       </AnimatePresence>
-    </div>
+    </PageFrame>
   );
 }
 

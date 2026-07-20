@@ -9,6 +9,7 @@ import { BriefingDeck } from "@/components/briefing/BriefingDeck";
 import { CompassTour } from "@/components/tour/CompassTour";
 import { DemoDataBanner } from "@/components/engagement/DemoDataBanner";
 import { NextActionBar } from "@/components/engagement/NextActionBar";
+import { SpineRibbon } from "@/components/spine/SpineRibbon";
 
 const SIDEBAR_EXPANDED = 260;
 const SIDEBAR_COLLAPSED = 56;
@@ -37,6 +38,7 @@ export default function DashboardLayout({
           <div className="shrink-0">
             <DemoDataBanner pathname={pathname} />
             <NextActionBar pathname={pathname} />
+            <SpineRibbon pathname={pathname} />
           </div>
         )}
         <motion.div

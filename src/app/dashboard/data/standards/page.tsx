@@ -40,6 +40,8 @@ import {
   X,
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
+import { EASE } from "@/lib/motion";
 
 interface StandardRequirement {
   id: string;
@@ -97,8 +99,6 @@ interface ComputedRef {
     standardCompliance: Record<string, number>;
   };
 }
-
-const EASE = [0.16, 1, 0.3, 1] as const;
 
 /* Body palette */
 const BODY_COLOR: Record<string, string> = {
@@ -211,38 +211,30 @@ function StandardsBrowserView() {
   }, [computed, query]);
 
   return (
-    <div className="relative">
-      {/* ambient glow */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden -z-10">
-        <div style={{ position: "absolute", width: 600, height: 600, top: -180, right: -180, background: "radial-gradient(circle,rgba(14,165,233,0.10) 0%,transparent 65%)" }} />
-        <div style={{ position: "absolute", width: 540, height: 540, bottom: -200, left: -180, background: "radial-gradient(circle,rgba(34,211,238,0.08) 0%,transparent 60%)" }} />
-      </div>
-
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
-        <div>
-          <button
-            onClick={() => router.push("/dashboard/data")}
-            className="text-xs text-gray-muted hover:text-cream inline-flex items-center gap-1.5 mb-2"
-          >
-            <ArrowLeft size={12} /> Back to Data Library
+    <PageFrame
+      header={
+        <div className="flex items-center gap-3 border-b border-white/[0.06] pb-3">
+          <button onClick={() => router.push("/dashboard/data")} className="shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10">
+            <ArrowLeft className="h-4 w-4 text-white/60" />
           </button>
-          <h1 className="font-playfair text-2xl md:text-3xl font-bold text-cream">Standards Browser</h1>
-          <p className="text-sm text-gray-muted mt-1 max-w-2xl">
-            Every requirement of every globally accepted reference framework, plus the
-            computed cohorts that benchmark institutions against their peers. The
-            grounding layer for every comparator in the application.
-          </p>
+          <div className="shrink-0 rounded-lg border border-cyan-400/20 bg-cyan-400/10 p-1.5">
+            <Scale size={14} className="text-cyan-400" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="font-playfair text-sm font-bold leading-tight text-cream sm:text-base">Standards Browser</h1>
+            <p className="hidden truncate text-[10px] text-gray-muted sm:block">The grounding layer for every comparator</p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Stat label="Standards" value={standards.length} color="#0EA5E9" />
+            <Stat label="Requirements" value={standards.reduce((a, s) => a + s.requirements.length, 0)} color="#A855F7" />
+            <Stat label="Computed" value={computed.length} color="#22D3EE" />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Stat label="Standards" value={standards.length} color="#0EA5E9" />
-          <Stat label="Requirements" value={standards.reduce((a, s) => a + s.requirements.length, 0)} color="#A855F7" />
-          <Stat label="Computed Refs" value={computed.length} color="#22D3EE" />
-        </div>
-      </div>
-
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col gap-3 pt-3">
       {/* Tabs + search */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+      <div className="flex shrink-0 items-center justify-between flex-wrap gap-3">
         <div className="inline-flex items-center gap-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-1">
           {TABS.map((t) => {
             const Icon = t.icon;
@@ -287,8 +279,9 @@ function StandardsBrowserView() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>
+        <div className="flex min-h-0 flex-1 items-center justify-center"><LoadingSpinner size="lg" /></div>
       ) : (
+        <TileScroll className="pb-4">
         <AnimatePresence mode="wait">
           {tab === "standards" && (
             <motion.div
@@ -342,7 +335,9 @@ function StandardsBrowserView() {
             </motion.div>
           )}
         </AnimatePresence>
+        </TileScroll>
       )}
+      </div>
 
       {/* Standard detail drawer */}
       <AnimatePresence>
@@ -357,7 +352,7 @@ function StandardsBrowserView() {
           </DetailDrawer>
         )}
       </AnimatePresence>
-    </div>
+    </PageFrame>
   );
 }
 

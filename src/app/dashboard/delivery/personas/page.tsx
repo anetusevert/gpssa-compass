@@ -12,7 +12,7 @@ import {
   ArrowLeftRight,
   MapPin,
 } from "lucide-react";
-import { personas, getCoverageStatus, getCoverageLabel, type Persona } from "@/data/personas";
+import { personas, getCoverageStatus, type Persona } from "@/data/personas";
 import { PersonaCard, PersonaDetailModal } from "@/components/personas";
 import type { ResearchedPersona } from "@/components/personas/PersonaDetailModal";
 import { useResearchUpdates } from "@/lib/hooks/useResearchUpdates";
@@ -121,6 +121,14 @@ export default function CustomerPersonasPage() {
   }, []);
 
   useEffect(() => { loadPersonas(); }, [loadPersonas]);
+
+  // Deep-link: ?persona=<id> opens that persona's profile modal.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("persona");
+    if (!id) return;
+    const match = personas.find((p) => p.id === id);
+    if (match) setSelectedPersona(match);
+  }, []);
 
   useResearchUpdates({
     targetScreens: ["delivery-personas"],

@@ -405,7 +405,7 @@ export default function GlobalAtlasPage() {
   }, [router]);
 
   return (
-    <div className="relative" style={{ height: "calc(100vh - 148px)", minHeight: 520 }}>
+    <div className="relative flex h-full min-h-0 flex-col">
 
       {/* ── CINEMATIC MAP CONTAINER ── */}
       <div

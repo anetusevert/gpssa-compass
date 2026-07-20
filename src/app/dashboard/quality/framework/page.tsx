@@ -12,16 +12,15 @@ import {
   Users,
   RefreshCw,
   Scale,
+  LayoutGrid,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { Card } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { CopcFamilyBadge } from "@/components/quality/CopcFamilyBadge";
 import { PilotServiceSet } from "@/components/engagement/PilotServiceSet";
 import { WorkshopCapture } from "@/components/engagement/WorkshopCapture";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { staggerChildren, tileItem } from "@/lib/motion";
 
 interface Dimension {
   id: string;
@@ -45,22 +44,22 @@ const GOVERNANCE = [
   {
     icon: FileText,
     title: "Sampling rules",
-    body: "A statistically valid random base sample per queue (95% confidence, 5% margin) for unbiased trend measurement, plus a risk-weighted overlay over high-value payments, vulnerable beneficiaries, new staff and recently-changed processes.",
+    body: "Statistically valid random base sample per queue (95% confidence, 5% margin), plus a risk-weighted overlay on high-value payments, vulnerable beneficiaries and new staff.",
   },
   {
     icon: RefreshCw,
     title: "Calibration cadence",
-    body: "Calibrate weekly when launching a scorecard; shift to monthly once inter-rater reliability consistently exceeds ~85%. Re-calibrate after policy changes, scorecard edits or new evaluators.",
+    body: "Weekly at launch; monthly once inter-rater reliability exceeds ~85%. Re-calibrate after policy or scorecard changes.",
   },
   {
     icon: Users,
     title: "Evaluator independence",
-    body: "Reviews are performed independently of case handling. Disputes follow a documented appeal path, and results feed coaching and corrective action — not punitive scoring alone.",
+    body: "Reviews are independent of case handling, with a documented appeal path. Results feed coaching, not punitive scoring.",
   },
   {
     icon: Scale,
     title: "Scoring model",
-    body: "Quality is reported as three parallel COPC metrics — Customer-, Business- and Compliance-critical accuracy — never a single blended score, paired with a weighted non-critical score for coaching.",
+    body: "Three parallel COPC metrics — Customer-, Business- and Compliance-critical accuracy — never a single blended score.",
   },
 ];
 
@@ -91,107 +90,121 @@ export default function QualityFrameworkPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Quality Framework"
-        description="Job 3 — Design/pilot QA. Dimensions, policy, and the pilot service set before sector rollout."
-        badge={{ label: "COPC · ISO · ISSA", variant: "green" }}
-      />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <PilotServiceSet />
-        <WorkshopCapture
-          entityType="general"
-          entityId="qa-framework-workshop"
-          label="QA discovery notes (B1–B2)"
-          placeholder="Current quality practices, gaps, and design decisions from workshops…"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Quality dimensions" value={dimensions.length} icon={Layers} trend="neutral" />
-        <StatCard label="Active scorecards" value={scorecardCount} icon={ClipboardCheck} trend="neutral" />
-        <StatCard
-          label="Compliance accuracy"
-          value={complianceAccuracy != null ? `${complianceAccuracy}%` : "—"}
-          icon={ShieldCheck}
-          trend={complianceAccuracy != null && complianceAccuracy >= 95 ? "up" : "neutral"}
-        />
-      </div>
-
-      <div>
-        <h2 className="mb-3 font-playfair text-lg font-semibold text-cream">
-          The six dimensions of quality
-        </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {dimensions.map((d, i) => (
-            <motion.div
-              key={d.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.04 * i, ease: EASE }}
-            >
-              <Card variant="glass" padding="md" className="h-full">
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Target size={16} className="text-teal-400" />
-                    <h3 className="font-playfair text-base font-semibold text-cream">{d.name}</h3>
-                  </div>
-                  <CopcFamilyBadge family={d.copcFamily} />
-                </div>
-                <p className="text-sm leading-relaxed text-gray-muted">{d.definition}</p>
-                <div className="mt-3 flex items-center gap-2 text-[11px] text-cream/60">
-                  <span className="uppercase tracking-wide">Weight</span>
-                  <span className="font-medium text-cream/80">×{d.weight.toFixed(1)}</span>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
+    <PageFrame
+      header={
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <LayoutGrid size={16} className="text-teal-400" />
+            <h1 className="font-playfair text-sm font-semibold text-cream sm:text-base">
+              Quality Framework
+            </h1>
+          </div>
+          <span className="text-xs text-gray-muted">COPC · ISO · ISSA</span>
+          <div className="ml-auto flex items-center gap-2">
+            <StatChip icon={Layers} label="Dimensions" value={String(dimensions.length)} />
+            <StatChip icon={ClipboardCheck} label="Scorecards" value={String(scorecardCount)} />
+            <StatChip
+              icon={ShieldCheck}
+              label="Compliance"
+              value={complianceAccuracy != null ? `${complianceAccuracy}%` : "—"}
+            />
+          </div>
         </div>
-      </div>
+      }
+    >
+      <TileScroll className="h-full pr-1">
+        <motion.div variants={staggerChildren} initial="hidden" animate="show" className="space-y-4 pb-4">
+          <motion.div variants={tileItem} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <PilotServiceSet />
+            <WorkshopCapture
+              entityType="general"
+              entityId="qa-framework-workshop"
+              label="QA discovery notes (B1–B2)"
+              placeholder="Current quality practices, gaps, and design decisions from workshops…"
+            />
+          </motion.div>
 
-      <div>
-        <h2 className="mb-3 font-playfair text-lg font-semibold text-cream">
-          QA policy & governance
-        </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {GOVERNANCE.map((g, i) => {
-            const Icon = g.icon;
-            return (
-              <motion.div
-                key={g.title}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.04 * i, ease: EASE }}
-              >
-                <Card variant="bordered" padding="md" className="h-full">
-                  <div className="mb-2 flex items-center gap-2">
-                    <div className="rounded-lg bg-teal-400/10 p-1.5">
-                      <Icon size={15} className="text-teal-400" />
+          <motion.div variants={tileItem}>
+            <h2 className="mb-2 font-playfair text-sm font-semibold text-cream">
+              The six dimensions of quality
+            </h2>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {dimensions.map((d) => (
+                <Card key={d.id} variant="glass" padding="md" className="h-full">
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Target size={16} className="text-teal-400" />
+                      <h3 className="font-playfair text-base font-semibold text-cream">{d.name}</h3>
                     </div>
-                    <h3 className="font-medium text-cream">{g.title}</h3>
+                    <CopcFamilyBadge family={d.copcFamily} />
                   </div>
-                  <p className="text-sm leading-relaxed text-gray-muted">{g.body}</p>
+                  <p className="text-sm leading-relaxed text-gray-muted">{d.definition}</p>
+                  <div className="mt-3 flex items-center gap-2 text-[11px] text-cream/60">
+                    <span className="uppercase tracking-wide">Weight</span>
+                    <span className="font-medium text-cream/80">×{d.weight.toFixed(1)}</span>
+                  </div>
                 </Card>
-              </motion.div>
-            );
-          })}
-        </div>
-        <div className="mt-4 flex items-start gap-2 rounded-xl border border-gpssa-green/20 bg-gpssa-green/5 p-4">
-          <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-gpssa-green" />
-          <p className="text-sm text-gray-muted">
-            A written QA policy fixes scope, evaluator independence, sampling and scoring rules,
-            calibration cadence, the dispute/appeal process and how results feed coaching — the
-            ISSA &ldquo;permanent evaluation mechanism&rdquo; expressed as a COPC-grade discipline.
-          </p>
-        </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div variants={tileItem}>
+            <h2 className="mb-2 font-playfair text-sm font-semibold text-cream">
+              QA policy &amp; governance
+            </h2>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {GOVERNANCE.map((g) => {
+                const Icon = g.icon;
+                return (
+                  <Card key={g.title} variant="bordered" padding="md" className="h-full">
+                    <div className="mb-2 flex items-center gap-2">
+                      <div className="rounded-lg bg-teal-400/10 p-1.5">
+                        <Icon size={15} className="text-teal-400" />
+                      </div>
+                      <h3 className="font-medium text-cream">{g.title}</h3>
+                    </div>
+                    <p className="text-sm leading-relaxed text-gray-muted">{g.body}</p>
+                  </Card>
+                );
+              })}
+            </div>
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-gpssa-green/20 bg-gpssa-green/5 p-3">
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-gpssa-green" />
+              <p className="text-sm text-gray-muted">
+                A written QA policy fixes scope, independence, sampling, scoring, calibration
+                cadence and appeals — the ISSA &ldquo;permanent evaluation mechanism&rdquo; as a
+                COPC-grade discipline.
+              </p>
+            </div>
+          </motion.div>
+        </motion.div>
+      </TileScroll>
+    </PageFrame>
+  );
+}
+
+function StatChip({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Layers;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+      <Icon size={13} className="text-teal-400" />
+      <div className="flex flex-col leading-tight">
+        <span className="text-[9px] uppercase tracking-[0.16em] text-white/40">{label}</span>
+        <span className="text-xs font-semibold text-cream">{value}</span>
       </div>
     </div>
   );

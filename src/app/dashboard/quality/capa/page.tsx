@@ -10,14 +10,13 @@ import {
   GitBranch,
   CheckCircle2,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { staggerChildren, tileItem } from "@/lib/motion";
 
 interface CorrectiveAction {
   id: string;
@@ -112,27 +111,38 @@ export default function CapaPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Corrective Actions (CAPA)"
-        description="Root-cause analysis plus corrective/preventive actions with owners, due dates and effectiveness checks — wrapped in PDCA / DMAIC."
-        badge={{ label: `${actions.length} actions`, variant: "gold" }}
-        actions={
-          <Button variant="secondary" size="sm" onClick={() => setAiOpen(true)}>
-            <Sparkles size={15} />
-            Suggest root causes (AI)
-          </Button>
-        }
-      />
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <PageFrame
+      header={
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Wrench size={16} className="text-teal-400" />
+            <h1 className="font-playfair text-sm font-semibold text-cream sm:text-base">
+              Corrective Actions (CAPA)
+            </h1>
+          </div>
+          <span className="text-xs text-gray-muted">Root cause to verified fix</span>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+              <span className="text-[9px] uppercase tracking-[0.16em] text-white/40">Actions </span>
+              <span className="text-xs font-semibold text-cream">{actions.length}</span>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => setAiOpen(true)}>
+              <Sparkles size={15} />
+              Suggest root causes (AI)
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <TileScroll className="h-full pr-1">
+      <div className="grid grid-cols-1 gap-4 pb-4 md:grid-cols-2 xl:grid-cols-4">
         {COLUMNS.map((col) => {
           const cards = actions.filter((a) => a.status === col.id);
           return (
@@ -145,14 +155,14 @@ export default function CapaPage() {
                   {cards.length}
                 </Badge>
               </div>
-              <div className="space-y-3">
-                {cards.map((a, i) => (
-                  <motion.div
-                    key={a.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.03 * i, ease: EASE }}
-                  >
+              <motion.div
+                variants={staggerChildren}
+                initial="hidden"
+                animate="show"
+                className="space-y-3"
+              >
+                {cards.map((a) => (
+                  <motion.div key={a.id} variants={tileItem}>
                     <Card variant="bordered" padding="sm" className="h-full">
                       <div className="mb-2 flex items-start gap-2">
                         <Wrench size={14} className="mt-0.5 shrink-0 text-teal-400" />
@@ -199,11 +209,12 @@ export default function CapaPage() {
                     None
                   </p>
                 )}
-              </div>
+              </motion.div>
             </div>
           );
         })}
       </div>
+      </TileScroll>
 
       {/* AI rootcause modal */}
       <Modal
@@ -290,6 +301,6 @@ export default function CapaPage() {
           )}
         </div>
       </Modal>
-    </div>
+    </PageFrame>
   );
 }

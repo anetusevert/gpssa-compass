@@ -31,9 +31,9 @@ export default function FulfilmentLayout({
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      <SectionTabs items={fulfilmentTabs} pillar="products" />
-      {children}
+    <div className="flex h-full min-h-0 flex-col gap-4 p-6 lg:p-8">
+      <SectionTabs items={fulfilmentTabs} pillar="products" className="shrink-0" />
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }

@@ -4,25 +4,21 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
-  Shield,
-  Briefcase,
-  Building2,
   UserPlus,
   Mail,
   Pencil,
   Trash2,
   Camera,
   Loader2,
-  Sparkles,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
-import { StatCard } from "@/components/ui/StatCard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
+import { fadeRise } from "@/lib/motion";
 
 interface UserRecord {
   id: string;
@@ -204,138 +200,162 @@ export default function UsersPage() {
     return "green";
   };
 
+  const header = (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="p-1.5 rounded-lg bg-white/5 shrink-0">
+          <Users size={16} className="text-gpssa-green" />
+        </div>
+        <h1 className="font-playfair text-sm sm:text-base font-semibold text-cream">
+          User Management
+        </h1>
+        <span className="hidden sm:inline text-xs text-gray-muted">Platform users & roles</span>
+      </div>
+      <Button onClick={() => setShowAddModal(true)} size="sm">
+        <UserPlus size={16} />
+        Add User
+      </Button>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="space-y-8">
-        <PageHeader title="User Management" description="Manage platform users and roles" />
-        <div className="flex justify-center py-16">
+      <PageFrame header={header}>
+        <div className="flex h-full items-center justify-center">
           <LoadingSpinner size="lg" />
         </div>
-      </div>
+      </PageFrame>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="User Management"
-        description="Manage platform users and roles"
-        actions={
-          <Button onClick={() => setShowAddModal(true)} size="sm">
-            <UserPlus size={16} />
-            Add User
-          </Button>
-        }
-      />
+    <PageFrame header={header}>
+      <motion.div
+        variants={fadeRise}
+        initial="hidden"
+        animate="show"
+        className="flex h-full min-h-0 flex-col gap-4"
+      >
+        {/* Compact stat strip */}
+        <div className="flex flex-wrap gap-2 shrink-0">
+          {[
+            { label: "Total Users", value: stats.total },
+            { label: "Admins", value: stats.admins },
+            { label: "Consultants", value: stats.consultants },
+            { label: "GPSSA", value: stats.gpssa },
+            { label: "Demo", value: stats.demo },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2"
+            >
+              <p className="text-[9px] uppercase tracking-[0.16em] text-white/40">{s.label}</p>
+              <p className="text-sm font-semibold text-cream tabular-nums">{s.value}</p>
+            </div>
+          ))}
+        </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard label="Total Users" value={stats.total} icon={Users} />
-        <StatCard label="Admins" value={stats.admins} icon={Shield} />
-        <StatCard label="Consultants" value={stats.consultants} icon={Briefcase} />
-        <StatCard label="GPSSA Employees" value={stats.gpssa} icon={Building2} />
-        <StatCard label="Demo Accounts" value={stats.demo} icon={Sparkles} />
-      </div>
-
-      <Card>
-        {users.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No users yet"
-            description="Add your first user to get started"
-            action={{ label: "Add User", onClick: () => setShowAddModal(true) }}
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">User</th>
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium hidden sm:table-cell">Email</th>
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Role</th>
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium hidden md:table-cell">Type</th>
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium hidden lg:table-cell">Joined</th>
-                  <th className="text-right py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {users.map((user) => (
-                  <motion.tr
-                    key={user.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-3">
-                        <div className="relative w-8 h-8 shrink-0">
-                          {user.avatar ? (
-                            <img
-                              src={user.avatar}
-                              alt={user.name}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gpssa-green/30 to-adl-blue/30 flex items-center justify-center text-cream text-xs font-bold">
-                              {user.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
+        <Card className="flex min-h-0 flex-1 flex-col">
+          {users.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No users yet"
+              description="Add your first user to get started"
+              action={{ label: "Add User", onClick: () => setShowAddModal(true) }}
+            />
+          ) : (
+            <TileScroll className="-mx-1 px-1">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-navy z-10">
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">User</th>
+                    <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium hidden sm:table-cell">Email</th>
+                    <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Role</th>
+                    <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium hidden md:table-cell">Type</th>
+                    <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium hidden lg:table-cell">Joined</th>
+                    <th className="text-right py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {users.map((user) => (
+                    <motion.tr
+                      key={user.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="hover:bg-white/[0.02] transition-colors"
+                    >
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-8 h-8 shrink-0">
+                            {user.avatar ? (
+                              <img
+                                src={user.avatar}
+                                alt={user.name}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gpssa-green/30 to-adl-blue/30 flex items-center justify-center text-cream text-xs font-bold">
+                                {user.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-cream">{user.name}</p>
+                            <p className="text-xs text-gray-muted sm:hidden">{user.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-cream">{user.name}</p>
-                          <p className="text-xs text-gray-muted sm:hidden">{user.email}</p>
+                      </td>
+                      <td className="py-3 px-3 hidden sm:table-cell">
+                        <span className="text-gray-muted text-xs">{user.email}</span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          className="px-2 py-1 rounded-lg text-xs bg-transparent border border-white/10 text-cream focus:outline-none focus:ring-1 focus:ring-gpssa-green/50 cursor-pointer"
+                        >
+                          <option value="viewer">Viewer</option>
+                          <option value="editor">Editor</option>
+                          <option value="user">User (legacy editor)</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </td>
+                      <td className="py-3 px-3 hidden md:table-cell">
+                        <Badge variant={typeVariant(user.userType)} size="sm">
+                          {user.userType.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3 hidden lg:table-cell">
+                        <span className="text-xs text-gray-muted">
+                          {new Date(user.createdAt).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => openEditModal(user)}
+                            className="p-1.5 rounded-lg text-gray-muted hover:text-cream hover:bg-white/5 transition-colors"
+                            title="Edit user"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(user)}
+                            className="p-1.5 rounded-lg text-gray-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                            title="Delete user"
+                          >
+                            <Trash2 size={15} />
+                          </button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 hidden sm:table-cell">
-                      <span className="text-gray-muted text-xs">{user.email}</span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                        className="px-2 py-1 rounded-lg text-xs bg-transparent border border-white/10 text-cream focus:outline-none focus:ring-1 focus:ring-gpssa-green/50 cursor-pointer"
-                      >
-                        <option value="viewer">Viewer</option>
-                        <option value="editor">Editor</option>
-                        <option value="user">User (legacy editor)</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </td>
-                    <td className="py-3 px-3 hidden md:table-cell">
-                      <Badge variant={typeVariant(user.userType)} size="sm">
-                        {user.userType.toUpperCase()}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-3 hidden lg:table-cell">
-                      <span className="text-xs text-gray-muted">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openEditModal(user)}
-                          className="p-1.5 rounded-lg text-gray-muted hover:text-cream hover:bg-white/5 transition-colors"
-                          title="Edit user"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(user)}
-                          className="p-1.5 rounded-lg text-gray-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                          title="Delete user"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </TileScroll>
+          )}
+        </Card>
+      </motion.div>
 
       {/* Add User Modal */}
       <Modal
@@ -562,6 +582,6 @@ export default function UsersPage() {
           </div>
         </div>
       </Modal>
-    </div>
+    </PageFrame>
   );
 }

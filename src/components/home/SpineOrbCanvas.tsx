@@ -20,8 +20,9 @@ export default function SpineOrbCanvas({
 }) {
   return (
     <Canvas
-      dpr={[1, 1.5]}
-      camera={{ position: [0, 0.2, 5.2], fov: 36 }}
+      dpr={[1, 2]}
+      orthographic
+      camera={{ position: [0, 0, 10], zoom: 100, near: 0.1, far: 100 }}
       gl={{ antialias: true, alpha: true }}
       style={{ width: "100%", height: "100%" }}
     >

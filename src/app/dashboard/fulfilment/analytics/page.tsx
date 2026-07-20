@@ -17,12 +17,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Gauge, Timer, RefreshCcw, Layers, Target, Sigma } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { StatCard } from "@/components/ui/StatCard";
 import { Card } from "@/components/ui/Card";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
+import { EASE, staggerChildren, tileItem } from "@/lib/motion";
 
 const COLORS = {
   green: "#00A86B",
@@ -85,131 +83,142 @@ export default function AnalyticsPage() {
 
   if (loading || !data) {
     return (
-      <div className="flex items-center justify-center py-24">
+      <div className="flex h-full items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   const h = data.headline;
-  const tatTrend: "up" | "down" = h.currentTat <= h.tatStart ? "down" : "up";
-  const backlogTrend: "up" | "down" = h.currentBacklog <= h.backlogStart ? "down" : "up";
+  const tatChange = (((h.tatStart - h.currentTat) / Math.max(1, h.tatStart)) * 100).toFixed(0);
+  const backlogChange = (((h.backlogStart - h.currentBacklog) / Math.max(1, h.backlogStart)) * 100).toFixed(0);
+
+  const statChips = [
+    { label: "Avg TAT", value: `${h.currentTat}h`, change: `${tatChange}% vs start` },
+    { label: "First-time-right", value: `${h.currentFtr}%`, change: `${h.currentRework}% rework` },
+    { label: "Backlog", value: String(h.currentBacklog), change: `${backlogChange}% vs start` },
+    { label: "Process σ", value: `${h.sigma}σ`, change: `${h.currentDpmo.toLocaleString()} DPMO` },
+  ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Fulfilment Analytics"
-        description="Lean Six Sigma cycle-time, first-time-right and process-cycle-efficiency trends — the most persuasive evidence in the fulfilment framework."
-        badge={{ label: "Lean Six Sigma · DMAIC", variant: "green" }}
-      />
-
-      {/* StatCards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          label="Avg TAT (latest)"
-          value={`${h.currentTat}h`}
-          change={`${(((h.tatStart - h.currentTat) / Math.max(1, h.tatStart)) * 100).toFixed(0)}%`}
-          icon={Timer}
-          trend={tatTrend}
-        />
-        <StatCard
-          label="First-time-right"
-          value={`${h.currentFtr}%`}
-          change={`+${(h.currentFtr - (h.currentFtr - h.currentRework)).toFixed(0)}`}
-          icon={RefreshCcw}
-          trend="up"
-        />
-        <StatCard
-          label="Backlog (latest)"
-          value={h.currentBacklog}
-          change={`${(((h.backlogStart - h.currentBacklog) / Math.max(1, h.backlogStart)) * 100).toFixed(0)}%`}
-          icon={Layers}
-          trend={backlogTrend}
-        />
-        <StatCard label="Process σ level" value={`${h.sigma}σ`} icon={Sigma} trend="up" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* TAT trend */}
-        <ChartCard title="Turnaround time trend" icon={Timer} subtitle="Avg TAT (hours), mean across services">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={data.trend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-              <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Line
-                type="monotone"
-                dataKey="avgTatHours"
-                name="Avg TAT (h)"
-                stroke={COLORS.teal}
-                strokeWidth={2.5}
-                dot={{ r: 3, fill: COLORS.teal }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* First-time-right vs rework */}
-        <ChartCard
-          title="First-time-right vs rework"
-          icon={RefreshCcw}
-          subtitle="Right-first-time % (bars) against rework % (line)"
-        >
-          <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={data.trend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-              <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Bar dataKey="firstTimeRightPct" name="First-time-right %" fill={COLORS.green} radius={[4, 4, 0, 0]} barSize={22} />
-              <Line type="monotone" dataKey="reworkPct" name="Rework %" stroke={COLORS.rose} strokeWidth={2.5} dot={{ r: 3 }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* Backlog burn-down */}
-        <ChartCard title="Backlog burn-down" icon={Layers} subtitle="Open backlog count + WIP over 30 days">
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={data.trend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
-              <defs>
-                <linearGradient id="backlogGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={COLORS.gold} stopOpacity={0.35} />
-                  <stop offset="100%" stopColor={COLORS.gold} stopOpacity={0.02} />
-                </linearGradient>
-                <linearGradient id="wipGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={COLORS.rose} stopOpacity={0.3} />
-                  <stop offset="100%" stopColor={COLORS.rose} stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-              <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Area type="monotone" dataKey="backlogCount" name="Backlog" stroke={COLORS.gold} fill="url(#backlogGrad)" strokeWidth={2} />
-              <Area type="monotone" dataKey="wipOver30" name="WIP >30d" stroke={COLORS.rose} fill="url(#wipGrad)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* PCE gauge + DPMO */}
-        <ChartCard title="Process Cycle Efficiency" icon={Target} subtitle="Current PCE vs the ≥25% world-class Lean target">
-          <div className="flex items-center gap-6 h-[220px]">
-            <PceGauge current={h.currentPce} target={h.pceTarget} start={h.pceStart} />
-            <div className="flex-1 space-y-3">
-              <DpmoBadge dpmo={h.currentDpmo} sigma={h.sigma} />
-              <p className="text-[10px] text-gray-muted leading-relaxed">
-                Typical back-office PCE is just 5–10% — most of a pension case&apos;s life is
-                waiting, not working. Lifting value-added ratio toward{" "}
-                <span className="text-cream">≥25%</span> is the single biggest improvement lever.
-              </p>
+    <PageFrame
+      header={
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 rounded-lg bg-white/5 shrink-0">
+              <Gauge size={16} className="text-gpssa-green" />
             </div>
+            <h1 className="font-playfair text-sm sm:text-base font-semibold text-cream">
+              Fulfilment Analytics
+            </h1>
+            <span className="hidden rounded-full border border-gpssa-green/30 bg-gpssa-green/10 px-2 py-0.5 text-[10px] font-medium text-gpssa-green sm:inline">
+              Lean Six Sigma · DMAIC
+            </span>
           </div>
-        </ChartCard>
-      </div>
-    </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {statChips.map((s) => (
+              <div
+                key={s.label}
+                className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2"
+              >
+                <p className="text-[9px] uppercase tracking-[0.16em] text-white/40">{s.label}</p>
+                <p className="text-sm font-semibold text-cream tabular-nums">
+                  {s.value}{" "}
+                  <span className="text-[9px] font-normal text-gray-muted">{s.change}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      }
+    >
+      <TileScroll className="pr-1">
+        <motion.div
+          variants={staggerChildren}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 gap-5 lg:grid-cols-2"
+        >
+          {/* TAT trend */}
+          <ChartCard title="Turnaround time trend" icon={Timer} subtitle="Avg TAT (hours), mean across services">
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={data.trend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Line
+                  type="monotone"
+                  dataKey="avgTatHours"
+                  name="Avg TAT (h)"
+                  stroke={COLORS.teal}
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: COLORS.teal }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          {/* First-time-right vs rework */}
+          <ChartCard
+            title="First-time-right vs rework"
+            icon={RefreshCcw}
+            subtitle="Right-first-time % (bars) against rework % (line)"
+          >
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={data.trend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+                <Bar dataKey="firstTimeRightPct" name="First-time-right %" fill={COLORS.green} radius={[4, 4, 0, 0]} barSize={22} />
+                <Line type="monotone" dataKey="reworkPct" name="Rework %" stroke={COLORS.rose} strokeWidth={2.5} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          {/* Backlog burn-down */}
+          <ChartCard title="Backlog burn-down" icon={Layers} subtitle="Open backlog count + WIP over 30 days">
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={data.trend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="backlogGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={COLORS.gold} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={COLORS.gold} stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="wipGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={COLORS.rose} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={COLORS.rose} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+                <Area type="monotone" dataKey="backlogCount" name="Backlog" stroke={COLORS.gold} fill="url(#backlogGrad)" strokeWidth={2} />
+                <Area type="monotone" dataKey="wipOver30" name="WIP >30d" stroke={COLORS.rose} fill="url(#wipGrad)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          {/* PCE gauge + DPMO */}
+          <ChartCard title="Process Cycle Efficiency" icon={Target} subtitle="Current PCE vs the ≥25% world-class Lean target">
+            <div className="flex items-center gap-6 h-[220px]">
+              <PceGauge current={h.currentPce} target={h.pceTarget} start={h.pceStart} />
+              <div className="flex-1 space-y-3">
+                <DpmoBadge dpmo={h.currentDpmo} sigma={h.sigma} />
+                <p className="text-[10px] text-gray-muted leading-relaxed">
+                  Typical back-office PCE is just 5–10%. Lifting value-added ratio toward{" "}
+                  <span className="text-cream">≥25%</span> is the biggest improvement lever.
+                </p>
+              </div>
+            </div>
+          </ChartCard>
+        </motion.div>
+      </TileScroll>
+    </PageFrame>
   );
 }
 
@@ -225,11 +234,7 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: EASE }}
-    >
+    <motion.div variants={tileItem}>
       <Card variant="glass" padding="md">
         <div className="flex items-center gap-2 mb-3">
           <div className="p-1.5 rounded-lg bg-white/[0.05]">

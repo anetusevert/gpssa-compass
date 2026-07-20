@@ -86,7 +86,7 @@ export default function MandateGovernancePage() {
       </header>
 
       {/* Three vertical bands */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4 md:px-6 md:pb-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6">
         {/* Band 1: Institutional architecture (4-up) */}
         <section className="flex min-h-0 shrink-0 flex-col">
           <div className="mb-1.5 text-[10px] uppercase tracking-[0.24em] text-white/55">

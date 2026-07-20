@@ -11,7 +11,6 @@ import { HERO_MODULES, CORE_MODULES, OPS_MODULES } from "./home-modules";
 import { EngagementModeTrigger } from "@/components/engagement/EngagementMode";
 import { EngagementConductor } from "@/components/engagement/EngagementConductor";
 import { OperatingSpine } from "@/components/spine/OperatingSpine";
-import { useEngagementStore } from "@/lib/engagement/store";
 import { PageFrame } from "@/components/ui/PageFrame";
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
@@ -47,7 +46,6 @@ export function HomeTheater() {
   const userName = rawName.split(".")[0];
 
   const [now, setNow] = useState<Date | null>(null);
-  const engagementOpen = useEngagementStore((s) => s.engagementOpen);
 
   useEffect(() => {
     setNow(new Date());

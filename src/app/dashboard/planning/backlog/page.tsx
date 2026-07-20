@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import {
   ScatterChart,
   Scatter,
@@ -13,7 +14,8 @@ import {
   Cell,
 } from "recharts";
 import { ListOrdered, Sparkles, Download } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { staggerChildren, tileItem } from "@/lib/motion";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Tabs } from "@/components/ui/Tabs";
@@ -79,12 +81,18 @@ export default function BacklogPage() {
     : null;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Opportunity Backlog"
-        description="Job 2 — Decide. Rank with RICE/WSJF, assign owner + RFP section, log the room’s decision."
-        badge={{ label: "Prioritisation", variant: "gold" }}
-        actions={
+    <PageFrame
+      header={
+        <div className="flex items-center justify-between gap-3 pb-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <ListOrdered size={16} className="shrink-0 text-gold" />
+            <h1 className="truncate font-playfair text-sm font-semibold text-cream sm:text-base">
+              Opportunity Backlog
+            </h1>
+            <span className="hidden text-[11px] text-white/40 md:inline">
+              Rank, assign, log decisions
+            </span>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <a
               href="/api/engagement/export/pack"
@@ -102,11 +110,11 @@ export default function BacklogPage() {
               onChange={(id) => setSortBy(id as "rice" | "wsjf")}
             />
           </div>
-        }
-      />
-
+        </div>
+      }
+    >
       {loading ? (
-        <div className="flex justify-center py-20">
+        <div className="flex h-full items-center justify-center">
           <LoadingSpinner size="lg" />
         </div>
       ) : items.length === 0 ? (
@@ -122,96 +130,107 @@ export default function BacklogPage() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Card padding="lg" className="lg:col-span-2">
-            <h2 className="mb-4 font-playfair text-lg font-semibold text-cream">
-              Ranked backlog
-            </h2>
-            <BacklogTable
-              items={order}
-              onReorder={(next) => setOrder(next as BacklogRow[])}
-              onOpenConcept={setConceptId}
-            />
-            <div className="mt-4 space-y-3">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">
-                Soft workflow — owner · RFP · decision
-              </p>
-              {order.slice(0, 8).map((row) => (
-                <div key={row.id}>
-                  <p className="truncate text-[12px] font-medium text-cream">{row.title}</p>
-                  <OpportunityWorkflow
-                    item={row as WorkflowItem}
-                    onUpdated={(updated) => {
-                      setItems((prev) =>
-                        prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
-                      );
-                    }}
-                  />
+        <TileScroll className="pr-1">
+          <motion.div
+            variants={staggerChildren}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 gap-6 pb-4 lg:grid-cols-3"
+          >
+            <motion.div variants={tileItem} className="lg:col-span-2">
+              <Card padding="lg">
+                <h2 className="mb-4 font-playfair text-lg font-semibold text-cream">
+                  Ranked backlog
+                </h2>
+                <BacklogTable
+                  items={order}
+                  onReorder={(next) => setOrder(next as BacklogRow[])}
+                  onOpenConcept={setConceptId}
+                />
+                <div className="mt-4 space-y-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">
+                    Soft workflow — owner · RFP · decision
+                  </p>
+                  {order.slice(0, 8).map((row) => (
+                    <div key={row.id}>
+                      <p className="truncate text-[12px] font-medium text-cream">{row.title}</p>
+                      <OpportunityWorkflow
+                        item={row as WorkflowItem}
+                        onUpdated={(updated) => {
+                          setItems((prev) =>
+                            prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+                          );
+                        }}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </Card>
+              </Card>
+            </motion.div>
 
-          <Card padding="lg">
-            <h2 className="mb-1 font-playfair text-lg font-semibold text-cream">
-              Impact vs Effort
-            </h2>
-            <p className="mb-3 text-xs text-gray-muted">
-              Bubble size = RICE. Top-left = quick wins.
-            </p>
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
-                  <CartesianGrid strokeOpacity={0.1} />
-                  <XAxis
-                    type="number"
-                    dataKey="x"
-                    name="Effort"
-                    domain={[0.5, 3.5]}
-                    ticks={[1, 2, 3]}
-                    tickFormatter={(v) => ["", "Low", "Med", "High"][v] ?? ""}
-                    tick={{ fill: "#9ca3af", fontSize: 11 }}
-                    label={{
-                      value: "Effort →",
-                      position: "insideBottom",
-                      offset: -8,
-                      fill: "#9ca3af",
-                      fontSize: 11,
-                    }}
-                  />
-                  <YAxis
-                    type="number"
-                    dataKey="y"
-                    name="Impact"
-                    domain={[0.5, 3.5]}
-                    ticks={[1, 2, 3]}
-                    tickFormatter={(v) => ["", "Low", "Med", "High"][v] ?? ""}
-                    tick={{ fill: "#9ca3af", fontSize: 11 }}
-                  />
-                  <ZAxis type="number" dataKey="z" range={[60, 400]} />
-                  <Tooltip
-                    cursor={{ strokeDasharray: "3 3" }}
-                    contentStyle={{
-                      background: "#0f1729",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 12,
-                      fontSize: 12,
-                    }}
-                    formatter={(_v, _n, p) => {
-                      const d = p.payload;
-                      return [`RICE ${Math.round(d.z)}`, d.name];
-                    }}
-                  />
-                  <Scatter data={scatterData}>
-                    {scatterData.map((_, i) => (
-                      <Cell key={i} fill="#C5A572" fillOpacity={0.75} />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </div>
+            <motion.div variants={tileItem}>
+              <Card padding="lg">
+                <h2 className="mb-1 font-playfair text-lg font-semibold text-cream">
+                  Impact vs Effort
+                </h2>
+                <p className="mb-3 text-xs text-gray-muted">
+                  Bubble size = RICE. Top-left = quick wins.
+                </p>
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
+                      <CartesianGrid strokeOpacity={0.1} />
+                      <XAxis
+                        type="number"
+                        dataKey="x"
+                        name="Effort"
+                        domain={[0.5, 3.5]}
+                        ticks={[1, 2, 3]}
+                        tickFormatter={(v) => ["", "Low", "Med", "High"][v] ?? ""}
+                        tick={{ fill: "#9ca3af", fontSize: 11 }}
+                        label={{
+                          value: "Effort →",
+                          position: "insideBottom",
+                          offset: -8,
+                          fill: "#9ca3af",
+                          fontSize: 11,
+                        }}
+                      />
+                      <YAxis
+                        type="number"
+                        dataKey="y"
+                        name="Impact"
+                        domain={[0.5, 3.5]}
+                        ticks={[1, 2, 3]}
+                        tickFormatter={(v) => ["", "Low", "Med", "High"][v] ?? ""}
+                        tick={{ fill: "#9ca3af", fontSize: 11 }}
+                      />
+                      <ZAxis type="number" dataKey="z" range={[60, 400]} />
+                      <Tooltip
+                        cursor={{ strokeDasharray: "3 3" }}
+                        contentStyle={{
+                          background: "#0f1729",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: 12,
+                          fontSize: 12,
+                        }}
+                        formatter={(_v, _n, p) => {
+                          const d = p.payload;
+                          return [`RICE ${Math.round(d.z)}`, d.name];
+                        }}
+                      />
+                      <Scatter data={scatterData}>
+                        {scatterData.map((_, i) => (
+                          <Cell key={i} fill="#C5A572" fillOpacity={0.75} />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
+        </TileScroll>
       )}
 
       <Modal
@@ -245,7 +264,7 @@ export default function BacklogPage() {
           </p>
         )}
       </Modal>
-    </div>
+    </PageFrame>
   );
 }
 

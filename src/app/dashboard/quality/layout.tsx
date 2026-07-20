@@ -21,9 +21,11 @@ const qualityTabs = [
 
 export default function QualityLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      <SectionTabs pillar="delivery" items={qualityTabs} />
-      {children}
+    <div className="flex h-full min-h-0 flex-col gap-4 p-4 lg:p-6">
+      <div className="shrink-0">
+        <SectionTabs pillar="delivery" items={qualityTabs} />
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
     </div>
   );
 }

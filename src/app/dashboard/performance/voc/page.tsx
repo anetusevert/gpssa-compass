@@ -14,15 +14,14 @@ import {
   YAxis,
 } from "recharts";
 import { MessageSquareHeart, Sparkles } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { fadeRise, staggerChildren, tileItem } from "@/lib/motion";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TrendCard } from "@/components/performance";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
 
 interface MetricBucket {
   overall: { period: string; value: number }[];
@@ -124,166 +123,178 @@ export default function VocPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!data || Object.keys(data.metrics).length === 0) {
-    return (
-      <EmptyState
-        icon={MessageSquareHeart}
-        title="No Voice-of-Customer data"
-        description="Seed the Performance module (POST /api/performance/seed) to populate VoC metrics."
-      />
-    );
-  }
-
-  const fcr = data.metrics["fcr"];
-  const repeat = data.metrics["repeat-contact"];
+  const empty = !data || Object.keys(data.metrics).length === 0;
+  const fcr = data?.metrics["fcr"];
+  const repeat = data?.metrics["repeat-contact"];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Voice of Customer"
-        description="CSAT / DSAT / NPS / CES / Pulse trends with benchmark bands, first-contact resolution, repeat-contact and a complaint-theme Pareto."
-        badge={{ label: "VoC programme", variant: "green" }}
-        actions={
+    <PageFrame
+      header={
+        <div className="flex items-center justify-between gap-3 pb-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <MessageSquareHeart size={16} className="shrink-0 text-gpssa-green" />
+            <h1 className="truncate font-playfair text-sm font-semibold text-cream sm:text-base">
+              Voice of Customer
+            </h1>
+            <span className="hidden text-[11px] text-white/40 md:inline">
+              CSAT · NPS · CES · complaint Pareto
+            </span>
+          </div>
           <Button variant="secondary" size="sm" onClick={() => setAiOpen(true)}>
-            <Sparkles size={14} /> Synthesise VoC (AI)
+            <Sparkles size={14} /> Synthesise (AI)
           </Button>
-        }
-      />
-
-      {/* Trend cards with benchmark bands */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {Object.entries(METRIC_CONFIG).map(([key, cfg], i) => {
-          const bucket = data.metrics[key];
-          if (!bucket || bucket.overall.length === 0) return null;
-          return (
-            <TrendCard
-              key={key}
-              index={i}
-              title={cfg.title}
-              subtitle={cfg.subtitle}
-              data={bucket.overall}
-              color={cfg.color}
-              unit={cfg.unit}
-              band={cfg.band}
-              caveat={cfg.caveat}
-            />
-          );
-        })}
-      </div>
-
-      {/* FCR + repeat-contact */}
-      {(fcr || repeat) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {fcr && (
-            <TrendCard
-              title="First-Contact Resolution (FCR)"
-              subtitle="Resolved on first contact · top quartile 85%+"
-              data={fcr.overall}
-              color="#00A86B"
-              unit="%"
-              band={{ from: 70, to: 75, label: "typical 70–75%; 85%+ top quartile" }}
-            />
-          )}
-          {repeat && (
-            <TrendCard
-              title="Repeat-Contact Rate"
-              subtitle="Repeat within 7 days (lower is better)"
-              data={repeat.overall}
-              color="#E9A23B"
-              unit="%"
-            />
-          )}
         </div>
-      )}
+      }
+    >
+      {loading ? (
+        <div className="flex h-full items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      ) : empty ? (
+        <EmptyState
+          icon={MessageSquareHeart}
+          title="No Voice-of-Customer data"
+          description="Seed the Performance module (POST /api/performance/seed) to populate VoC metrics."
+        />
+      ) : (
+        <TileScroll className="pr-1">
+          <motion.div
+            variants={staggerChildren}
+            initial="hidden"
+            animate="show"
+            className="space-y-4 pb-4"
+          >
+            {/* Trend cards with benchmark bands */}
+            <motion.div
+              variants={tileItem}
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+            >
+              {Object.entries(METRIC_CONFIG).map(([key, cfg], i) => {
+                const bucket = data!.metrics[key];
+                if (!bucket || bucket.overall.length === 0) return null;
+                return (
+                  <TrendCard
+                    key={key}
+                    index={i}
+                    title={cfg.title}
+                    subtitle={cfg.subtitle}
+                    data={bucket.overall}
+                    color={cfg.color}
+                    unit={cfg.unit}
+                    band={cfg.band}
+                    caveat={cfg.caveat}
+                  />
+                );
+              })}
+            </motion.div>
 
-      {/* Complaint Pareto */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: EASE }}
-      >
-        <Card variant="glass" padding="lg">
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div>
-              <h2 className="font-playfair text-lg font-semibold text-cream">
-                Complaint-theme Pareto
-              </h2>
-              <p className="text-xs text-gray-muted mt-0.5">
-                ~20% of themes drive ~80% of complaints — focus corrective action on the vital few.
-              </p>
-            </div>
-          </div>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={data.pareto}
-                margin={{ top: 10, right: 16, bottom: 70, left: 0 }}
+            {/* FCR + repeat-contact */}
+            {(fcr || repeat) && (
+              <motion.div
+                variants={tileItem}
+                className="grid grid-cols-1 md:grid-cols-2 gap-4"
               >
-                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                <XAxis
-                  dataKey="theme"
-                  tick={{ fill: "#9CA3AF", fontSize: 10 }}
-                  angle={-30}
-                  textAnchor="end"
-                  interval={0}
-                  height={70}
-                  tickLine={false}
-                />
-                <YAxis
-                  yAxisId="left"
-                  tick={{ fill: "#9CA3AF", fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  domain={[0, 100]}
-                  unit="%"
-                  tick={{ fill: "#9CA3AF", fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "rgba(13,20,33,0.95)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 12,
-                    fontSize: 12,
-                    color: "#F5EFE0",
-                  }}
-                />
-                <Bar yAxisId="left" dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={48}>
-                  {data.pareto.map((row) => (
-                    <Cell
-                      key={row.theme}
-                      fill={SENTIMENT_COLOR[row.sentiment] ?? "#2D4A8C"}
-                      fillOpacity={0.85}
-                    />
-                  ))}
-                </Bar>
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="cumulativePct"
-                  stroke="#C5A572"
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: "#C5A572" }}
-                  isAnimationActive={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </motion.div>
+                {fcr && (
+                  <TrendCard
+                    title="First-Contact Resolution (FCR)"
+                    subtitle="Resolved on first contact · top quartile 85%+"
+                    data={fcr.overall}
+                    color="#00A86B"
+                    unit="%"
+                    band={{ from: 70, to: 75, label: "typical 70–75%; 85%+ top quartile" }}
+                  />
+                )}
+                {repeat && (
+                  <TrendCard
+                    title="Repeat-Contact Rate"
+                    subtitle="Repeat within 7 days (lower is better)"
+                    data={repeat.overall}
+                    color="#E9A23B"
+                    unit="%"
+                  />
+                )}
+              </motion.div>
+            )}
+
+            {/* Complaint Pareto */}
+            <motion.div variants={fadeRise}>
+              <Card variant="glass" padding="lg">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="font-playfair text-lg font-semibold text-cream">
+                      Complaint-theme Pareto
+                    </h2>
+                    <p className="text-xs text-gray-muted mt-0.5">
+                      The vital few themes drive most complaints.
+                    </p>
+                  </div>
+                </div>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart
+                      data={data!.pareto}
+                      margin={{ top: 10, right: 16, bottom: 70, left: 0 }}
+                    >
+                      <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                      <XAxis
+                        dataKey="theme"
+                        tick={{ fill: "#9CA3AF", fontSize: 10 }}
+                        angle={-30}
+                        textAnchor="end"
+                        interval={0}
+                        height={70}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        yAxisId="left"
+                        tick={{ fill: "#9CA3AF", fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        domain={[0, 100]}
+                        unit="%"
+                        tick={{ fill: "#9CA3AF", fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "rgba(13,20,33,0.95)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: 12,
+                          fontSize: 12,
+                          color: "#F5EFE0",
+                        }}
+                      />
+                      <Bar yAxisId="left" dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                        {data!.pareto.map((row) => (
+                          <Cell
+                            key={row.theme}
+                            fill={SENTIMENT_COLOR[row.sentiment] ?? "#2D4A8C"}
+                            fillOpacity={0.85}
+                          />
+                        ))}
+                      </Bar>
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="cumulativePct"
+                        stroke="#C5A572"
+                        strokeWidth={2.5}
+                        dot={{ r: 3, fill: "#C5A572" }}
+                        isAnimationActive={false}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
+        </TileScroll>
+      )}
 
       <Modal
         isOpen={aiOpen}
@@ -308,6 +319,6 @@ export default function VocPage() {
           )}
         </div>
       </Modal>
-    </div>
+    </PageFrame>
   );
 }

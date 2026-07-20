@@ -13,16 +13,15 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Filter,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
 import { Modal } from "@/components/ui/Modal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
+import { fadeRise } from "@/lib/motion";
 
 interface ExecutionRecord {
   id: string;
@@ -117,24 +116,61 @@ export default function ActivityPage() {
     return <Loader2 size={14} className="text-gold animate-spin" />;
   };
 
+  const pagination = totalPages > 1 && (
+    <div className="flex items-center justify-between pt-3 mt-3 border-t border-white/10 shrink-0">
+      <span className="text-xs text-gray-muted">
+        Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page <= 1}
+          className="p-1.5 rounded-lg text-gray-muted hover:text-cream hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <span className="text-xs text-cream">
+          Page {page} of {totalPages}
+        </span>
+        <button
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page >= totalPages}
+          className="p-1.5 rounded-lg text-gray-muted hover:text-cream hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Activity Logs"
-        description="AI execution logs and user activity"
-      />
-
-      <Tabs tabs={tabItems} activeTab={activeTab} onChange={setActiveTab} variant="pills" />
-
+    <PageFrame
+      header={
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 rounded-lg bg-white/5 shrink-0">
+              <ScrollText size={16} className="text-gpssa-green" />
+            </div>
+            <h1 className="font-playfair text-sm sm:text-base font-semibold text-cream">
+              Activity Logs
+            </h1>
+            <span className="hidden sm:inline text-xs text-gray-muted">
+              AI executions & user actions
+            </span>
+          </div>
+          <Tabs tabs={tabItems} activeTab={activeTab} onChange={setActiveTab} variant="pills" />
+        </div>
+      }
+    >
       {loading ? (
-        <div className="flex justify-center py-16">
+        <div className="flex h-full items-center justify-center">
           <LoadingSpinner size="lg" />
         </div>
       ) : (
-        <>
+        <motion.div variants={fadeRise} initial="hidden" animate="show" className="h-full min-h-0">
           {/* AI Executions Tab */}
           {activeTab === "executions" && (
-            <Card>
+            <Card className="flex h-full min-h-0 flex-col">
               {executions.length === 0 ? (
                 <EmptyState
                   icon={Bot}
@@ -143,9 +179,9 @@ export default function ActivityPage() {
                 />
               ) : (
                 <>
-                  <div className="overflow-x-auto">
+                  <TileScroll className="-mx-1 px-1">
                     <table className="w-full text-sm">
-                      <thead>
+                      <thead className="sticky top-0 bg-navy z-10">
                         <tr className="border-b border-white/10">
                           <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Agent</th>
                           <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium hidden sm:table-cell">Model</th>
@@ -199,35 +235,8 @@ export default function ActivityPage() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
-
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/10">
-                      <span className="text-xs text-gray-muted">
-                        Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setPage((p) => Math.max(1, p - 1))}
-                          disabled={page <= 1}
-                          className="p-1.5 rounded-lg text-gray-muted hover:text-cream hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
-                        <span className="text-xs text-cream">
-                          Page {page} of {totalPages}
-                        </span>
-                        <button
-                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                          disabled={page >= totalPages}
-                          className="p-1.5 rounded-lg text-gray-muted hover:text-cream hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  </TileScroll>
+                  {pagination}
                 </>
               )}
             </Card>
@@ -235,7 +244,7 @@ export default function ActivityPage() {
 
           {/* User Activity Tab */}
           {activeTab === "activity" && (
-            <Card>
+            <Card className="flex h-full min-h-0 flex-col">
               {activities.length === 0 ? (
                 <EmptyState
                   icon={ScrollText}
@@ -244,9 +253,9 @@ export default function ActivityPage() {
                 />
               ) : (
                 <>
-                  <div className="overflow-x-auto">
+                  <TileScroll className="-mx-1 px-1">
                     <table className="w-full text-sm">
-                      <thead>
+                      <thead className="sticky top-0 bg-navy z-10">
                         <tr className="border-b border-white/10">
                           <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Actor</th>
                           <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Action</th>
@@ -282,39 +291,13 @@ export default function ActivityPage() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
-
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/10">
-                      <span className="text-xs text-gray-muted">
-                        Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setPage((p) => Math.max(1, p - 1))}
-                          disabled={page <= 1}
-                          className="p-1.5 rounded-lg text-gray-muted hover:text-cream hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
-                        <span className="text-xs text-cream">
-                          Page {page} of {totalPages}
-                        </span>
-                        <button
-                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                          disabled={page >= totalPages}
-                          className="p-1.5 rounded-lg text-gray-muted hover:text-cream hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  </TileScroll>
+                  {pagination}
                 </>
               )}
             </Card>
           )}
-        </>
+        </motion.div>
       )}
 
       {/* Execution Detail Modal */}
@@ -387,6 +370,6 @@ export default function ActivityPage() {
           </div>
         )}
       </Modal>
-    </div>
+    </PageFrame>
   );
 }

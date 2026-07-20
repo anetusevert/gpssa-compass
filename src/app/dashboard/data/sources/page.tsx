@@ -12,16 +12,14 @@ import {
   ChevronRight,
   ExternalLink,
   Plus,
-  Link2,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { StatCard } from "@/components/ui/StatCard";
 import { Modal } from "@/components/ui/Modal";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
+import { fadeRise } from "@/lib/motion";
 
 interface SourceRecord {
   id: string;
@@ -94,6 +92,17 @@ const CITATION_LABELS: Array<{ key: keyof NonNullable<SourceRecord["_count"]>; l
 const typeColor: Record<string, string> = { report: "gold", paper: "blue", database: "green", website: "gray" };
 
 const EMPTY_SOURCE = { title: "", url: "", publisher: "", sourceType: "website", description: "", region: "" };
+
+function StatChip({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+      <p className="text-[9px] uppercase tracking-[0.16em] text-white/40">{label}</p>
+      <p className="text-sm font-semibold text-cream tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+const TH = "text-left py-2.5 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium sticky top-0 z-10 bg-[#081226]";
 
 export default function SourcesDataPage() {
   const router = useRouter();
@@ -214,170 +223,186 @@ export default function SourcesDataPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <button onClick={() => router.push("/dashboard/data")} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
-          <ArrowLeft className="w-4 h-4 text-white/60" />
-        </button>
-        <PageHeader title="Sources" description="Data sources, research references, and citation links backing all research data." />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Total Sources" value={sources.length} icon={BookOpen} />
-        <StatCard label="Total Citations" value={totalCitations} icon={Link2} />
-        <StatCard label="Source Types" value={types.length - 1} icon={BookOpen} />
-      </div>
-
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-muted" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search sources..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-cream placeholder:text-gray-muted focus:outline-none focus:border-adl-blue/40"
-          />
+    <PageFrame
+      header={
+        <div className="flex items-center gap-3 border-b border-white/[0.06] pb-3">
+          <button onClick={() => router.push("/dashboard/data")} className="shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10">
+            <ArrowLeft className="h-4 w-4 text-white/60" />
+          </button>
+          <div className="shrink-0 rounded-lg border border-teal-400/20 bg-teal-400/10 p-1.5">
+            <BookOpen size={14} className="text-teal-400" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="font-playfair text-sm font-bold leading-tight text-cream sm:text-base">Sources</h1>
+            <p className="hidden truncate text-[10px] text-gray-muted sm:block">Citation-traceable research references</p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <StatChip label="Sources" value={sources.length} />
+            <StatChip label="Citations" value={totalCitations} />
+            <StatChip label="Types" value={types.length - 1} />
+          </div>
         </div>
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-cream focus:outline-none cursor-pointer"
-        >
-          {types.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-        {isAdmin && (
-          <Button onClick={() => setShowAddSource(true)} variant="secondary" size="sm">
-            <Plus size={14} /> Add Source
-          </Button>
-        )}
-        <span className="text-xs text-gray-muted">{filtered.length} of {sources.length}</span>
-      </div>
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col gap-3 pt-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
+          <div className="relative min-w-[200px] max-w-md flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-muted" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search sources..."
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-sm text-cream placeholder:text-gray-muted focus:border-adl-blue/40 focus:outline-none"
+            />
+          </div>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-cream focus:outline-none"
+          >
+            {types.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          {isAdmin && (
+            <Button onClick={() => setShowAddSource(true)} variant="secondary" size="sm">
+              <Plus size={14} /> Add Source
+            </Button>
+          )}
+          <span className="text-xs text-gray-muted">{filtered.length} of {sources.length}</span>
+        </div>
 
-      {loading ? (
-        <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>
-      ) : sources.length === 0 ? (
-        <EmptyState icon={BookOpen} title="No sources" description="No data sources have been added yet." />
-      ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium w-8" />
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Title</th>
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium hidden md:table-cell">Publisher</th>
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Type</th>
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium hidden lg:table-cell">Region</th>
-                  <th className="text-left py-3 px-3 text-xs uppercase tracking-wider text-gray-muted font-medium">Citations</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {filtered.map((src) => {
-                  const isExpanded = expandedRows.has(src.id);
-                  const citations = citationTotal(src);
-                  return (
-                    <AnimatePresence key={src.id}>
-                      <tr className="hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => toggleRow(src.id)}>
-                        <td className="py-2.5 px-3">
-                          {isExpanded ? <ChevronDown size={14} className="text-gray-muted" /> : <ChevronRight size={14} className="text-gray-muted" />}
-                        </td>
-                        <td className="py-2.5 px-3 text-cream font-medium max-w-xs truncate">{src.title}</td>
-                        <td className="py-2.5 px-3 hidden md:table-cell text-xs text-cream/70">{src.publisher ?? "—"}</td>
-                        <td className="py-2.5 px-3">
-                          <Badge variant={(typeColor[src.sourceType] ?? "gray") as "gold" | "blue" | "green" | "gray"} size="sm">{src.sourceType}</Badge>
-                        </td>
-                        <td className="py-2.5 px-3 hidden lg:table-cell text-xs text-cream/70">{src.region ?? "—"}</td>
-                        <td className="py-2.5 px-3">
-                          <Badge variant={citations > 0 ? "green" : "gray"} size="sm">{citations}</Badge>
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                          <td colSpan={6} className="px-6 py-4 bg-white/[0.01]">
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div>
-                                <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">URL</p>
-                                <a href={src.url} target="_blank" rel="noopener noreferrer" className="text-xs text-adl-blue hover:underline inline-flex items-center gap-1 break-all">
-                                  {src.url} <ExternalLink size={10} />
-                                </a>
-                              </div>
-                              {src.description && (
+        <motion.div
+          variants={fadeRise}
+          initial="hidden"
+          animate="show"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]"
+        >
+          {loading ? (
+            <div className="flex flex-1 items-center justify-center"><LoadingSpinner size="lg" /></div>
+          ) : sources.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center">
+              <EmptyState icon={BookOpen} title="No sources" description="No data sources have been added yet." />
+            </div>
+          ) : (
+            <TileScroll>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className={`${TH} w-8`} />
+                    <th className={TH}>Title</th>
+                    <th className={`${TH} hidden md:table-cell`}>Publisher</th>
+                    <th className={TH}>Type</th>
+                    <th className={`${TH} hidden lg:table-cell`}>Region</th>
+                    <th className={TH}>Citations</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filtered.map((src) => {
+                    const isExpanded = expandedRows.has(src.id);
+                    const citations = citationTotal(src);
+                    return (
+                      <AnimatePresence key={src.id}>
+                        <tr className="hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => toggleRow(src.id)}>
+                          <td className="py-2.5 px-3">
+                            {isExpanded ? <ChevronDown size={14} className="text-gray-muted" /> : <ChevronRight size={14} className="text-gray-muted" />}
+                          </td>
+                          <td className="py-2.5 px-3 text-cream font-medium max-w-xs truncate">{src.title}</td>
+                          <td className="py-2.5 px-3 hidden md:table-cell text-xs text-cream/70">{src.publisher ?? "—"}</td>
+                          <td className="py-2.5 px-3">
+                            <Badge variant={(typeColor[src.sourceType] ?? "gray") as "gold" | "blue" | "green" | "gray"} size="sm">{src.sourceType}</Badge>
+                          </td>
+                          <td className="py-2.5 px-3 hidden lg:table-cell text-xs text-cream/70">{src.region ?? "—"}</td>
+                          <td className="py-2.5 px-3">
+                            <Badge variant={citations > 0 ? "green" : "gray"} size="sm">{citations}</Badge>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            <td colSpan={6} className="px-6 py-4 bg-white/[0.01]">
+                              <div className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                  <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Description</p>
-                                  <p className="text-xs text-cream/80 leading-relaxed">{src.description}</p>
+                                  <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">URL</p>
+                                  <a href={src.url} target="_blank" rel="noopener noreferrer" className="text-xs text-adl-blue hover:underline inline-flex items-center gap-1 break-all">
+                                    {src.url} <ExternalLink size={10} />
+                                  </a>
                                 </div>
-                              )}
-                              <div className="md:col-span-2">
-                                <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Citation Breakdown</p>
-                                <div className="flex flex-wrap gap-2 text-xs">
-                                  {CITATION_LABELS.map((def) => {
-                                    const count = src._count?.[def.key] ?? 0;
-                                    if (count === 0) return null;
-                                    return (
-                                      <span key={def.key} className="text-cream/70 px-2 py-0.5 rounded-md bg-white/5">
-                                        {def.label}: <span className="font-semibold text-cream">{count}</span>
-                                      </span>
-                                    );
-                                  })}
-                                  {citations === 0 && <span className="text-xs text-gray-muted">No citations yet.</span>}
-                                </div>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Added</p>
-                                <p className="text-xs text-cream/70">{new Date(src.createdAt).toLocaleDateString()}</p>
-                              </div>
-                              <div className="md:col-span-2">
-                                <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Linked Entities</p>
-                                {linkedLoading.has(src.id) && !linkedById[src.id] ? (
-                                  <div className="text-xs text-gray-muted">Loading…</div>
-                                ) : linkedById[src.id] ? (
-                                  <div className="space-y-2">
+                                {src.description && (
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Description</p>
+                                    <p className="text-xs text-cream/80 leading-relaxed">{src.description}</p>
+                                  </div>
+                                )}
+                                <div className="md:col-span-2">
+                                  <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Citation Breakdown</p>
+                                  <div className="flex flex-wrap gap-2 text-xs">
                                     {CITATION_LABELS.map((def) => {
-                                      const items = linkedById[src.id][def.bucket];
-                                      if (!items || items.length === 0) return null;
+                                      const count = src._count?.[def.key] ?? 0;
+                                      if (count === 0) return null;
                                       return (
-                                        <div key={def.bucket}>
-                                          <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">{def.label} <span className="text-cream/40">({items.length})</span></p>
-                                          <div className="flex flex-wrap gap-1.5">
-                                            {items.slice(0, 30).map((item, idx) => (
-                                              <span
-                                                key={`${def.bucket}-${idx}`}
-                                                title={item.evidenceNote ?? item.citation ?? ""}
-                                                className="text-[11px] px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-cream/80"
-                                              >
-                                                {entityLabel(def.bucket, item.entity)}
-                                              </span>
-                                            ))}
-                                            {items.length > 30 && (
-                                              <span className="text-[11px] text-gray-muted">+{items.length - 30} more</span>
-                                            )}
-                                          </div>
-                                        </div>
+                                        <span key={def.key} className="text-cream/70 px-2 py-0.5 rounded-md bg-white/5">
+                                          {def.label}: <span className="font-semibold text-cream">{count}</span>
+                                        </span>
                                       );
                                     })}
+                                    {citations === 0 && <span className="text-xs text-gray-muted">No citations yet.</span>}
                                   </div>
-                                ) : (
-                                  <div className="text-xs text-gray-muted">No linked-entity data available.</div>
-                                )}
+                                </div>
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Added</p>
+                                  <p className="text-xs text-cream/70">{new Date(src.createdAt).toLocaleDateString()}</p>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">Linked Entities</p>
+                                  {linkedLoading.has(src.id) && !linkedById[src.id] ? (
+                                    <div className="text-xs text-gray-muted">Loading…</div>
+                                  ) : linkedById[src.id] ? (
+                                    <div className="space-y-2">
+                                      {CITATION_LABELS.map((def) => {
+                                        const items = linkedById[src.id][def.bucket];
+                                        if (!items || items.length === 0) return null;
+                                        return (
+                                          <div key={def.bucket}>
+                                            <p className="text-[10px] uppercase tracking-wider text-gray-muted mb-1">{def.label} <span className="text-cream/40">({items.length})</span></p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                              {items.slice(0, 30).map((item, idx) => (
+                                                <span
+                                                  key={`${def.bucket}-${idx}`}
+                                                  title={item.evidenceNote ?? item.citation ?? ""}
+                                                  className="text-[11px] px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-cream/80"
+                                                >
+                                                  {entityLabel(def.bucket, item.entity)}
+                                                </span>
+                                              ))}
+                                              {items.length > 30 && (
+                                                <span className="text-[11px] text-gray-muted">+{items.length - 30} more</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-muted">No linked-entity data available.</div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                        </motion.tr>
-                      )}
-                    </AnimatePresence>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {filtered.length === 0 && (
-            <p className="text-center py-8 text-xs text-gray-muted">No sources match your search.</p>
+                            </td>
+                          </motion.tr>
+                        )}
+                      </AnimatePresence>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {filtered.length === 0 && (
+                <p className="text-center py-8 text-xs text-gray-muted">No sources match your search.</p>
+              )}
+            </TileScroll>
           )}
-        </Card>
-      )}
+        </motion.div>
+      </div>
 
       {/* Add Source Modal */}
       <Modal
@@ -459,6 +484,6 @@ export default function SourcesDataPage() {
           </div>
         </div>
       </Modal>
-    </div>
+    </PageFrame>
   );
 }

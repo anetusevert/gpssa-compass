@@ -11,21 +11,17 @@ import {
   Hash,
   ToggleLeft,
   ToggleRight,
-  CheckCircle2,
   XCircle,
-  Clock,
   Zap,
   Globe2,
   Briefcase,
   Package,
   Truck,
   Pause,
-  RotateCcw,
   StopCircle,
   ChevronDown,
   ChevronUp,
   Database,
-  Activity,
   Trash2,
   RefreshCw,
   PlayCircle,
@@ -34,13 +30,12 @@ import {
   Globe,
   FileDown,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
-import { StatCard } from "@/components/ui/StatCard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 
 interface AgentConfig {
   id: string;
@@ -610,36 +605,54 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Research Agent Control Center"
-        description="Activate, run, and manage the AI research agents that populate every screen of the platform"
-      />
-
+    <PageFrame
+      header={
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 rounded-lg bg-white/5 shrink-0">
+              <Bot size={16} className="text-gpssa-green" />
+            </div>
+            <h1 className="font-playfair text-sm sm:text-base font-semibold text-cream">
+              Research Agent Control Center
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { label: "Agents", value: stats.total },
+              { label: "Running", value: stats.running },
+              { label: "Completed", value: stats.completed },
+              { label: "Pending", value: stats.pending },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2"
+              >
+                <p className="text-[9px] uppercase tracking-[0.16em] text-white/40">{s.label}</p>
+                <p className="text-sm font-semibold text-cream tabular-nums">{s.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      }
+    >
+      <TileScroll className="pr-1">
+        <div className="space-y-5">
       <div className="rounded-xl border border-amber/30 bg-amber/5 px-4 py-3 flex items-start gap-3">
         <AlertTriangle size={16} className="text-amber shrink-0 mt-0.5" />
         <div className="text-xs text-white/65 leading-relaxed">
-          <p className="font-semibold text-cream mb-0.5">Leave-behind ops · pause by default</p>
+          <p className="font-semibold text-cream mb-0.5">Pause by default — run only to refresh evidence</p>
           <p>
-            For board demos and customer handover, keep agents paused and rely on the gold seed.
-            Run pillars only when refreshing evidence. Token spend appears on each job (
+            Spend so far:{" "}
             <span className="text-cream tabular-nums">
               {researchJobs.reduce((s, j) => s + (j.totalTokens || 0), 0).toLocaleString()} tokens
             </span>{" "}
-            across listed jobs · est.{" "}
+            · est.{" "}
             <span className="text-cream tabular-nums">
               ${researchJobs.reduce((s, j) => s + (j.totalCost || 0), 0).toFixed(2)}
             </span>
-            ). Admin-only — research APIs reject unauthenticated and non-admin callers.
+            . Admin-only APIs.
           </p>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Agents" value={stats.total} icon={Bot} />
-        <StatCard label="Running" value={stats.running} icon={Activity} trend={stats.running > 0 ? "up" : "neutral"} />
-        <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} />
-        <StatCard label="Pending" value={stats.pending} icon={Clock} />
       </div>
 
       <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
@@ -650,10 +663,9 @@ export default function AgentsPage() {
           <div className="flex-1">
             <p className="text-sm font-medium text-cream mb-1">Recommended Execution Order</p>
             <p className="text-xs text-gray-muted leading-relaxed">
-              Agents are numbered 1–11 in their optimal run sequence. Each agent&apos;s research builds on the previous one&apos;s output.
-              The <strong className="text-cream">Run All Pillars</strong> button below orchestrates everything server-side: Atlas
-              sub-agents (system / performance / insights) run in parallel, then Atlas Benchmarking, then Services → Products →
-              Delivery → International → ILO sequentially.
+              Agents run 1–11 in sequence; <strong className="text-cream">Run All Pillars</strong>{" "}
+              orchestrates everything server-side (Atlas in parallel, then Services → Products →
+              Delivery → International → ILO).
             </p>
           </div>
           <Button
@@ -681,11 +693,9 @@ export default function AgentsPage() {
               <Badge variant="green" size="sm" dot>gpssa.gov.ae</Badge>
             </div>
             <p className="mt-1 text-xs text-gray-muted leading-relaxed max-w-3xl">
-              Polite-scrapes <strong className="text-cream">gpssa.gov.ae/laws-and-regulations</strong> and the connected
-              About / News / Governance pages, normalises HTML &amp; PDF content into Markdown,
-              and persists it to the <code className="text-cream">GpssaPage</code> table. The
-              <strong className="text-cream"> Mandate Corpus </strong> agent then structures it
-              into Standards, Articles, Milestones and obligation links.
+              Scrapes <strong className="text-cream">gpssa.gov.ae</strong> laws, governance and news
+              pages into the <code className="text-cream">GpssaPage</code> table for the{" "}
+              <strong className="text-cream">Mandate Corpus</strong> agent to structure.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-gray-muted">
               <label className="inline-flex items-center gap-1.5 cursor-pointer">
@@ -875,6 +885,8 @@ export default function AgentsPage() {
           })}
         </div>
       )}
+        </div>
+      </TileScroll>
 
       {/* Edit Agent Modal */}
       <Modal isOpen={!!editAgent} onClose={() => setEditAgent(null)} title="Edit Agent Configuration" description={editAgent?.name} size="xl">
@@ -906,6 +918,6 @@ export default function AgentsPage() {
           </div>
         </div>
       </Modal>
-    </div>
+    </PageFrame>
   );
 }

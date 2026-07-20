@@ -36,9 +36,11 @@ export default function RoadmapLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      <SectionTabs pillar="roadmap" items={roadmapTabs} />
-      {children}
+    <div className="flex h-full min-h-0 flex-col gap-4 p-6 lg:p-8">
+      <div className="shrink-0">
+        <SectionTabs pillar="roadmap" items={roadmapTabs} />
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
     </div>
   );
 }

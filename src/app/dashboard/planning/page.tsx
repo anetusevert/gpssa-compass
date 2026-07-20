@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarRange, Layers, ListChecks } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { StatCard } from "@/components/ui/StatCard";
-import { Card } from "@/components/ui/Card";
+import { motion } from "framer-motion";
+import { CalendarRange } from "lucide-react";
+import { fadeRise } from "@/lib/motion";
+import { PageFrame } from "@/components/ui/PageFrame";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -43,6 +43,15 @@ const statusVariant: Record<string, "green" | "gold" | "gray"> = {
   planned: "gray",
 };
 
+function StatChip({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+      <p className="text-[9px] uppercase tracking-[0.16em] text-white/40">{label}</p>
+      <p className="text-sm font-semibold text-cream">{value}</p>
+    </div>
+  );
+}
+
 export default function RoadmapPage() {
   const [phases, setPhases] = useState<Phase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +65,7 @@ export default function RoadmapPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const ganttPhases: GanttPhase[] = phases.map((p, i) => ({
+  const ganttPhases: GanttPhase[] = phases.map((p) => ({
     id: p.id,
     name: p.name,
     workstream: p.workstream,
@@ -75,15 +84,30 @@ export default function RoadmapPage() {
     : [];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="12-Month Roadmap"
-        description="Two parallel workstreams across a 20-week engagement (RFP §2.3). Click any phase to drill into its initiatives."
-        badge={{ label: "Roadmap & Governance", variant: "gold" }}
-      />
-
+    <PageFrame
+      header={
+        <div className="flex items-center justify-between gap-3 pb-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <CalendarRange size={16} className="shrink-0 text-gold" />
+            <h1 className="truncate font-playfair text-sm font-semibold text-cream sm:text-base">
+              12-Month Roadmap
+            </h1>
+            <span className="hidden text-[11px] text-white/40 md:inline">
+              Click a phase for its initiatives
+            </span>
+          </div>
+          {!loading && phases.length > 0 && (
+            <div className="hidden items-stretch gap-2 sm:flex">
+              <StatChip label="Phases" value={phases.length} />
+              <StatChip label="Initiatives" value={totalInitiatives} />
+              <StatChip label="Weeks" value={20} />
+            </div>
+          )}
+        </div>
+      }
+    >
       {loading ? (
-        <div className="flex justify-center py-20">
+        <div className="flex h-full items-center justify-center">
           <LoadingSpinner size="lg" />
         </div>
       ) : phases.length === 0 ? (
@@ -93,21 +117,16 @@ export default function RoadmapPage() {
           description="Seed the Roadmap & Governance module to populate the timeline."
         />
       ) : (
-        <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Phases" value={phases.length} icon={Layers} />
-            <StatCard
-              label="Initiatives"
-              value={totalInitiatives}
-              icon={ListChecks}
-            />
-            <StatCard label="Weeks" value={20} icon={CalendarRange} />
-          </div>
-
-          <Card padding="lg">
+        <motion.div
+          variants={fadeRise}
+          initial="hidden"
+          animate="show"
+          className="glass-card h-full min-h-0 overflow-auto p-6"
+        >
+          <div className="min-w-[720px]">
             <GanttTimeline phases={ganttPhases} onSelect={setSelectedId} />
-          </Card>
-        </>
+          </div>
+        </motion.div>
       )}
 
       <Modal
@@ -177,7 +196,7 @@ export default function RoadmapPage() {
           </div>
         )}
       </Modal>
-    </div>
+    </PageFrame>
   );
 }
 

@@ -349,7 +349,7 @@ export default function DeliveryChannelsPage() {
       {/* Main content: grid + panel */}
       <div className="flex-1 min-h-0 flex gap-4 pt-4">
         {/* Channel grid */}
-        <div className="flex-[3] min-w-0 flex flex-col gap-3">
+        <div className="flex-[3] min-w-0 min-h-0 flex flex-col gap-3 overflow-y-auto">
           <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 auto-rows-fr">
             {channels.map((channel, index) => (
               <ChannelTile

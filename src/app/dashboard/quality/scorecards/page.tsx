@@ -9,7 +9,7 @@ import {
   Plus,
   ListChecks,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageFrame, TileScroll } from "@/components/ui/PageFrame";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -17,8 +17,7 @@ import { Modal } from "@/components/ui/Modal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CopcFamilyBadge } from "@/components/quality/CopcFamilyBadge";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { staggerChildren, tileItem } from "@/lib/motion";
 
 interface Dimension {
   id: string;
@@ -109,70 +108,82 @@ export default function ScorecardsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="QA Scorecards"
-        description="10–14 criteria per service, grouped by quality dimension, with compliance and identity-verification auto-fails."
-        badge={{ label: `${scorecards.length} scorecards`, variant: "blue" }}
-        actions={
-          <Button variant="secondary" size="sm" onClick={() => setAiOpen(true)}>
-            <Sparkles size={15} />
-            Generate with AI
-          </Button>
-        }
-      />
-
-      {scorecards.length === 0 ? (
-        <EmptyState
-          icon={ClipboardCheck}
-          title="No scorecards yet"
-          description="Seed the QA demo data or generate a scorecard with AI."
-        />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {scorecards.map((sc, i) => {
-            const criticalCount = sc.criteria.filter((c) => c.critical).length;
-            return (
-              <motion.div
-                key={sc.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.04 * i, ease: EASE }}
-              >
-                <Card
-                  variant="glass"
-                  padding="md"
-                  hover
-                  onClick={() => setDetail(sc)}
-                  className="h-full cursor-pointer"
-                >
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <h3 className="font-playfair text-base font-semibold text-cream">{sc.name}</h3>
-                    <Badge variant={statusVariant(sc.status)} size="sm" dot>
-                      {sc.status}
-                    </Badge>
-                  </div>
-                  {sc.description && (
-                    <p className="mb-3 line-clamp-2 text-sm text-gray-muted">{sc.description}</p>
-                  )}
-                  <div className="grid grid-cols-3 gap-2 border-t border-white/[0.06] pt-3">
-                    <Stat icon={ListChecks} tone="text-teal-400" value={sc.criteria.length} label="criteria" />
-                    <Stat icon={AlertOctagon} tone="text-amber-400" value={criticalCount} label="auto-fail" />
-                    <Stat icon={ClipboardCheck} tone="text-gpssa-green" value={sc._count.reviews} label="reviews" />
-                  </div>
-                </Card>
-              </motion.div>
-            );
-          })}
+    <PageFrame
+      header={
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <ClipboardCheck size={16} className="text-teal-400" />
+            <h1 className="font-playfair text-sm font-semibold text-cream sm:text-base">
+              QA Scorecards
+            </h1>
+          </div>
+          <span className="text-xs text-gray-muted">Dimension-mapped criteria with auto-fails</span>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+              <span className="text-[9px] uppercase tracking-[0.16em] text-white/40">Scorecards </span>
+              <span className="text-xs font-semibold text-cream">{scorecards.length}</span>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => setAiOpen(true)}>
+              <Sparkles size={15} />
+              Generate with AI
+            </Button>
+          </div>
         </div>
-      )}
+      }
+    >
+      <TileScroll className="h-full pr-1">
+        {scorecards.length === 0 ? (
+          <EmptyState
+            icon={ClipboardCheck}
+            title="No scorecards yet"
+            description="Seed the QA demo data or generate a scorecard with AI."
+          />
+        ) : (
+          <motion.div
+            variants={staggerChildren}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 gap-3 pb-4 md:grid-cols-2 xl:grid-cols-3"
+          >
+            {scorecards.map((sc) => {
+              const criticalCount = sc.criteria.filter((c) => c.critical).length;
+              return (
+                <motion.div key={sc.id} variants={tileItem}>
+                  <Card
+                    variant="glass"
+                    padding="md"
+                    hover
+                    onClick={() => setDetail(sc)}
+                    className="h-full cursor-pointer"
+                  >
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <h3 className="font-playfair text-base font-semibold text-cream">{sc.name}</h3>
+                      <Badge variant={statusVariant(sc.status)} size="sm" dot>
+                        {sc.status}
+                      </Badge>
+                    </div>
+                    {sc.description && (
+                      <p className="mb-3 line-clamp-2 text-sm text-gray-muted">{sc.description}</p>
+                    )}
+                    <div className="grid grid-cols-3 gap-2 border-t border-white/[0.06] pt-3">
+                      <Stat icon={ListChecks} tone="text-teal-400" value={sc.criteria.length} label="criteria" />
+                      <Stat icon={AlertOctagon} tone="text-amber-400" value={criticalCount} label="auto-fail" />
+                      <Stat icon={ClipboardCheck} tone="text-gpssa-green" value={sc._count.reviews} label="reviews" />
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </TileScroll>
 
       {/* Detail modal: criteria table */}
       <Modal
@@ -301,7 +312,7 @@ export default function ScorecardsPage() {
           )}
         </div>
       </Modal>
-    </div>
+    </PageFrame>
   );
 }
 
