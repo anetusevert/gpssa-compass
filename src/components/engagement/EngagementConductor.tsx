@@ -9,20 +9,11 @@ import {
   getPhase,
   type EngagementPhaseId,
 } from "@/lib/engagement/playbook";
-import { PHASE_SPINE_EMPHASIS } from "@/lib/spine/conductor";
 import { useEngagementStore } from "@/lib/engagement/store";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-const NODE_SHORT: Record<string, string> = {
-  episode: "Episode",
-  journey: "Journey",
-  process: "Process",
-  systems: "Systems",
-  qa: "QA",
-};
-
-/** Slim conductor strip — paints the spine; does not replace it. */
+/** Slim conductor strip — paints the spine; one row, no prose. */
 export function EngagementConductor() {
   const router = useRouter();
   const open = useEngagementStore((s) => s.engagementOpen);
@@ -35,7 +26,7 @@ export function EngagementConductor() {
 
   const phase = getPhase(phaseId);
   const first = phase.screens[0];
-  const emphasis = PHASE_SPINE_EMPHASIS[phaseId];
+  const activeIdx = ENGAGEMENT_PHASES.findIndex((p) => p.id === phaseId);
 
   function selectPhase(id: EngagementPhaseId) {
     setPhaseId(id);
@@ -61,55 +52,40 @@ export function EngagementConductor() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.3, ease: EASE }}
-      className="shrink-0 rounded-xl border border-white/[0.08] bg-black/30 px-3 py-2.5"
+      className="flex shrink-0 items-center gap-3 rounded-xl border border-white/[0.08] bg-black/30 px-3 py-2"
       data-tour="compass-engagement-spine"
       data-tour-panel="compass-engagement-panel"
     >
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--gpssa-green)]">
-            Project conductor · {phase.weeks}
-          </p>
-          <p className="truncate text-[12px] text-white/50">
-            Emphasises{" "}
-            <span className="text-cream">
-              {emphasis.map((n) => NODE_SHORT[n]).join(" · ")}
-            </span>
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={start}
-          className="inline-flex items-center gap-1 rounded-lg bg-[var(--gpssa-green)] px-2.5 py-1.5 text-[11px] font-semibold text-[#071322]"
-        >
-          Start: {first?.label}
-          <ArrowRight size={12} />
-        </button>
-      </div>
+      <span
+        className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.2em]"
+        style={{ color: phase.accent }}
+      >
+        {phase.weeks}
+      </span>
 
-      <div className="relative flex justify-between gap-1">
-        <div className="absolute left-[6%] right-[6%] top-[14px] h-px bg-white/10" />
+      <div className="flex min-w-0 flex-1 items-center gap-1">
         {ENGAGEMENT_PHASES.map((p, i) => {
           const active = p.id === phaseId;
-          const done = ENGAGEMENT_PHASES.findIndex((x) => x.id === phaseId) > i;
+          const done = activeIdx > i;
           return (
             <button
               key={p.id}
               type="button"
               onClick={() => selectPhase(p.id)}
-              className="relative z-[1] flex min-w-0 flex-1 flex-col items-center gap-1"
+              className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1.5 py-1 transition ${
+                active ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"
+              }`}
+              title={p.summary}
             >
               <span
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition ${
+                className={`h-2 w-2 shrink-0 rounded-full transition ${
                   active
-                    ? "bg-[var(--gpssa-green)] text-[#071322] shadow-[0_0_20px_rgba(0,168,107,0.4)]"
+                    ? "bg-[var(--gpssa-green)] shadow-[0_0_10px_rgba(0,168,107,0.6)]"
                     : done
-                      ? "bg-[var(--gpssa-green)]/25 text-[#9DE5C2]"
-                      : "bg-white/[0.05] text-white/35 ring-1 ring-white/10"
+                      ? "bg-[var(--gpssa-green)]/40"
+                      : "bg-white/15"
                 }`}
-              >
-                {i + 1}
-              </span>
+              />
               <span
                 className={`truncate text-[9px] font-semibold uppercase tracking-[0.12em] ${
                   active ? "text-cream" : "text-white/35"
@@ -122,10 +98,14 @@ export function EngagementConductor() {
         })}
       </div>
 
-      <p className="mt-2 line-clamp-2 text-[11px] text-white/40">
-        <span className="text-white/55">How · </span>
-        {phase.how}
-      </p>
+      <button
+        type="button"
+        onClick={start}
+        className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[var(--gpssa-green)] px-2.5 py-1.5 text-[11px] font-semibold text-[#071322] transition hover:brightness-110"
+      >
+        {first?.label}
+        <ArrowRight size={11} />
+      </button>
     </motion.div>
   );
 }

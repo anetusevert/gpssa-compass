@@ -1,20 +1,23 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
-import { Float, MeshDistortMaterial } from "@react-three/drei";
-import { Color, type Mesh, type Group } from "three";
+import { useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { Float } from "@react-three/drei";
+import { Color, type Group, type Mesh, type MeshStandardMaterial } from "three";
 import type { SpineNodeId } from "@/lib/spine/types";
 
 const ORDER: SpineNodeId[] = ["episode", "journey", "process", "systems", "qa"];
 
+/** Planet palette — episode green through QA gold, like a small solar system. */
 const BASE: Record<SpineNodeId, string> = {
   episode: "#00A86B",
-  journey: "#2DD4BF",
-  process: "#E7B02E",
-  systems: "#4899FF",
+  journey: "#3B82C4",
+  process: "#C99A3C",
+  systems: "#B0764A",
   qa: "#C5A572",
 };
+
+const DIM = "#22384f";
 
 function NodeOrb({
   id,
@@ -35,64 +38,111 @@ function NodeOrb({
   accent: string | null;
   dimmed: boolean;
 }) {
-  const mesh = useRef<Mesh>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mat = useRef<any>(null);
-  const color = useRef(new Color());
+  const { viewport } = useThree();
+  const planet = useRef<Mesh>(null);
+  const halo = useRef<Mesh>(null);
+  const ring = useRef<Mesh>(null);
+  const mat = useRef<MeshStandardMaterial>(null);
+  const haloMat = useRef<MeshStandardMaterial>(null);
+  const color = useRef(new Color(BASE[id]));
   const goal = useRef(new Color());
 
-  const baseColor = BASE[id];
+  // Column-aligned: orb sits at the center of its fifth of the stage width.
+  const x = ((index + 0.5) / 5 - 0.5) * viewport.width;
+  const r = Math.min(viewport.width / 15, viewport.height / 3.4);
+
   const targetHex =
     conducting && emphasized && accent
       ? accent
-      : hovered || selected
-        ? baseColor
-        : dimmed
-          ? "#1a3048"
-          : baseColor;
+      : dimmed
+        ? DIM
+        : BASE[id];
 
-  const x = (index - 2) * 1.55;
+  const active = selected || hovered;
 
   useFrame((state, delta) => {
-    const t = Math.min(1, delta * 3);
+    const t = Math.min(1, delta * 3.5);
     goal.current.set(targetHex);
     color.current.lerp(goal.current, t);
+
     if (mat.current) {
       mat.current.color.copy(color.current);
-      mat.current.distort = selected || hovered ? 0.42 : emphasized ? 0.32 : 0.22;
-      mat.current.speed = selected || hovered ? 2.2 : 1.4;
+      mat.current.emissive.copy(color.current);
+      mat.current.emissiveIntensity +=
+        ((active ? 0.5 : emphasized ? 0.3 : 0.12) - mat.current.emissiveIntensity) * t;
     }
-    if (mesh.current) {
-      const s = selected ? 1.15 : hovered ? 1.08 : emphasized ? 1.05 : dimmed ? 0.85 : 1;
-      const cur = mesh.current.scale.x;
-      mesh.current.scale.setScalar(cur + (s - cur) * t);
-      mesh.current.rotation.y += delta * (hovered || selected ? 0.55 : 0.2);
-      mesh.current.position.y = Math.sin(state.clock.elapsedTime * 1.2 + index) * 0.08;
+    if (haloMat.current) {
+      haloMat.current.color.copy(color.current);
+      haloMat.current.opacity += ((active ? 0.22 : 0.1) - haloMat.current.opacity) * t;
+    }
+    if (planet.current) {
+      const s = active ? 1.18 : emphasized ? 1.08 : dimmed ? 0.88 : 1;
+      const cur = planet.current.scale.x / r;
+      const next = cur + (s - cur) * t;
+      planet.current.scale.setScalar(next * r);
+      planet.current.rotation.y += delta * (active ? 0.8 : 0.25);
+    }
+    if (halo.current && planet.current) {
+      halo.current.scale.copy(planet.current.scale).multiplyScalar(1.28);
+    }
+    if (ring.current) {
+      const target = active ? 1 : 0;
+      const cur = (ring.current.material as MeshStandardMaterial).opacity ?? 0;
+      (ring.current.material as MeshStandardMaterial).opacity = cur + (target * 0.6 - cur) * t;
+      ring.current.rotation.z += delta * 0.4;
+      ring.current.scale.setScalar((planet.current?.scale.x ?? r) * 1.7);
+      (ring.current.material as MeshStandardMaterial).color.copy(color.current);
     }
   });
 
   return (
-    <Float speed={1.1 + index * 0.05} rotationIntensity={0.2} floatIntensity={0.25}>
+    <Float speed={1 + index * 0.12} rotationIntensity={0.12} floatIntensity={0.35}>
       <group position={[x, 0, 0]}>
-        <mesh ref={mesh}>
-          <icosahedronGeometry args={[0.42, 6]} />
-          <MeshDistortMaterial
-            ref={mat}
-            color={baseColor}
-            distort={0.25}
-            speed={1.4}
-            roughness={0.25}
-            metalness={0.45}
+        {/* Atmosphere halo */}
+        <mesh ref={halo}>
+          <sphereGeometry args={[1, 24, 24]} />
+          <meshStandardMaterial
+            ref={haloMat}
+            color={BASE[id]}
+            transparent
+            opacity={0.1}
+            depthWrite={false}
           />
         </mesh>
-        {(selected || hovered) && (
-          <mesh rotation={[Math.PI / 2.2, 0, 0]} scale={1.35}>
-            <torusGeometry args={[0.42, 0.02, 12, 48]} />
-            <meshBasicMaterial color={targetHex} transparent opacity={0.55} />
-          </mesh>
-        )}
+        {/* Planet body */}
+        <mesh ref={planet} scale={r}>
+          <sphereGeometry args={[1, 48, 48]} />
+          <meshStandardMaterial
+            ref={mat}
+            color={BASE[id]}
+            roughness={0.38}
+            metalness={0.3}
+            emissive={BASE[id]}
+            emissiveIntensity={0.12}
+          />
+        </mesh>
+        {/* Saturn-style ring on focus */}
+        <mesh ref={ring} rotation={[Math.PI / 2.6, 0.35, 0]}>
+          <torusGeometry args={[1, 0.02, 12, 64]} />
+          <meshStandardMaterial
+            color={BASE[id]}
+            transparent
+            opacity={0}
+            depthWrite={false}
+          />
+        </mesh>
       </group>
     </Float>
+  );
+}
+
+function OrbitLine() {
+  const { viewport } = useThree();
+  return (
+    <mesh position={[0, 0, -0.5]}>
+      <planeGeometry args={[viewport.width * 0.82, 0.012]} />
+      <meshBasicMaterial color="#3a5570" transparent opacity={0.45} />
+    </mesh>
   );
 }
 
@@ -112,22 +162,20 @@ export function SpineOrbScene({
   const group = useRef<Group>(null);
   const hasEmphasis = conducting && emphasized.size > 0;
 
-  const nodes = useMemo(() => ORDER, []);
-
-  useFrame((_, delta) => {
+  useFrame((state) => {
     if (group.current) {
-      group.current.rotation.y = Math.sin(Date.now() * 0.00015) * 0.04;
-      group.current.position.y += (0 - group.current.position.y) * Math.min(1, delta * 2);
+      group.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.03;
     }
   });
 
   return (
     <>
-      <ambientLight intensity={0.45} />
-      <directionalLight position={[3, 4, 2]} intensity={1.1} color="#e8f5ef" />
-      <pointLight position={[-2, 1, -2]} intensity={0.4} color="#4899FF" />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[4, 5, 3]} intensity={1.3} color="#eef7f2" />
+      <pointLight position={[-3, -1, 2]} intensity={0.35} color="#4899FF" />
       <group ref={group}>
-        {nodes.map((id, i) => {
+        <OrbitLine />
+        {ORDER.map((id, i) => {
           const emp = emphasized.has(id);
           const dimmed = hasEmphasis && !emp && selected !== id && hovered !== id;
           return (
