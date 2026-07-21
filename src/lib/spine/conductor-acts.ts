@@ -116,22 +116,15 @@ export function nextAct(act: ConductorAct): ConductorAct | null {
 }
 
 /**
- * After completing `from`, open the act that is now `current` (skipping
- * already-done steps). Falls back to ordinal next, then first `ready`.
+ * After completing `from`, always open the ordinal next act.
+ * Do not skip ahead based on snapshot "done" flags — process/systems/QA
+ * facts are service-wide, so a new journey must still hand off to Process
+ * even when an older SOP already exists on the service.
  */
 export function handoffTarget(
-  statuses: Record<ConductorAct, ActStatus>,
+  _statuses: Record<ConductorAct, ActStatus>,
   from: ConductorAct
 ): ConductorAct | null {
-  const fromIdx = ACT_ORDER.indexOf(from);
-  if (fromIdx < 0) return null;
-
-  for (let i = fromIdx + 1; i < ACT_ORDER.length; i++) {
-    if (statuses[ACT_ORDER[i]] === "current") return ACT_ORDER[i];
-  }
-  for (let i = fromIdx + 1; i < ACT_ORDER.length; i++) {
-    if (statuses[ACT_ORDER[i]] === "ready") return ACT_ORDER[i];
-  }
   return nextAct(from);
 }
 

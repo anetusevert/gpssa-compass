@@ -458,6 +458,9 @@ export function OperatingSpine({
           const data = await refresh(serviceId, personaKey);
           const built = buildCandidates(data.workspace, data.graph, personaKey);
           await runHandoff("episode", { journeyPayload: built });
+        } else if (action === "apply-journey") {
+          setDraft(null);
+          await runHandoff("journey");
         } else {
           await refresh(serviceId, personaKey);
         }
