@@ -1,17 +1,31 @@
 "use client";
 
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Loader2, Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import type { SpineGraphPayload, SpineNodeId } from "@/lib/spine/types";
-import type { Workspace, WorkspaceEpisode } from "./workspace-types";
+import type { CatalogueEpisode, Workspace, WorkspaceEpisode } from "./workspace-types";
 
 const TITLES: Record<SpineNodeId, string> = {
   episode: "Eligible episodes",
-  journey: "Existing journey",
+  journey: "Journeys for this path",
   process: "Existing process",
   systems: "Systems & fulfilment",
   qa: "QA & improvement",
+};
+
+const CATEGORY_LABEL: Record<string, string> = {
+  join: "Join & register",
+  contribute: "Contribute",
+  records: "Records & evidence",
+  claim: "Claim benefits",
+  "end-of-service": "End of service",
+  survivor: "Survivor",
+  disability: "Disability",
+  mobility: "Mobility / GCC",
+  family: "Family events",
+  employer: "Employer ops",
 };
 
 export function SpineBrowseModal({
@@ -38,6 +52,7 @@ export function SpineBrowseModal({
   const lensKey = personaKey ?? workspace?.personaKey ?? null;
   const eligible: WorkspaceEpisode[] =
     workspace?.eligibleEpisodes ?? workspace?.episodes ?? [];
+  const catalogue = workspace?.catalogueEpisodes ?? [];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={TITLES[node]} size="2xl">
@@ -51,6 +66,7 @@ export function SpineBrowseModal({
           <EpisodeBrowse
             workspace={workspace}
             eligible={eligible}
+            catalogue={catalogue}
             personaKey={lensKey}
             busy={busy}
             onAction={onAction}
@@ -77,20 +93,34 @@ export function SpineBrowseModal({
 function EpisodeBrowse({
   workspace,
   eligible,
+  catalogue,
   personaKey,
   busy,
   onAction,
 }: {
   workspace: Workspace | null;
   eligible: WorkspaceEpisode[];
+  catalogue: CatalogueEpisode[];
   personaKey: string | null;
   busy: boolean;
   onAction: (action: string, payload?: Record<string, unknown>) => Promise<void>;
 }) {
+  const [category, setCategory] = useState<string>("all");
   const activeId = eligible.find((e) => e.isActive)?.id ?? null;
   const profileHref = personaKey
     ? `/dashboard/delivery/personas?persona=${personaKey}`
     : "/dashboard/delivery/personas";
+
+  const categories = useMemo(() => {
+    const ids = Array.from(new Set(catalogue.map((c) => c.category)));
+    return ids;
+  }, [catalogue]);
+
+  const filteredCatalogue = useMemo(() => {
+    if (category === "all") return catalogue;
+    return catalogue.filter((c) => c.category === category);
+  }, [catalogue, category]);
+
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
@@ -99,7 +129,8 @@ function EpisodeBrowse({
         </p>
         <p className="text-[13px] text-cream">{workspace?.persona?.name ?? "Not set"}</p>
         <p className="mt-0.5 text-[10px] text-white/35">
-          Showing episodes eligible for this persona (shared templates included)
+          {catalogue.length} ready episodes in the catalogue
+          {eligible.length ? ` · ${eligible.length} already on this service` : ""}
         </p>
         <Link
           href={profileHref}
@@ -108,34 +139,118 @@ function EpisodeBrowse({
           Open profile →
         </Link>
       </div>
-      <ul className="space-y-1.5">
-        {eligible.map((e) => (
-          <li key={e.id}>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                onAction("activate-episode", {
-                  episodeId: e.id,
-                  ...(personaKey ? { personaKey } : {}),
-                })
-              }
-              className={`w-full rounded-lg border px-3 py-2 text-left text-[12px] transition ${
-                e.id === activeId
-                  ? "border-[var(--gpssa-green)]/50 bg-[var(--gpssa-green)]/10 text-cream"
-                  : "border-white/[0.06] text-white/60 hover:border-white/20"
-              }`}
-            >
-              {e.id === activeId ? "● " : ""}
-              {e.name}
-            </button>
-          </li>
-        ))}
-        {!eligible.length && (
-          <p className="text-[12px] text-white/35">No eligible episodes — use Set up</p>
-        )}
-      </ul>
+
+      {eligible.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+            On this service
+          </p>
+          <ul className="space-y-1.5">
+            {eligible.map((e) => (
+              <li key={e.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    onAction("activate-episode", {
+                      episodeId: e.id,
+                      ...(personaKey ? { personaKey } : {}),
+                    })
+                  }
+                  className={`w-full rounded-lg border px-3 py-2 text-left text-[12px] transition ${
+                    e.id === activeId
+                      ? "border-[var(--gpssa-green)]/50 bg-[var(--gpssa-green)]/10 text-cream"
+                      : "border-white/[0.06] text-white/60 hover:border-white/20"
+                  }`}
+                >
+                  {e.id === activeId ? "● " : ""}
+                  {e.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div>
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+            Catalogue — choose or set up
+          </p>
+          <div className="flex max-w-full flex-wrap gap-1">
+            <CatChip active={category === "all"} onClick={() => setCategory("all")}>
+              All ({catalogue.length})
+            </CatChip>
+            {categories.map((c) => (
+              <CatChip key={c} active={category === c} onClick={() => setCategory(c)}>
+                {CATEGORY_LABEL[c] ?? c}
+              </CatChip>
+            ))}
+          </div>
+        </div>
+        <ul className="space-y-1.5">
+          {filteredCatalogue.map((e) => (
+            <li key={e.id}>
+              <button
+                type="button"
+                disabled={busy || e.alreadyOnService}
+                onClick={() =>
+                  onAction("activate-library", {
+                    libraryId: e.id,
+                    ...(personaKey ? { personaKey } : {}),
+                  })
+                }
+                className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                  e.alreadyOnService
+                    ? "border-[var(--gpssa-green)]/25 bg-[var(--gpssa-green)]/5 text-white/45"
+                    : "border-white/[0.06] text-white/70 hover:border-[var(--gpssa-green)]/40 hover:bg-[var(--gpssa-green)]/5"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[12px] font-medium text-cream">{e.name}</p>
+                  <span className="shrink-0 text-[9px] uppercase tracking-[0.12em] text-white/30">
+                    {e.alreadyOnService ? "On service" : "Set up"}
+                  </span>
+                </div>
+                <p className="mt-0.5 line-clamp-2 text-[10px] text-white/35">{e.description}</p>
+                <p className="mt-1 text-[9px] text-white/30">
+                  {CATEGORY_LABEL[e.category] ?? e.category} · {e.stageCount} journey stages
+                </p>
+              </button>
+            </li>
+          ))}
+          {!filteredCatalogue.length && (
+            <p className="text-[12px] text-white/35">
+              No catalogue episodes for this filter — try another category
+            </p>
+          )}
+        </ul>
+      </div>
     </div>
+  );
+}
+
+function CatChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-2 py-0.5 text-[9px] font-semibold transition ${
+        active
+          ? "bg-[var(--gpssa-green)]/20 text-[var(--gpssa-green)]"
+          : "bg-white/[0.04] text-white/40 hover:text-white/70"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -211,9 +326,9 @@ function JourneyBrowse({
         </div>
         <div>
           <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
-            Set up new
+            Ready journeys ({setupNew.length})
           </p>
-          <ul className="space-y-1.5">
+          <ul className="max-h-[280px] space-y-1.5 overflow-y-auto pr-0.5">
             {setupNew.map((c) => (
               <li key={c.id}>
                 <button
@@ -233,7 +348,12 @@ function JourneyBrowse({
                 >
                   <p className="text-[12px] font-medium text-cream">{c.label}</p>
                   <p className="text-[10px] text-white/35">
-                    {c.stages.length} stages · from {c.source}
+                    {c.stages.length} stages ·{" "}
+                    {c.source === "persona"
+                      ? "research journey"
+                      : c.source === "library"
+                        ? "catalogue"
+                        : c.source}
                   </p>
                 </button>
               </li>

@@ -20,10 +20,22 @@ export type WorkspaceEpisode = {
   libraryId?: string | null;
 };
 
+export type CatalogueEpisode = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  suggestedPersonaKeys: string[];
+  stageCount: number;
+  alreadyOnService: boolean;
+};
+
 export type Workspace = {
   episodes: WorkspaceEpisode[];
   /** Episodes eligible for the current persona lens (many-to-many). */
   eligibleEpisodes?: WorkspaceEpisode[];
+  /** Full ready catalogue for the persona — activate even if not yet on service. */
+  catalogueEpisodes?: CatalogueEpisode[];
   personaKey: string | null;
   persona: {
     id: string;

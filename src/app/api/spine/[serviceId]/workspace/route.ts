@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
-import { getLibraryEpisode } from "@/lib/spine/library";
+import { getLibraryEpisode, libraryForPersona } from "@/lib/spine/library";
 import { filterEligibleEpisodes, isEpisodeEligible } from "@/lib/spine/eligibility";
 import { personas } from "@/data/personas";
 
@@ -41,6 +41,7 @@ export async function GET(
       eligible[0] ??
       null);
 
+  const catalogue = libraryForPersona(personaKey);
   const journeyCandidates = [
     ...(active?.stages.length
       ? [
@@ -61,7 +62,7 @@ export async function GET(
           {
             id: `persona-${persona.id}`,
             source: "persona" as const,
-            label: `${persona.name} journey`,
+            label: `${persona.name} research journey`,
             stages: persona.gpssaJourney.steps.map((s) => ({
               name: s.title,
               actor: "customer",
@@ -70,6 +71,17 @@ export async function GET(
           },
         ]
       : []),
+    // Ready journeys from the episode catalogue for this persona
+    ...catalogue.slice(0, 12).map((lib) => ({
+      id: `library-journey-${lib.id}`,
+      source: "library" as const,
+      label: lib.name,
+      stages: lib.defaultStages.map((s) => ({
+        name: s.name,
+        actor: s.actor,
+        outcome: s.outcome,
+      })),
+    })),
   ];
 
   let painPoints: string[] = [];
@@ -90,11 +102,26 @@ export async function GET(
     stages: e.stages,
   }));
 
+  const eligibleOnService = filterEligibleEpisodes(episodeRows, personaKey);
+  const activatedLibraryIds = new Set(
+    episodeRows.map((e) => e.libraryId).filter(Boolean) as string[]
+  );
+
   return NextResponse.json({
     service: { id: service.id, name: service.name, category: service.category },
     config,
     episodes: episodeRows,
-    eligibleEpisodes: filterEligibleEpisodes(episodeRows, personaKey),
+    eligibleEpisodes: eligibleOnService,
+    /** Full catalogue for this persona — ready to activate even if not yet on the service. */
+    catalogueEpisodes: catalogue.map((e) => ({
+      id: e.id,
+      name: e.name,
+      description: e.description,
+      category: e.category,
+      suggestedPersonaKeys: e.suggestedPersonaKeys,
+      stageCount: e.defaultStages.length,
+      alreadyOnService: activatedLibraryIds.has(e.id),
+    })),
     activeEpisodeId: active?.id ?? null,
     personaKey,
     persona: persona

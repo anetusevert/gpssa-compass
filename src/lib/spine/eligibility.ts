@@ -1,4 +1,4 @@
-import { EPISODE_LIBRARY, getLibraryEpisode } from "@/lib/spine/library";
+import { getLibraryEpisode, libraryForPersona } from "@/lib/spine/library";
 
 export type EpisodeEligibilityFields = {
   personaKey?: string | null;
@@ -29,8 +29,7 @@ export function filterEligibleEpisodes<T extends EpisodeEligibilityFields>(
 
 /** Prefer library templates that list this persona. */
 export function libraryEpisodesForPersona(personaKey: string | null | undefined) {
-  if (!personaKey) return EPISODE_LIBRARY;
-  return EPISODE_LIBRARY.filter((e) => e.suggestedPersonaKeys.includes(personaKey));
+  return libraryForPersona(personaKey);
 }
 
 export function librarySuggestsPersona(

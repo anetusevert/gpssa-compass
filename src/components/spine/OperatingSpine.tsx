@@ -348,6 +348,13 @@ export function OperatingSpine({
     return filterEligibleEpisodes(workspace?.episodes ?? [], personaKey);
   }, [workspace, personaKey]);
 
+  /** Catalogue + on-service — what the user can actually choose for this persona. */
+  const personaEpisodePoolCount = useMemo(() => {
+    const catalogue = workspace?.catalogueEpisodes?.length ?? 0;
+    if (catalogue > 0) return catalogue;
+    return eligibleEpisodes.length;
+  }, [workspace?.catalogueEpisodes, eligibleEpisodes.length]);
+
   const activeEpisode =
     eligibleEpisodes.find((e) => e.isActive) ??
     workspace?.episodes.find((e) => e.isActive && eligibleEpisodes.some((x) => x.id === e.id)) ??
@@ -507,7 +514,7 @@ export function OperatingSpine({
             const isSel = litSelection === id;
             const count =
               id === "episode"
-                ? eligibleEpisodes.length
+                ? personaEpisodePoolCount
                 : node.lit
                   ? node.count
                   : null;
@@ -559,7 +566,7 @@ export function OperatingSpine({
           />
           <PresenceChip
             label="Eligible"
-            value={`${eligibleEpisodes.length} episode${eligibleEpisodes.length === 1 ? "" : "s"}`}
+            value={`${personaEpisodePoolCount} episode${personaEpisodePoolCount === 1 ? "" : "s"}`}
           />
           <p className="ml-auto hidden text-[10px] text-white/25 sm:block">
             {activeEpisode
@@ -573,7 +580,7 @@ export function OperatingSpine({
         isOpen={gateOpen}
         onClose={() => setGateOpen(false)}
         node={selected}
-        existingSummary={existingSummary(selected, graph, workspace, eligibleEpisodes.length)}
+        existingSummary={existingSummary(selected, graph, workspace, personaEpisodePoolCount)}
         onBrowse={() => {
           setGateOpen(false);
           setBrowseOpen(true);
