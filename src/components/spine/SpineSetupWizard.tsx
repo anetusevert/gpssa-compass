@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { PersonaAvatar } from "@/components/personas/PersonaAvatar";
+import { ProcessDraftEditor } from "./ProcessDraftEditor";
 import { getPersonaById } from "@/data/personas";
 import { EASE } from "@/lib/motion";
 import type { SpineDraft } from "@/lib/spine/generate";
@@ -560,32 +561,13 @@ function ProcessStep({
       <div className="grid min-h-0 flex-1 gap-2 sm:grid-cols-2">
         <div className="flex min-h-0 flex-col rounded-xl border border-white/[0.05] bg-black/20 p-2">
           <p className="mb-1.5 shrink-0 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
-            {draftSource ? `Draft · ${draftSource}` : "Draft"}
+            {draftSource ? `Draft · ${draftSource} — amend before applying` : "Draft"}
           </p>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1">
             {!draft ? (
               <p className="text-[11px] text-white/40">No draft yet</p>
             ) : (
-              <ul className="space-y-1.5">
-                {draft.steps.map((st, i) => (
-                  <li key={i} className="flex items-center gap-1.5">
-                    <input
-                      className="min-w-0 flex-1 rounded border border-white/10 bg-black/30 px-1.5 py-1 text-[11px] text-cream"
-                      value={st.title}
-                      onChange={(e) => {
-                        const steps = [...draft.steps];
-                        steps[i] = { ...st, title: e.target.value };
-                        setDraft({ ...draft, steps });
-                      }}
-                    />
-                    {st.qaCheckpoint && (
-                      <span className="shrink-0 text-[9px] font-bold text-[var(--gpssa-green)]">
-                        QA
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <ProcessDraftEditor draft={draft} setDraft={setDraft} busy={busy} />
             )}
           </div>
         </div>

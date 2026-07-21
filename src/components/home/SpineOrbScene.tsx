@@ -1,25 +1,25 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Float } from "@react-three/drei";
-import { Color, type Group, type Mesh, type MeshStandardMaterial } from "three";
+import { Color, type Group, type Mesh } from "three";
+import { createSpineBlobMaterial } from "./SpineBlobMaterial";
 import type { SpineNodeId } from "@/lib/spine/types";
 
 const ORDER: SpineNodeId[] = ["episode", "journey", "process", "systems", "qa"];
 
-/** Planet palette — episode green through QA gold. */
-const BASE: Record<SpineNodeId, string> = {
-  episode: "#00A86B",
-  journey: "#3B82C4",
-  process: "#C99A3C",
-  systems: "#B0764A",
-  qa: "#C5A572",
+/** Blob palette — primary body, secondary drift tone, accent rim. */
+const PALETTE: Record<SpineNodeId, { primary: string; secondary: string; accent: string }> = {
+  episode: { primary: "#00A86B", secondary: "#2fd39a", accent: "#a8f0d4" },
+  journey: { primary: "#3B82C4", secondary: "#6fb1e8", accent: "#c4e2ff" },
+  process: { primary: "#C99A3C", secondary: "#e8c06a", accent: "#ffe9b8" },
+  systems: { primary: "#B0764A", secondary: "#d99e70", accent: "#ffd9b8" },
+  qa: { primary: "#C5A572", secondary: "#e2c795", accent: "#fff0d4" },
 };
 
 const MUTED = "#33475e";
 
-function NodeOrb({
+function BlobNode({
   id,
   index,
   radius,
@@ -41,98 +41,71 @@ function NodeOrb({
   dimmed: boolean;
 }) {
   const { viewport } = useThree();
-  const planet = useRef<Mesh>(null);
-  const halo = useRef<Mesh>(null);
-  const ring = useRef<Mesh>(null);
-  const mat = useRef<MeshStandardMaterial>(null);
-  const haloMat = useRef<MeshStandardMaterial>(null);
-  const ringMat = useRef<MeshStandardMaterial>(null);
-  const color = useRef(new Color(BASE[id]));
-  const goal = useRef(new Color());
+  const mesh = useRef<Mesh>(null);
+  const smoothedAmp = useRef(0);
+  const smoothedMute = useRef(1);
+  const smoothedScale = useRef(1);
+  const accentGoal = useRef(new Color());
 
-  // Column-aligned: orb sits at the center of its fifth of the stage width.
+  const material = useMemo(
+    () =>
+      createSpineBlobMaterial({
+        primary: PALETTE[id].primary,
+        secondary: PALETTE[id].secondary,
+        accent: PALETTE[id].accent,
+        muted: MUTED,
+        seed: index * 13.7,
+      }),
+    [id, index]
+  );
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  // Column-aligned: blob sits at the center of its fifth of the stage width.
   const x = ((index + 0.5) / 5 - 0.5) * viewport.width;
 
   const active = selected || hovered;
-  // Only the active planet keeps its saturated color; the rest stay muted.
-  const targetHex =
-    conducting && emphasized && accent ? accent : active ? BASE[id] : dimmed ? MUTED : BASE[id];
-  const saturation = active || (conducting && emphasized) ? 1 : 0.45;
+  const targetAmp = active ? 0.9 : emphasized ? 0.4 : 0.15;
+  const targetMute = active ? 0 : emphasized ? 0.3 : dimmed ? 1 : 0.55;
+  const targetScale = active ? 1.14 : emphasized ? 1.04 : dimmed ? 0.9 : 1;
 
-  useFrame((_, delta) => {
-    const t = Math.min(1, delta * 3.5);
-    goal.current.set(targetHex);
-    if (saturation < 1) {
-      // Blend toward muted for inactive planets
-      goal.current.lerp(new Color(MUTED), 1 - saturation);
-    }
-    color.current.lerp(goal.current, t);
+  useFrame((state, delta) => {
+    const u = material.uniforms;
+    u.u_time.value = state.clock.elapsedTime;
 
-    if (mat.current) {
-      mat.current.color.copy(color.current);
-      mat.current.emissive.copy(color.current);
-      mat.current.emissiveIntensity +=
-        ((active ? 0.55 : emphasized ? 0.32 : 0.1) - mat.current.emissiveIntensity) * t;
-    }
-    if (haloMat.current) {
-      haloMat.current.color.copy(color.current);
-      haloMat.current.opacity += ((active ? 0.2 : 0.07) - haloMat.current.opacity) * t;
-    }
-    if (planet.current) {
-      const s = active ? 1.16 : emphasized ? 1.06 : dimmed ? 0.92 : 1;
-      const cur = planet.current.scale.x / radius;
-      const next = cur + (s - cur) * t;
-      planet.current.scale.setScalar(next * radius);
-      planet.current.rotation.y += delta * (active ? 0.9 : 0.25);
-    }
-    if (halo.current && planet.current) {
-      halo.current.scale.copy(planet.current.scale).multiplyScalar(1.25);
-    }
-    if (ring.current && ringMat.current) {
-      const target = active ? 0.65 : 0;
-      ringMat.current.opacity += (target - ringMat.current.opacity) * t;
-      ringMat.current.color.copy(color.current);
-      ring.current.rotation.z += delta * 0.4;
-      ring.current.scale.setScalar((planet.current?.scale.x ?? radius) * 1.55);
+    const lerpSpeed = 1 - Math.pow(0.001, delta); // frame-rate independent
+    smoothedAmp.current += (targetAmp - smoothedAmp.current) * lerpSpeed;
+    smoothedMute.current += (targetMute - smoothedMute.current) * lerpSpeed;
+    u.u_amp.value = smoothedAmp.current;
+    u.u_mute.value = smoothedMute.current;
+
+    // Engagement Mode phase accent tints the rim of emphasized blobs.
+    accentGoal.current.set(
+      conducting && emphasized && accent ? accent : PALETTE[id].accent
+    );
+    u.u_colorAccent.value.lerp(accentGoal.current, lerpSpeed);
+
+    if (mesh.current) {
+      mesh.current.rotation.y += delta * (active ? 0.18 : 0.05);
+      const t = state.clock.elapsedTime + index * 1.7;
+      const pulse =
+        1 +
+        Math.sin(t * 0.35) * 0.04 +
+        Math.sin(t * 0.13 + 1.7) * 0.025 +
+        smoothedAmp.current * 0.05;
+      smoothedScale.current += (targetScale - smoothedScale.current) * lerpSpeed;
+      mesh.current.scale.setScalar(radius * smoothedScale.current * pulse);
+      // Gentle independent drift so the row never reads as a static lineup.
+      mesh.current.position.y = Math.sin(t * 0.4) * radius * 0.06;
     }
   });
 
   return (
-    <Float speed={1 + index * 0.12} rotationIntensity={0.1} floatIntensity={0.25}>
-      <group position={[x, 0, 0]}>
-        <mesh ref={halo}>
-          <sphereGeometry args={[1, 24, 24]} />
-          <meshStandardMaterial
-            ref={haloMat}
-            color={BASE[id]}
-            transparent
-            opacity={0.07}
-            depthWrite={false}
-          />
-        </mesh>
-        <mesh ref={planet} scale={radius}>
-          <sphereGeometry args={[1, 48, 48]} />
-          <meshStandardMaterial
-            ref={mat}
-            color={BASE[id]}
-            roughness={0.38}
-            metalness={0.3}
-            emissive={BASE[id]}
-            emissiveIntensity={0.1}
-          />
-        </mesh>
-        <mesh ref={ring} rotation={[Math.PI / 2.4, 0.4, 0]}>
-          <torusGeometry args={[1, 0.025, 12, 64]} />
-          <meshStandardMaterial
-            ref={ringMat}
-            color={BASE[id]}
-            transparent
-            opacity={0}
-            depthWrite={false}
-          />
-        </mesh>
-      </group>
-    </Float>
+    <group position={[x, 0, 0]}>
+      <mesh ref={mesh} material={material} scale={radius}>
+        <icosahedronGeometry args={[1, 24]} />
+      </mesh>
+    </group>
   );
 }
 
@@ -141,7 +114,7 @@ function OrbitLine() {
   return (
     <mesh position={[0, 0, -2]}>
       <planeGeometry args={[viewport.width * 0.82, 0.01]} />
-      <meshBasicMaterial color="#3a5570" transparent opacity={0.4} />
+      <meshBasicMaterial color="#3a5570" transparent opacity={0.35} />
     </mesh>
   );
 }
@@ -163,7 +136,7 @@ export function SpineOrbScene({
   const { viewport } = useThree();
   const hasEmphasis = conducting && emphasized.size > 0;
 
-  // Identical radius for all planets, capped by both column width and stage height.
+  // Identical radius for all blobs, capped by both column width and stage height.
   const radius = Math.min(viewport.height / 2.9, viewport.width / 14);
 
   useFrame((state) => {
@@ -175,8 +148,6 @@ export function SpineOrbScene({
   return (
     <>
       <ambientLight intensity={0.55} />
-      <directionalLight position={[4, 6, 8]} intensity={1.25} color="#eef7f2" />
-      <pointLight position={[-4, -2, 5]} intensity={0.3} color="#4899FF" />
       <group ref={group}>
         <OrbitLine />
         {ORDER.map((id, i) => {
@@ -184,7 +155,7 @@ export function SpineOrbScene({
           const isActive = selected === id || hovered === id;
           const dimmed = !isActive && (hasEmphasis ? !emp : true);
           return (
-            <NodeOrb
+            <BlobNode
               key={id}
               id={id}
               index={i}

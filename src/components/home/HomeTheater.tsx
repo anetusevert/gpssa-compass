@@ -11,7 +11,6 @@ import { EngagementConductor } from "@/components/engagement/EngagementConductor
 import { OperatingSpine } from "@/components/spine/OperatingSpine";
 import { SpineGuideDock } from "@/components/home/SpineGuideDock";
 import { PageFrame } from "@/components/ui/PageFrame";
-import type { SpineNodeId } from "@/lib/spine/types";
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
 
@@ -32,8 +31,6 @@ export function HomeTheater() {
   const userName = rawName.split(".")[0];
 
   const [now, setNow] = useState<Date | null>(null);
-  const [selectedNode, setSelectedNode] = useState<SpineNodeId>("episode");
-  const [personaKey, setPersonaKey] = useState<string | null>(null);
 
   useEffect(() => {
     setNow(new Date());
@@ -90,13 +87,8 @@ export function HomeTheater() {
 
         <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-2">
           <EngagementConductor />
-          <OperatingSpine
-            variant="hero"
-            className="min-h-0 flex-1"
-            onSelectedNodeChange={setSelectedNode}
-            onPersonaKeyChange={setPersonaKey}
-          />
-          <SpineGuideDock selectedNode={selectedNode} personaKey={personaKey} />
+          <OperatingSpine variant="hero" className="min-h-0 flex-1" />
+          <SpineGuideDock />
         </div>
 
         <footer className="flex shrink-0 items-center justify-center gap-2 pt-1.5">

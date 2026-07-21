@@ -12,12 +12,22 @@ export function SpinePersonaLens({
   personaKey,
   busy,
   onSelect,
+  open: openProp,
+  onOpenChange,
 }: {
   personaKey: string | null;
   busy?: boolean;
   onSelect: (key: string) => void;
+  /** Optional controlled open state (conductor rail opens the chooser). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (v: boolean) => {
+    setOpenState(v);
+    onOpenChange?.(v);
+  };
   const rootRef = useRef<HTMLDivElement>(null);
   const persona = personaKey ? getPersonaById(personaKey) : null;
 
@@ -28,6 +38,7 @@ export function SpinePersonaLens({
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (
@@ -35,7 +46,7 @@ export function SpinePersonaLens({
       <button
         type="button"
         disabled={busy}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         className="group flex items-center gap-2.5 rounded-2xl border border-white/[0.08] bg-black/30 py-1.5 pl-1.5 pr-2.5 text-left transition hover:border-[var(--gpssa-green)]/40 hover:bg-black/45 disabled:opacity-50"
         aria-expanded={open}
         aria-haspopup="listbox"

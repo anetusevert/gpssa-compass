@@ -7,6 +7,11 @@ import { motion } from "framer-motion";
 import { ArrowRight, GitBranch, Loader2, Star, Wand2 } from "lucide-react";
 import { useEngagementStore } from "@/lib/engagement/store";
 import { emphasizedNodes, PHASE_SPINE_ACCENT } from "@/lib/spine/conductor";
+import {
+  computeConductorSnapshot,
+  useConductorStore,
+  type ConductorAct,
+} from "@/lib/spine/conductor-acts";
 import type { SpineDraft } from "@/lib/spine/generate";
 import type { SpineGraphPayload, SpineNodeId, SpineServiceListItem } from "@/lib/spine/types";
 import { filterEligibleEpisodes } from "@/lib/spine/eligibility";
@@ -15,6 +20,7 @@ import { SpineSetupWizard, type WizardStep } from "./SpineSetupWizard";
 import { SpineNodeGate } from "./SpineNodeGate";
 import { SpineBrowseModal } from "./SpineBrowseModal";
 import { SpinePersonaLens } from "./SpinePersonaLens";
+import { SystemsQaActModal } from "./SystemsQaActModal";
 import type { LibraryPayload, Workspace } from "./workspace-types";
 
 const SpineOrbCanvas = dynamic(() => import("@/components/home/SpineOrbCanvas"), {
@@ -134,6 +140,8 @@ export function OperatingSpine({
   const [wizardEntryStep, setWizardEntryStep] = useState<WizardStep>("persona");
   /** Live wizard step for planet lighting only — never fed back as entryStep. */
   const [wizardLitStep, setWizardLitStep] = useState<WizardStep | null>(null);
+  const [personaLensOpen, setPersonaLensOpen] = useState(false);
+  const [systemsQaOpen, setSystemsQaOpen] = useState(false);
 
   const bootstrapped = useRef(false);
   const applyingPersona = useRef(false);
@@ -307,10 +315,11 @@ export function OperatingSpine({
     if (!serviceId || !draft) return;
     setBusy(true);
     try {
+      // Process act applies process + SOP only — Act 5's agent handles systems & QA.
       await fetch(`/api/spine/${serviceId}/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draft }),
+        body: JSON.stringify({ draft, section: "process" }),
       });
       await refresh(serviceId, personaKey);
     } finally {
@@ -343,6 +352,55 @@ export function OperatingSpine({
     eligibleEpisodes.find((e) => e.isActive) ??
     workspace?.episodes.find((e) => e.isActive && eligibleEpisodes.some((x) => x.id === e.id)) ??
     null;
+
+  /* ── Conductor: publish act statuses; answer act requests from the dock ── */
+
+  const setConductorSnapshot = useConductorStore((s) => s.setSnapshot);
+  const requestedAct = useConductorStore((s) => s.requestedAct);
+  const clearActRequest = useConductorStore((s) => s.clearRequest);
+
+  useEffect(() => {
+    if (!graph) return;
+    setConductorSnapshot(
+      computeConductorSnapshot({
+        personaName: workspace?.persona?.name ?? null,
+        episodeName: activeEpisode?.name ?? null,
+        stageCount: graph.stages.length,
+        sopStepCount: graph.processes[0]?.sop?.steps.length ?? 0,
+        systemCount: graph.processes.reduce((n, p) => n + p.systems.length, 0),
+        scorecardCount: graph.quality.scorecards.length,
+      })
+    );
+  }, [graph, workspace, activeEpisode, setConductorSnapshot]);
+
+  useEffect(() => {
+    if (!requestedAct) return;
+    const act: ConductorAct = requestedAct;
+    clearActRequest();
+    setGateOpen(false);
+    if (act === "persona") {
+      setPersonaLensOpen(true);
+      return;
+    }
+    if (act === "episode") {
+      setSelected("episode");
+      setBrowseOpen(true);
+      return;
+    }
+    if (act === "journey") {
+      setSelected("journey");
+      setBrowseOpen(true);
+      return;
+    }
+    if (act === "process") {
+      setSelected("process");
+      openWizard("process");
+      return;
+    }
+    setSelected("qa");
+    setSystemsQaOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedAct, clearActRequest]);
 
   /** When an episode is active, outline the whole lit chain (Episode→QA). */
   const chainEmphasis = useMemo(() => {
@@ -392,6 +450,8 @@ export function OperatingSpine({
               personaKey={lensKey}
               busy={busy}
               onSelect={(key) => void applyPersonaLens(key)}
+              open={personaLensOpen}
+              onOpenChange={setPersonaLensOpen}
             />
           )}
           <div className="min-w-0 pt-1">
@@ -531,6 +591,14 @@ export function OperatingSpine({
         busy={busy}
         onAction={workspaceAction}
         onOpenWizardProcess={() => openWizard("process")}
+      />
+
+      <SystemsQaActModal
+        isOpen={systemsQaOpen}
+        onClose={() => setSystemsQaOpen(false)}
+        serviceId={serviceId}
+        graph={graph}
+        onApplied={() => refresh(serviceId, personaKey)}
       />
 
       <SpineSetupWizard

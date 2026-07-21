@@ -1,12 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { GitBranch } from "lucide-react";
 import { HERO_MODULES, CORE_MODULES, OPS_MODULES } from "./home-modules";
-import { EASE, tileItem, staggerChildren } from "@/lib/motion";
-import { guideTilesFor } from "@/lib/spine/guide-dock";
-import type { SpineNodeId } from "@/lib/spine/types";
+import { EASE } from "@/lib/motion";
+import { SpineConductorRail } from "./SpineConductorRail";
 
 const MODULES = [...HERO_MODULES, ...CORE_MODULES, ...OPS_MODULES];
 
@@ -22,16 +21,9 @@ const DOCK_LABELS: Record<string, string> = {
   planning: "Roadmap",
 };
 
-export function SpineGuideDock({
-  selectedNode,
-  personaKey = null,
-}: {
-  selectedNode: SpineNodeId;
-  personaKey?: string | null;
-}) {
+export function SpineGuideDock() {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
-  const tiles = guideTilesFor(selectedNode, personaKey);
 
   return (
     <motion.nav
@@ -42,36 +34,8 @@ export function SpineGuideDock({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15, duration: 0.45, ease: EASE }}
     >
-      {/* Dynamic guide tiles */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={selectedNode}
-          variants={staggerChildren}
-          initial="hidden"
-          animate="show"
-          exit={{ opacity: 0, y: 4 }}
-          className="flex max-w-full gap-1.5 overflow-x-auto px-1 scrollbar-none"
-        >
-          {tiles.map((tile) => {
-            const Icon = tile.icon;
-            return (
-              <motion.button
-                key={tile.id}
-                type="button"
-                variants={tileItem}
-                onClick={() => router.push(tile.href)}
-                whileHover={reduceMotion ? undefined : { y: -3, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex min-w-[100px] max-w-[130px] flex-col items-start gap-1 rounded-xl border border-white/[0.08] bg-black/35 px-3 py-2 text-left backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.06]"
-              >
-                <Icon size={14} style={{ color: `var(${tile.accentVar})` }} />
-                <span className="text-[11px] font-semibold text-cream">{tile.label}</span>
-                <span className="line-clamp-1 text-[9px] text-white/35">{tile.hint}</span>
-              </motion.button>
-            );
-          })}
-        </motion.div>
-      </AnimatePresence>
+      {/* Operational conductor — persona → episode → journey → process → systems & QA */}
+      <SpineConductorRail />
 
       {/* Compact secondary module rail */}
       <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-2xl border border-white/[0.06] bg-black/20 px-1.5 py-0.5 backdrop-blur-md scrollbar-none">
