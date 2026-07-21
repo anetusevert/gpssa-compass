@@ -45,7 +45,6 @@ export function ActIconNode({
   const { viewport } = useThree();
   const root = useRef<Group>(null);
   const icon = useRef<Group>(null);
-  const aura = useRef<Group>(null);
   const smoothedAmp = useRef(0);
   const smoothedMute = useRef(1);
   const smoothedScale = useRef(1);
@@ -101,29 +100,12 @@ export function ActIconNode({
     });
   }, [id]);
 
-  const auraMaterial = useMemo(() => {
-    const c = ACT_ICON_PALETTE[id].secondary;
-    return new MeshPhysicalMaterial({
-      color: c,
-      emissive: c,
-      emissiveIntensity: 0.4,
-      metalness: 0,
-      roughness: 1,
-      transparent: true,
-      opacity: 0.1,
-      depthWrite: false,
-      transmission: 0.9,
-      thickness: 0.1,
-    });
-  }, [id]);
-
   useEffect(
     () => () => {
       bodyMaterial.dispose();
       accentMaterial.dispose();
-      auraMaterial.dispose();
     },
-    [bodyMaterial, accentMaterial, auraMaterial]
+    [bodyMaterial, accentMaterial]
   );
 
   const colIndex = blobIndex + 1;
@@ -169,11 +151,6 @@ export function ActIconNode({
     accentMaterial.opacity = 0.55 + (1 - mute) * 0.3;
     accentMaterial.transmission = 0.15 + (1 - mute) * 0.2;
 
-    auraMaterial.color.copy(emissiveGoal.current);
-    auraMaterial.emissive.copy(emissiveGoal.current);
-    auraMaterial.opacity =
-      0.04 + smoothedAmp.current * 0.1 * (1 - mute);
-
     if (!root.current || !icon.current) return;
 
     const t = state.clock.elapsedTime + blobIndex * 1.7;
@@ -185,39 +162,32 @@ export function ActIconNode({
         smoothedAmp.current * 0.045 +
         (current ? Math.sin(t * 2.2) * 0.018 : 0);
 
-    const s = radius * 1.45 * smoothedScale.current * pulse;
+    const s = radius * 1.5 * smoothedScale.current * pulse;
     root.current.scale.setScalar(s);
     root.current.position.y = reduceMotion
       ? 0
       : Math.sin(t * 0.4) * radius * 0.06;
 
+    // Gentle turn — slower so local icon animations stay readable
     if (!reduceMotion) {
-      icon.current.rotation.y += delta * (active || current ? 0.48 : 0.16);
-      icon.current.rotation.x = 0.2 + Math.sin(t * 0.22) * 0.06;
+      icon.current.rotation.y += delta * (active || current ? 0.32 : 0.12);
+      icon.current.rotation.x = 0.12 + Math.sin(t * 0.22) * 0.05;
     } else {
-      icon.current.rotation.y = 0.45;
-      icon.current.rotation.x = 0.22;
-    }
-
-    if (aura.current) {
-      aura.current.rotation.z = reduceMotion ? 0 : t * 0.12;
-      aura.current.scale.setScalar(1.2 + smoothedAmp.current * 0.18);
+      icon.current.rotation.y = 0.4;
+      icon.current.rotation.x = 0.15;
     }
   });
 
   return (
     <group position={[x, 0, 0]}>
       <group ref={root}>
-        <group ref={aura} position={[0, 0, -0.2]}>
-          <mesh material={auraMaterial} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.48, 0.08, 12, 36]} />
-          </mesh>
-        </group>
         <group ref={icon}>
           <ActIconMeshes
             act={id}
             body={bodyMaterial}
             accent={accentMaterial}
+            reduceMotion={reduceMotion}
+            amp={targets.amp}
           />
         </group>
       </group>
