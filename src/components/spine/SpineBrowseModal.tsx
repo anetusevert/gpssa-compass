@@ -4,10 +4,10 @@ import Link from "next/link";
 import { Loader2, Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import type { SpineGraphPayload, SpineNodeId } from "@/lib/spine/types";
-import type { Workspace } from "./workspace-types";
+import type { Workspace, WorkspaceEpisode } from "./workspace-types";
 
 const TITLES: Record<SpineNodeId, string> = {
-  episode: "Existing episodes",
+  episode: "Eligible episodes",
   journey: "Existing journey",
   process: "Existing process",
   systems: "Systems & fulfilment",
@@ -20,6 +20,7 @@ export function SpineBrowseModal({
   node,
   graph,
   workspace,
+  personaKey = null,
   busy,
   onAction,
   onOpenWizardProcess,
@@ -29,10 +30,15 @@ export function SpineBrowseModal({
   node: SpineNodeId;
   graph: SpineGraphPayload | null;
   workspace: Workspace | null;
+  personaKey?: string | null;
   busy: boolean;
   onAction: (action: string, payload?: Record<string, unknown>) => Promise<void>;
   onOpenWizardProcess: () => void;
 }) {
+  const lensKey = personaKey ?? workspace?.personaKey ?? null;
+  const eligible: WorkspaceEpisode[] =
+    workspace?.eligibleEpisodes ?? workspace?.episodes ?? [];
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={TITLES[node]} size="2xl">
       <div className="relative max-h-[55vh] min-h-[240px] overflow-y-auto pr-1">
@@ -42,7 +48,13 @@ export function SpineBrowseModal({
           </div>
         )}
         {node === "episode" && (
-          <EpisodeBrowse workspace={workspace} busy={busy} onAction={onAction} />
+          <EpisodeBrowse
+            workspace={workspace}
+            eligible={eligible}
+            personaKey={lensKey}
+            busy={busy}
+            onAction={onAction}
+          />
         )}
         {node === "journey" && (
           <JourneyBrowse
@@ -64,35 +76,50 @@ export function SpineBrowseModal({
 
 function EpisodeBrowse({
   workspace,
+  eligible,
+  personaKey,
   busy,
   onAction,
 }: {
   workspace: Workspace | null;
+  eligible: WorkspaceEpisode[];
+  personaKey: string | null;
   busy: boolean;
   onAction: (action: string, payload?: Record<string, unknown>) => Promise<void>;
 }) {
-  const activeId = workspace?.episodes.find((e) => e.isActive)?.id ?? null;
+  const activeId = eligible.find((e) => e.isActive)?.id ?? null;
+  const profileHref = personaKey
+    ? `/dashboard/delivery/personas?persona=${personaKey}`
+    : "/dashboard/delivery/personas";
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
         <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
-          Persona
+          Customer lens
         </p>
         <p className="text-[13px] text-cream">{workspace?.persona?.name ?? "Not set"}</p>
+        <p className="mt-0.5 text-[10px] text-white/35">
+          Showing episodes eligible for this persona (shared templates included)
+        </p>
         <Link
-          href="/dashboard/delivery/personas"
+          href={profileHref}
           className="mt-1 inline-block text-[11px] text-[var(--gpssa-green)]"
         >
-          Open personas →
+          Open profile →
         </Link>
       </div>
       <ul className="space-y-1.5">
-        {(workspace?.episodes ?? []).map((e) => (
+        {eligible.map((e) => (
           <li key={e.id}>
             <button
               type="button"
               disabled={busy}
-              onClick={() => onAction("activate-episode", { episodeId: e.id })}
+              onClick={() =>
+                onAction("activate-episode", {
+                  episodeId: e.id,
+                  ...(personaKey ? { personaKey } : {}),
+                })
+              }
               className={`w-full rounded-lg border px-3 py-2 text-left text-[12px] transition ${
                 e.id === activeId
                   ? "border-[var(--gpssa-green)]/50 bg-[var(--gpssa-green)]/10 text-cream"
@@ -104,8 +131,8 @@ function EpisodeBrowse({
             </button>
           </li>
         ))}
-        {!workspace?.episodes?.length && (
-          <p className="text-[12px] text-white/35">No episodes yet — use Set up</p>
+        {!eligible.length && (
+          <p className="text-[12px] text-white/35">No eligible episodes — use Set up</p>
         )}
       </ul>
     </div>

@@ -33,6 +33,7 @@ export function HomeTheater() {
 
   const [now, setNow] = useState<Date | null>(null);
   const [selectedNode, setSelectedNode] = useState<SpineNodeId>("episode");
+  const [personaKey, setPersonaKey] = useState<string | null>(null);
 
   useEffect(() => {
     setNow(new Date());
@@ -93,8 +94,9 @@ export function HomeTheater() {
             variant="hero"
             className="min-h-0 flex-1"
             onSelectedNodeChange={setSelectedNode}
+            onPersonaKeyChange={setPersonaKey}
           />
-          <SpineGuideDock selectedNode={selectedNode} />
+          <SpineGuideDock selectedNode={selectedNode} personaKey={personaKey} />
         </div>
 
         <footer className="flex shrink-0 items-center justify-center gap-2 pt-1.5">

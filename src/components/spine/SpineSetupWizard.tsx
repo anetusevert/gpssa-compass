@@ -39,6 +39,7 @@ export function SpineSetupWizard({
   graph,
   workspace,
   library,
+  personaKey = null,
   busy,
   draft,
   draftSource,
@@ -47,6 +48,7 @@ export function SpineSetupWizard({
   onGenerate,
   onApply,
   onStepChange,
+  onPersonaSelect,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -57,6 +59,7 @@ export function SpineSetupWizard({
   graph: SpineGraphPayload | null;
   workspace: Workspace | null;
   library: LibraryPayload | null;
+  personaKey?: string | null;
   busy: boolean;
   draft: SpineDraft | null;
   draftSource: string | null;
@@ -66,6 +69,8 @@ export function SpineSetupWizard({
   onApply: () => Promise<void>;
   /** One-way: lights the matching planet. Does not feed back into entryStep. */
   onStepChange?: (step: WizardStep) => void;
+  /** Prefer over set-persona alone so home lens + service resolve stay in sync. */
+  onPersonaSelect?: (key: string) => void;
 }) {
   const [step, setStep] = useState<WizardStep>(entryStep);
   const [category, setCategory] = useState<LifecycleCategory | "all">("all");
@@ -85,16 +90,23 @@ export function SpineSetupWizard({
 
   const stepIdx = WIZARD_STEPS.findIndex((s) => s.id === step);
 
+  const lensKey = personaKey ?? workspace?.personaKey ?? null;
+
+  const eligibleEpisodes = useMemo(() => {
+    if (workspace?.eligibleEpisodes) return workspace.eligibleEpisodes;
+    return workspace?.episodes ?? [];
+  }, [workspace]);
+
   const done: Record<WizardStep, boolean> = useMemo(() => {
-    const activeEpisode = workspace?.episodes.find((e) => e.isActive) ?? null;
+    const activeEpisode = eligibleEpisodes.find((e) => e.isActive) ?? null;
     return {
-      persona: Boolean(workspace?.personaKey),
+      persona: Boolean(lensKey),
       episode: Boolean(activeEpisode),
       journey: Boolean(graph?.stages.length),
       process: Boolean(graph?.processes[0]?.sop),
       review: false,
     };
-  }, [workspace, graph]);
+  }, [eligibleEpisodes, lensKey, graph]);
 
   const canNext = done[step] || step === "review";
 
@@ -104,7 +116,12 @@ export function SpineSetupWizard({
   }
 
   const libEps =
-    library?.episodes.filter((e) => category === "all" || e.category === category) ?? [];
+    library?.episodes.filter((e) => {
+      const catOk = category === "all" || e.category === category;
+      if (!catOk) return false;
+      if (!lensKey) return true;
+      return e.suggestedPersonaKeys.includes(lensKey);
+    }) ?? [];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="4xl">
@@ -161,8 +178,13 @@ export function SpineSetupWizard({
               {step === "persona" && (
                 <PersonaStep
                   workspace={workspace}
+                  personaKey={lensKey}
                   busy={busy}
-                  onPick={(key) => onAction("set-persona", { personaKey: key })}
+                  onPick={(key) =>
+                    onPersonaSelect
+                      ? onPersonaSelect(key)
+                      : void onAction("set-persona", { personaKey: key })
+                  }
                 />
               )}
               {step === "episode" && (
@@ -172,15 +194,19 @@ export function SpineSetupWizard({
                   category={category}
                   setCategory={setCategory}
                   workspace={workspace}
+                  eligibleEpisodes={eligibleEpisodes}
                   busy={busy}
                   onActivateLibrary={(libraryId) =>
                     onAction("activate-library", {
                       libraryId,
-                      personaKey: workspace?.personaKey ?? undefined,
+                      personaKey: lensKey ?? undefined,
                     })
                   }
                   onActivateEpisode={(episodeId) =>
-                    onAction("activate-episode", { episodeId })
+                    onAction("activate-episode", {
+                      episodeId,
+                      personaKey: lensKey ?? undefined,
+                    })
                   }
                 />
               )}
@@ -209,6 +235,7 @@ export function SpineSetupWizard({
                   serviceName={serviceName}
                   graph={graph}
                   workspace={workspace}
+                  eligibleEpisodes={eligibleEpisodes}
                   done={done}
                 />
               )}
@@ -269,21 +296,23 @@ function StepIntro({ title, hint }: { title: string; hint: string }) {
 
 function PersonaStep({
   workspace,
+  personaKey,
   busy,
   onPick,
 }: {
   workspace: Workspace | null;
+  personaKey: string | null;
   busy: boolean;
   onPick: (key: string) => void;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <StepIntro title="Who is this for?" hint="Choose the customer persona" />
+      <StepIntro title="Who is this for?" hint="Home lens — episodes can serve multiple personas" />
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {(workspace?.personas ?? []).map((p) => {
             const full = getPersonaById(p.id);
-            const active = workspace?.personaKey === p.id;
+            const active = personaKey === p.id;
             return (
               <motion.button
                 key={p.id}
@@ -337,6 +366,7 @@ function EpisodeStep({
   category,
   setCategory,
   workspace,
+  eligibleEpisodes,
   busy,
   onActivateLibrary,
   onActivateEpisode,
@@ -346,14 +376,18 @@ function EpisodeStep({
   category: LifecycleCategory | "all";
   setCategory: (c: LifecycleCategory | "all") => void;
   workspace: Workspace | null;
+  eligibleEpisodes: NonNullable<Workspace["eligibleEpisodes"]> | Workspace["episodes"];
   busy: boolean;
   onActivateLibrary: (id: string) => void;
   onActivateEpisode: (id: string) => void;
 }) {
-  const activeId = workspace?.episodes.find((e) => e.isActive)?.id ?? null;
+  const activeId = eligibleEpisodes.find((e) => e.isActive)?.id ?? null;
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <StepIntro title="Which life episode?" hint="Pick from the lifecycle library or reuse one" />
+      <StepIntro
+        title="Which life episode?"
+        hint="Eligible for this customer — shared episodes can appear for more than one persona"
+      />
       <div className="mb-2 flex shrink-0 flex-wrap justify-center gap-1">
         <WizardChip active={category === "all"} onClick={() => setCategory("all")}>
           All
@@ -379,14 +413,17 @@ function EpisodeStep({
                 <p className="text-[12px] font-medium text-cream">{e.name}</p>
               </motion.button>
             ))}
+            {!libEps.length && (
+              <p className="text-[11px] text-white/35">No library matches for this persona</p>
+            )}
           </div>
         </div>
         <div className="flex min-h-0 flex-col rounded-xl border border-white/[0.05] bg-black/20 p-2">
           <p className="mb-1.5 shrink-0 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
-            On this service
+            Eligible on this service
           </p>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {(workspace?.episodes ?? []).map((e) => (
+            {eligibleEpisodes.map((e) => (
               <button
                 key={e.id}
                 type="button"
@@ -402,7 +439,7 @@ function EpisodeStep({
                 {e.name}
               </button>
             ))}
-            {!workspace?.episodes?.length && (
+            {!eligibleEpisodes.length && (
               <p className="text-[11px] text-white/35">None yet — pick from the library</p>
             )}
           </div>
@@ -584,16 +621,18 @@ function ReviewStep({
   serviceName,
   graph,
   workspace,
+  eligibleEpisodes,
   done,
 }: {
   serviceId: string;
   serviceName: string;
   graph: SpineGraphPayload | null;
   workspace: Workspace | null;
+  eligibleEpisodes: Workspace["episodes"];
   done: Record<WizardStep, boolean>;
 }) {
   const persona = workspace?.persona;
-  const episode = workspace?.episodes.find((e) => e.isActive);
+  const episode = eligibleEpisodes.find((e) => e.isActive);
   const sop = graph?.processes[0]?.sop;
   const rows: { label: string; value: string; ok: boolean }[] = [
     { label: "Persona", value: persona?.name ?? "Not set", ok: done.persona },

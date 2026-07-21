@@ -30,14 +30,6 @@ export type GuideTile = {
 export const GUIDE_TILES: Record<SpineNodeId, GuideTile[]> = {
   episode: [
     {
-      id: "personas",
-      label: "Personas",
-      hint: "Who this episode serves",
-      href: "/dashboard/delivery/personas",
-      icon: UserCircle,
-      accentVar: "--teal",
-    },
-    {
       id: "catalog",
       label: "Catalog",
       hint: "Service catalogue",
@@ -61,16 +53,16 @@ export const GUIDE_TILES: Record<SpineNodeId, GuideTile[]> = {
       icon: Scale,
       accentVar: "--gpssa-green",
     },
-  ],
-  journey: [
     {
       id: "personas",
-      label: "Personas",
-      hint: "Customer journeys",
+      label: "Profile",
+      hint: "Full customer research",
       href: "/dashboard/delivery/personas",
       icon: UserCircle,
       accentVar: "--teal",
     },
+  ],
+  journey: [
     {
       id: "channels",
       label: "Channels",
@@ -94,6 +86,14 @@ export const GUIDE_TILES: Record<SpineNodeId, GuideTile[]> = {
       href: "/dashboard/services/operating",
       icon: Workflow,
       accentVar: "--gpssa-green",
+    },
+    {
+      id: "personas",
+      label: "Profile",
+      hint: "Full customer research",
+      href: "/dashboard/delivery/personas",
+      icon: UserCircle,
+      accentVar: "--teal",
     },
   ],
   process: [
@@ -200,6 +200,15 @@ export const GUIDE_TILES: Record<SpineNodeId, GuideTile[]> = {
   ],
 };
 
-export function guideTilesFor(node: SpineNodeId): GuideTile[] {
-  return GUIDE_TILES[node] ?? GUIDE_TILES.episode;
+export function guideTilesFor(
+  node: SpineNodeId,
+  personaKey?: string | null
+): GuideTile[] {
+  const tiles = GUIDE_TILES[node] ?? GUIDE_TILES.episode;
+  if (!personaKey) return tiles;
+  return tiles.map((t) =>
+    t.id === "personas"
+      ? { ...t, href: `/dashboard/delivery/personas?persona=${personaKey}` }
+      : t
+  );
 }

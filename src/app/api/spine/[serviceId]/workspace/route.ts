@@ -2,16 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
 import { getLibraryEpisode } from "@/lib/spine/library";
+import { filterEligibleEpisodes, isEpisodeEligible } from "@/lib/spine/eligibility";
 import { personas } from "@/data/personas";
 
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: { serviceId: string } }
 ) {
   const { error } = await requireAuth();
   if (error) return error;
 
   const serviceId = params.serviceId;
+  const lensPersona =
+    req.nextUrl.searchParams.get("personaKey") ||
+    req.nextUrl.searchParams.get("persona") ||
+    null;
+
   const [service, episodes, config, systems] = await Promise.all([
     prisma.gPSSAService.findUnique({ where: { id: serviceId } }),
     prisma.customerEpisode.findMany({
@@ -24,9 +30,16 @@ export async function GET(
   ]);
   if (!service) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const active = episodes.find((e) => e.isActive) ?? episodes[0] ?? null;
-  const personaKey = config?.activePersonaKey ?? active?.personaKey ?? null;
+  const personaKey =
+    lensPersona || config?.activePersonaKey || episodes.find((e) => e.isActive)?.personaKey || null;
   const persona = personaKey ? personas.find((p) => p.id === personaKey) : null;
+
+  const eligible = filterEligibleEpisodes(episodes, personaKey);
+  const active =
+    (eligible.find((e) => e.isActive) ??
+      episodes.find((e) => e.isActive && isEpisodeEligible(e, personaKey)) ??
+      eligible[0] ??
+      null);
 
   const journeyCandidates = [
     ...(active?.stages.length
@@ -66,14 +79,32 @@ export async function GET(
     painPoints = [];
   }
 
+  const episodeRows = episodes.map((e) => ({
+    id: e.id,
+    name: e.name,
+    description: e.description,
+    isActive: e.isActive,
+    personaKey: e.personaKey,
+    libraryId: e.libraryId,
+    lifecycleCategory: e.lifecycleCategory,
+    stages: e.stages,
+  }));
+
   return NextResponse.json({
     service: { id: service.id, name: service.name, category: service.category },
     config,
-    episodes,
+    episodes: episodeRows,
+    eligibleEpisodes: filterEligibleEpisodes(episodeRows, personaKey),
     activeEpisodeId: active?.id ?? null,
     personaKey,
     persona: persona
-      ? { id: persona.id, name: persona.name, tagline: persona.tagline }
+      ? {
+          id: persona.id,
+          name: persona.name,
+          tagline: persona.tagline,
+          color: persona.color,
+          avatarUrl: persona.avatarUrl,
+        }
       : null,
     journeyCandidates,
     painPoints,
@@ -83,6 +114,7 @@ export async function GET(
       name: p.name,
       tagline: p.tagline,
       color: p.color,
+      avatarUrl: p.avatarUrl,
     })),
   });
 }
@@ -158,11 +190,18 @@ export async function POST(
       where: { serviceId },
       data: { isActive: false },
     });
+    const current = await prisma.customerEpisode.findUnique({ where: { id: episodeId } });
+    if (!current || current.serviceId !== serviceId) {
+      return NextResponse.json({ error: "Episode not found" }, { status: 404 });
+    }
+    // Shared library episodes keep their stamp; only custom rows take the lens key.
+    const stampPersona =
+      personaKey && !current.libraryId ? personaKey : undefined;
     const episode = await prisma.customerEpisode.update({
       where: { id: episodeId },
       data: {
         isActive: true,
-        ...(personaKey ? { personaKey } : {}),
+        ...(stampPersona ? { personaKey: stampPersona } : {}),
       },
     });
     await prisma.spineConfig.upsert({
@@ -182,21 +221,50 @@ export async function POST(
 
   if (action === "set-persona") {
     const personaKey = body.personaKey as string;
+    // Persist lens on config only — do not rewrite shared episode.personaKey stamps.
     await prisma.spineConfig.upsert({
       where: { serviceId },
       create: { serviceId, activePersonaKey: personaKey },
       update: { activePersonaKey: personaKey },
     });
-    const active = await prisma.customerEpisode.findFirst({
-      where: { serviceId, isActive: true },
+
+    const episodes = await prisma.customerEpisode.findMany({
+      where: { serviceId },
+      select: { id: true, isActive: true, personaKey: true, libraryId: true },
     });
-    if (active) {
-      await prisma.customerEpisode.update({
-        where: { id: active.id },
-        data: { personaKey },
+    const eligible = filterEligibleEpisodes(episodes, personaKey);
+    const active = episodes.find((e) => e.isActive) ?? null;
+    if (active && !isEpisodeEligible(active, personaKey)) {
+      await prisma.customerEpisode.updateMany({
+        where: { serviceId },
+        data: { isActive: false },
       });
+      const next = eligible[0];
+      if (next) {
+        await prisma.customerEpisode.update({
+          where: { id: next.id },
+          data: { isActive: true },
+        });
+        await prisma.spineConfig.update({
+          where: { serviceId },
+          data: { activeEpisodeId: next.id },
+        });
+      } else {
+        await prisma.spineConfig.update({
+          where: { serviceId },
+          data: { activeEpisodeId: null },
+        });
+      }
     }
-    return NextResponse.json({ ok: true, personaKey });
+
+    return NextResponse.json({
+      ok: true,
+      personaKey,
+      activeEpisodeId:
+        active && isEpisodeEligible(active, personaKey)
+          ? active.id
+          : eligible[0]?.id ?? null,
+    });
   }
 
   if (action === "apply-journey") {

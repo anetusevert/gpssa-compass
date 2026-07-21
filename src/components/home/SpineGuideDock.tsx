@@ -22,10 +22,16 @@ const DOCK_LABELS: Record<string, string> = {
   planning: "Roadmap",
 };
 
-export function SpineGuideDock({ selectedNode }: { selectedNode: SpineNodeId }) {
+export function SpineGuideDock({
+  selectedNode,
+  personaKey = null,
+}: {
+  selectedNode: SpineNodeId;
+  personaKey?: string | null;
+}) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
-  const tiles = guideTilesFor(selectedNode);
+  const tiles = guideTilesFor(selectedNode, personaKey);
 
   return (
     <motion.nav

@@ -11,17 +11,34 @@ export type LibraryPayload = {
   }[];
 };
 
+export type WorkspaceEpisode = {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  personaKey: string | null;
+  libraryId?: string | null;
+};
+
 export type Workspace = {
-  episodes: {
+  episodes: WorkspaceEpisode[];
+  /** Episodes eligible for the current persona lens (many-to-many). */
+  eligibleEpisodes?: WorkspaceEpisode[];
+  personaKey: string | null;
+  persona: {
     id: string;
     name: string;
-    description: string | null;
-    isActive: boolean;
-    personaKey: string | null;
+    tagline: string;
+    color?: string;
+    avatarUrl?: string;
+  } | null;
+  personas: {
+    id: string;
+    name: string;
+    tagline: string;
+    color: string;
+    avatarUrl?: string;
   }[];
-  personaKey: string | null;
-  persona: { id: string; name: string; tagline: string } | null;
-  personas: { id: string; name: string; tagline: string; color: string }[];
   journeyCandidates: {
     id: string;
     source: string;
