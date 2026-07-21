@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check, GitBranch, Loader2, Lock, Star, Wand2 } from "lucide-react";
@@ -14,13 +15,18 @@ import {
   ACT_SUCCESS,
   actToBrowseNode,
   computeConductorSnapshot,
-  nextAct,
+  handoffTarget,
   nodeToAct,
   type ActStatus,
   type ConductorAct,
+  type ConductorSnapshot,
 } from "@/lib/spine/conductor-acts";
 import type { SpineDraft } from "@/lib/spine/generate";
-import { buildJourneyOutline, type OutlineStage } from "@/lib/spine/journey-outline";
+import {
+  journeyCandidatesForEpisode,
+  type JourneyCandidate,
+  type OutlineStage,
+} from "@/lib/spine/journey-outline";
 import type { SpineGraphPayload, SpineNodeId, SpineServiceListItem } from "@/lib/spine/types";
 import { filterEligibleEpisodes } from "@/lib/spine/eligibility";
 import { EASE } from "@/lib/motion";
@@ -43,7 +49,8 @@ const SpineOrbCanvas = dynamic(() => import("@/components/home/SpineOrbCanvas"),
 });
 
 const DEFAULT_PERSONA = "emirati-govt-employee";
-const ADVANCE_DELAY_MS = 400;
+const HANDOFF_EXIT_MS = 280;
+const HANDOFF_RETRY_MS = 150;
 const TOAST_MS = 2200;
 
 const EMPTY_STATUSES: Record<ConductorAct, ActStatus> = {
@@ -78,6 +85,70 @@ function writeUrlPersona(personaKey: string) {
 function actToSpineNode(act: ConductorAct): SpineNodeId {
   if (act === "persona") return "episode";
   return act;
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function snapshotFrom(
+  g: SpineGraphPayload | null,
+  w: Workspace | null,
+  lens: string | null
+): ConductorSnapshot {
+  if (!g) {
+    return {
+      statuses: EMPTY_STATUSES,
+      summaries: {
+        persona: "",
+        episode: "",
+        journey: "",
+        process: "",
+        systems: "",
+        qa: "",
+      },
+    };
+  }
+  const eligible = w?.eligibleEpisodes ?? filterEligibleEpisodes(w?.episodes ?? [], lens);
+  const active =
+    eligible.find((e) => e.isActive) ??
+    w?.episodes.find((e) => e.isActive && eligible.some((x) => x.id === e.id)) ??
+    null;
+  return computeConductorSnapshot({
+    personaName: w?.persona?.name ?? null,
+    episodeName: active?.name ?? null,
+    stageCount: g.stages.length,
+    sopStepCount: g.processes[0]?.sop?.steps.length ?? 0,
+    systemCount: g.processes.reduce((n, p) => n + p.systems.length, 0),
+    scorecardCount: g.quality.scorecards.length,
+  });
+}
+
+function buildCandidates(
+  w: Workspace | null,
+  g: SpineGraphPayload | null,
+  lens: string | null
+): { candidates: JourneyCandidate[]; stages: OutlineStage[]; source: string } {
+  const eligible = w?.eligibleEpisodes ?? w?.episodes ?? [];
+  const active =
+    eligible.find((e) => e.isActive) ?? w?.episodes.find((e) => e.isActive) ?? null;
+  const existing = (g?.stages ?? []).map((s) => ({
+    name: s.name,
+    actor: s.actor,
+    outcome: s.outcome ?? undefined,
+  }));
+  const candidates = journeyCandidatesForEpisode({
+    libraryId: active?.libraryId,
+    personaKey: lens,
+    existingStages: existing.length ? existing : undefined,
+    episodeName: active?.name,
+  });
+  const primary = candidates[0];
+  return {
+    candidates,
+    stages: primary?.stages ?? [],
+    source: primary?.source ?? "library",
+  };
 }
 
 export function OperatingSpine({
@@ -125,13 +196,21 @@ export function OperatingSpine({
 
   const [journeyStages, setJourneyStages] = useState<OutlineStage[]>([]);
   const [journeySource, setJourneySource] = useState("library");
+  const [journeyCandidates, setJourneyCandidates] = useState<JourneyCandidate[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [portalReady, setPortalReady] = useState(false);
 
   const bootstrapped = useRef(false);
   const applyingPersona = useRef(false);
-  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handoffInFlight = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const openActRef = useRef<(act: ConductorAct) => void>(() => {});
+  const openActRef = useRef<(act: ConductorAct, opts?: { force?: boolean }) => void>(
+    () => {}
+  );
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   const refresh = useCallback(async (id: string, lens?: string | null) => {
     const q = lens ? `?personaKey=${encodeURIComponent(lens)}` : "";
@@ -144,6 +223,10 @@ export function OperatingSpine({
     if (w?.personaKey && !lens) {
       setPersonaKey(w.personaKey);
     }
+    return {
+      graph: g as SpineGraphPayload | null,
+      workspace: w as Workspace | null,
+    };
   }, []);
 
   const showToast = useCallback((message: string) => {
@@ -152,18 +235,78 @@ export function OperatingSpine({
     toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
   }, []);
 
-  const advanceAfter = useCallback(
-    (from: ConductorAct) => {
-      const nxt = nextAct(from);
+  const closeAllSurfaces = useCallback(() => {
+    setPersonaChooserOpen(false);
+    setBrowseOpen(false);
+    setJourneyOpen(false);
+    setProcessOpen(false);
+    setSystemsOpen(false);
+    setQaOpen(false);
+    setWizardOpen(false);
+    setWizardLitStep(null);
+  }, []);
+
+  const runHandoff = useCallback(
+    async (
+      from: ConductorAct,
+      opts?: {
+        serviceIdOverride?: string;
+        personaKeyOverride?: string | null;
+        journeyPayload?: { candidates: JourneyCandidate[]; stages: OutlineStage[]; source: string };
+      }
+    ) => {
+      handoffInFlight.current = true;
+      closeAllSurfaces();
       showToast(ACT_SUCCESS[from]);
-      if (!nxt) return;
-      if (advanceTimer.current) clearTimeout(advanceTimer.current);
-      advanceTimer.current = setTimeout(() => {
-        setSelected(nxt);
-        openActRef.current(nxt);
-      }, ADVANCE_DELAY_MS);
+
+      const sid = opts?.serviceIdOverride ?? serviceId;
+      const lens = opts?.personaKeyOverride !== undefined ? opts.personaKeyOverride : personaKey;
+      if (!sid) {
+        handoffInFlight.current = false;
+        return;
+      }
+
+      let data = await refresh(sid, lens);
+      let snap = snapshotFrom(data.graph, data.workspace, lens);
+      let target = handoffTarget(snap.statuses, from);
+
+      if (opts?.journeyPayload) {
+        setJourneyCandidates(opts.journeyPayload.candidates);
+        setJourneyStages(opts.journeyPayload.stages);
+        setJourneySource(opts.journeyPayload.source);
+      } else if (target === "journey") {
+        const built = buildCandidates(data.workspace, data.graph, lens);
+        setJourneyCandidates(built.candidates);
+        setJourneyStages(built.stages);
+        setJourneySource(built.source);
+      }
+
+      await sleep(HANDOFF_EXIT_MS);
+
+      if (target && snap.statuses[target] === "locked") {
+        await sleep(HANDOFF_RETRY_MS);
+        data = await refresh(sid, lens);
+        snap = snapshotFrom(data.graph, data.workspace, lens);
+        target = handoffTarget(snap.statuses, from);
+        if (target === "journey" && !opts?.journeyPayload) {
+          const built = buildCandidates(data.workspace, data.graph, lens);
+          setJourneyCandidates(built.candidates);
+          setJourneyStages(built.stages);
+          setJourneySource(built.source);
+        }
+      }
+
+      if (!target) {
+        handoffInFlight.current = false;
+        return;
+      }
+
+      // Programmatic handoff always opens — bypass lock races after a successful commit.
+      setSelected(target);
+      openActRef.current(target, { force: true });
+      handoffInFlight.current = false;
     },
-    [showToast]
+    [closeAllSurfaces, showToast, serviceId, personaKey, refresh]
   );
 
   useEffect(() => {
@@ -192,7 +335,6 @@ export function OperatingSpine({
 
   useEffect(() => {
     return () => {
-      if (advanceTimer.current) clearTimeout(advanceTimer.current);
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, []);
@@ -233,13 +375,18 @@ export function OperatingSpine({
         });
 
         await refresh(targetId, key);
-        if (opts?.advance) advanceAfter("persona");
+        if (opts?.advance) {
+          await runHandoff("persona", {
+            serviceIdOverride: targetId,
+            personaKeyOverride: key,
+          });
+        }
       } finally {
         applyingPersona.current = false;
         setBusy(false);
       }
     },
-    [lockService, refresh, serviceId, services, advanceAfter]
+    [lockService, refresh, serviceId, services, runHandoff]
   );
 
   useEffect(() => {
@@ -282,31 +429,9 @@ export function OperatingSpine({
 
   useEffect(() => {
     if (!serviceId || applyingPersona.current || !bootstrapped.current) return;
+    if (handoffInFlight.current) return;
     refresh(serviceId, personaKey);
   }, [serviceId, personaKey, refresh]);
-
-  const preloadJourneyOutline = useCallback(
-    (ws: Workspace | null, g: SpineGraphPayload | null, lens: string | null) => {
-      const eligible = ws?.eligibleEpisodes ?? ws?.episodes ?? [];
-      const active =
-        eligible.find((e) => e.isActive) ??
-        ws?.episodes.find((e) => e.isActive) ??
-        null;
-      const existing = (g?.stages ?? []).map((s) => ({
-        name: s.name,
-        actor: s.actor,
-        outcome: s.outcome ?? undefined,
-      }));
-      const built = buildJourneyOutline({
-        libraryId: active?.libraryId,
-        personaKey: lens,
-        existingStages: existing.length ? existing : undefined,
-      });
-      setJourneyStages(built.stages);
-      setJourneySource(built.source);
-    },
-    []
-  );
 
   const workspaceAction = useCallback(
     async (action: string, payload: Record<string, unknown> = {}) => {
@@ -327,29 +452,20 @@ export function OperatingSpine({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        await refresh(serviceId, personaKey);
+        if (!r.ok) return;
 
-        if (
-          r.ok &&
-          (action === "activate-episode" || action === "activate-library")
-        ) {
-          setBrowseOpen(false);
-          const [g, w] = await Promise.all([
-            fetch(`/api/spine/${serviceId}`).then((res) => (res.ok ? res.json() : null)),
-            fetch(
-              `/api/spine/${serviceId}/workspace${
-                personaKey ? `?personaKey=${encodeURIComponent(personaKey)}` : ""
-              }`
-            ).then((res) => (res.ok ? res.json() : null)),
-          ]);
-          preloadJourneyOutline(w, g, personaKey);
-          advanceAfter("episode");
+        if (action === "activate-episode" || action === "activate-library") {
+          const data = await refresh(serviceId, personaKey);
+          const built = buildCandidates(data.workspace, data.graph, personaKey);
+          await runHandoff("episode", { journeyPayload: built });
+        } else {
+          await refresh(serviceId, personaKey);
         }
       } finally {
         setBusy(false);
       }
     },
-    [serviceId, personaKey, refresh, applyPersonaLens, advanceAfter, preloadJourneyOutline]
+    [serviceId, personaKey, refresh, applyPersonaLens, runHandoff]
   );
 
   const runGenerate = useCallback(async () => {
@@ -377,64 +493,39 @@ export function OperatingSpine({
         body: JSON.stringify({ draft, section: "process" }),
       });
       if (r.ok) {
-        await refresh(serviceId, personaKey);
-        setProcessOpen(false);
-        advanceAfter("process");
+        await runHandoff("process");
       }
     } finally {
       setBusy(false);
     }
-  }, [serviceId, draft, refresh, personaKey, advanceAfter]);
+  }, [serviceId, draft, runHandoff]);
 
   function openWizard(step: WizardStep) {
+    closeAllSurfaces();
     setWizardEntryStep(step);
     setWizardLitStep(step);
     setWizardOpen(true);
-    setBrowseOpen(false);
-    setJourneyOpen(false);
-    setProcessOpen(false);
-    setSystemsOpen(false);
-    setQaOpen(false);
   }
 
-  const eligibleEpisodes = useMemo(() => {
-    if (workspace?.eligibleEpisodes) return workspace.eligibleEpisodes;
-    return filterEligibleEpisodes(workspace?.episodes ?? [], personaKey);
-  }, [workspace, personaKey]);
+  const conductorSnap = useMemo(
+    () => snapshotFrom(graph, workspace, personaKey),
+    [graph, workspace, personaKey]
+  );
 
-  const activeEpisode =
-    eligibleEpisodes.find((e) => e.isActive) ??
-    workspace?.episodes.find((e) => e.isActive && eligibleEpisodes.some((x) => x.id === e.id)) ??
-    null;
-
-  const conductorSnap = useMemo(() => {
-    if (!graph) {
-      return {
-        statuses: EMPTY_STATUSES,
-        summaries: {
-          persona: "",
-          episode: "",
-          journey: "",
-          process: "",
-          systems: "",
-          qa: "",
-        } as Record<ConductorAct, string>,
-      };
-    }
-    return computeConductorSnapshot({
-      personaName: workspace?.persona?.name ?? null,
-      episodeName: activeEpisode?.name ?? null,
-      stageCount: graph.stages.length,
-      sopStepCount: graph.processes[0]?.sop?.steps.length ?? 0,
-      systemCount: graph.processes.reduce((n, p) => n + p.systems.length, 0),
-      scorecardCount: graph.quality.scorecards.length,
-    });
-  }, [graph, workspace, activeEpisode]);
+  const appliedStages: OutlineStage[] = useMemo(
+    () =>
+      (graph?.stages ?? []).map((s) => ({
+        name: s.name,
+        actor: s.actor,
+        outcome: s.outcome ?? undefined,
+      })),
+    [graph]
+  );
 
   const openAct = useCallback(
-    (act: ConductorAct) => {
+    (act: ConductorAct, opts?: { force?: boolean }) => {
       const status = conductorSnap.statuses[act];
-      if (status === "locked") return;
+      if (!opts?.force && status === "locked") return;
       setSelected(act);
 
       if (act === "persona") {
@@ -442,7 +533,12 @@ export function OperatingSpine({
         return;
       }
       if (act === "journey") {
-        preloadJourneyOutline(workspace, graph, personaKey);
+        if (!opts?.force || !journeyCandidates.length) {
+          const built = buildCandidates(workspace, graph, personaKey);
+          setJourneyCandidates(built.candidates);
+          setJourneyStages(built.stages);
+          setJourneySource(built.source);
+        }
         setBrowseOpen(false);
         setJourneyOpen(true);
         return;
@@ -468,7 +564,7 @@ export function OperatingSpine({
         setBrowseOpen(true);
       }
     },
-    [conductorSnap.statuses, workspace, graph, personaKey, preloadJourneyOutline]
+    [conductorSnap.statuses, workspace, graph, personaKey, journeyCandidates.length]
   );
 
   openActRef.current = openAct;
@@ -508,7 +604,6 @@ export function OperatingSpine({
   const serviceName = graph.service.name;
   const lensKey = personaKey ?? workspace?.personaKey ?? null;
   const persona = lensKey ? getPersonaById(lensKey) : null;
-  const hasAppliedJourney = graph.stages.length > 0;
 
   return (
     <section
@@ -546,7 +641,6 @@ export function OperatingSpine({
         </div>
       </div>
 
-      {/* Act line — Persona (avatar) → Episode → Journey → Process → Systems → QA */}
       <div className="relative shrink-0" style={{ height: variant === "hero" ? 200 : 148 }}>
         <div className="absolute inset-x-0 top-0" style={{ bottom: 52 }}>
           <SpineOrbCanvas
@@ -627,9 +721,7 @@ export function OperatingSpine({
                   </motion.span>
                 </span>
                 <span className="max-w-[92%] truncate text-center text-[9px] tabular-nums text-white/35">
-                  {act === "persona"
-                    ? summary || (locked ? ACT_LOCK_REASON[act] : ACT_LABELS[act].verb)
-                    : summary || (locked ? ACT_LOCK_REASON[act] : ACT_LABELS[act].verb)}
+                  {summary || (locked ? ACT_LOCK_REASON[act] : ACT_LABELS[act].verb)}
                 </span>
               </button>
             );
@@ -638,20 +730,6 @@ export function OperatingSpine({
       </div>
 
       <div className="relative min-h-0 flex-1 border-t border-white/[0.05] px-3 py-2 sm:px-4">
-        <AnimatePresence>
-          {toast && (
-            <motion.div
-              key={toast}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.22, ease: EASE }}
-              className="absolute inset-x-3 top-1 z-20 rounded-lg border border-[var(--gpssa-green)]/35 bg-[var(--gpssa-green)]/15 px-3 py-1.5 text-center text-[11px] font-medium text-[var(--gpssa-green)] backdrop-blur-sm sm:inset-x-4"
-            >
-              {toast}
-            </motion.div>
-          )}
-        </AnimatePresence>
         <motion.div
           key={progressAct}
           initial={{ opacity: 0, y: 4 }}
@@ -668,6 +746,25 @@ export function OperatingSpine({
           </p>
         </motion.div>
       </div>
+
+      {portalReady &&
+        createPortal(
+          <AnimatePresence mode="wait">
+            {toast && (
+              <motion.div
+                key={toast}
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.22, ease: EASE }}
+                className="pointer-events-none fixed left-1/2 top-6 z-[60] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-[var(--gpssa-green)]/40 bg-[#0a1a28]/95 px-4 py-2.5 text-center text-[12px] font-medium text-[var(--gpssa-green)] shadow-xl backdrop-blur-md"
+              >
+                {toast}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
       <PersonaChooserModal
         isOpen={personaChooserOpen}
@@ -687,14 +784,16 @@ export function OperatingSpine({
         busy={busy}
         onAction={workspaceAction}
         onOpenWizardProcess={() => openWizard("process")}
+        onOpenWizardEpisode={() => openWizard("episode")}
       />
 
       <JourneyOutlineModal
         isOpen={journeyOpen}
         onClose={() => setJourneyOpen(false)}
+        candidates={journeyCandidates}
         stages={journeyStages}
         source={journeySource}
-        hasAppliedJourney={hasAppliedJourney}
+        appliedStages={appliedStages}
         busy={busy}
         onApply={async (stages, source) => {
           setBusy(true);
@@ -710,10 +809,8 @@ export function OperatingSpine({
               }),
             });
             if (r.ok) {
-              await refresh(serviceId, personaKey);
-              setJourneyOpen(false);
               setDraft(null);
-              advanceAfter("journey");
+              await runHandoff("journey");
             }
           } finally {
             setBusy(false);
@@ -739,9 +836,7 @@ export function OperatingSpine({
         serviceId={serviceId}
         graph={graph}
         onApplied={async () => {
-          await refresh(serviceId, personaKey);
-          setSystemsOpen(false);
-          advanceAfter("systems");
+          await runHandoff("systems");
         }}
       />
 
@@ -751,9 +846,7 @@ export function OperatingSpine({
         serviceId={serviceId}
         graph={graph}
         onApplied={async () => {
-          await refresh(serviceId, personaKey);
-          setQaOpen(false);
-          advanceAfter("qa");
+          await runHandoff("qa");
         }}
       />
 

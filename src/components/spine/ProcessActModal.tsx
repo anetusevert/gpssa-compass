@@ -30,6 +30,7 @@ export function ProcessActModal({
   onApply: () => Promise<void>;
 }) {
   const sop = graph?.processes[0]?.sop ?? null;
+  const stages = graph?.stages ?? [];
   const kicked = useRef(false);
 
   useEffect(() => {
@@ -44,8 +45,33 @@ export function ProcessActModal({
   }, [isOpen, draft, onGenerate]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Process — draft & apply" size="2xl">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Process — draft & apply"
+      description="Continues from Journey · outlined for GPSSA operations"
+      size="2xl"
+    >
       <div className="flex max-h-[65vh] min-h-[320px] flex-col gap-2">
+        {stages.length > 0 && (
+          <div className="shrink-0 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">
+              Selected journey
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {stages.map((s, i) => (
+                <span
+                  key={s.id}
+                  className="inline-flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-[10px] text-white/65"
+                >
+                  <span className="text-white/30">{i + 1}</span>
+                  {s.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex shrink-0 justify-center gap-2">
           <button
             type="button"

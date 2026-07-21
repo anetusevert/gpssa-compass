@@ -80,7 +80,13 @@ export function SystemsActModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Systems — agent outline" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Systems — agent outline"
+      description="Continues from Process"
+      size="lg"
+    >
       <div className="max-h-[60vh] min-h-[260px] space-y-3 overflow-y-auto pr-1">
         <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
           <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">

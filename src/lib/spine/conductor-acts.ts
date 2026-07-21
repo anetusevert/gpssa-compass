@@ -115,6 +115,26 @@ export function nextAct(act: ConductorAct): ConductorAct | null {
   return ACT_ORDER[i + 1];
 }
 
+/**
+ * After completing `from`, open the act that is now `current` (skipping
+ * already-done steps). Falls back to ordinal next, then first `ready`.
+ */
+export function handoffTarget(
+  statuses: Record<ConductorAct, ActStatus>,
+  from: ConductorAct
+): ConductorAct | null {
+  const fromIdx = ACT_ORDER.indexOf(from);
+  if (fromIdx < 0) return null;
+
+  for (let i = fromIdx + 1; i < ACT_ORDER.length; i++) {
+    if (statuses[ACT_ORDER[i]] === "current") return ACT_ORDER[i];
+  }
+  for (let i = fromIdx + 1; i < ACT_ORDER.length; i++) {
+    if (statuses[ACT_ORDER[i]] === "ready") return ACT_ORDER[i];
+  }
+  return nextAct(from);
+}
+
 /** Map legacy ?node= / SpineNodeId deep links onto conductor acts. */
 export function nodeToAct(node: string): ConductorAct | null {
   if (node === "persona") return "persona";

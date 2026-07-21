@@ -18,6 +18,7 @@ export type WorkspaceEpisode = {
   isActive: boolean;
   personaKey: string | null;
   libraryId?: string | null;
+  lifecycleCategory?: string | null;
 };
 
 export type CatalogueEpisode = {

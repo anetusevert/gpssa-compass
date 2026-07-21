@@ -42,47 +42,56 @@ export async function GET(
       null);
 
   const catalogue = libraryForPersona(personaKey);
-  const journeyCandidates = [
-    ...(active?.stages.length
-      ? [
-          {
-            id: `existing-${active.id}`,
-            source: "gold" as const,
-            label: "Active episode stages",
-            stages: active.stages.map((s) => ({
-              name: s.name,
-              actor: s.actor,
-              outcome: s.outcome,
-            })),
-          },
-        ]
-      : []),
-    ...(persona
-      ? [
-          {
-            id: `persona-${persona.id}`,
-            source: "persona" as const,
-            label: `${persona.name} research journey`,
-            stages: persona.gpssaJourney.steps.map((s) => ({
-              name: s.title,
-              actor: "customer",
-              outcome: s.description,
-            })),
-          },
-        ]
-      : []),
-    // Ready journeys from the episode catalogue for this persona
-    ...catalogue.slice(0, 12).map((lib) => ({
-      id: `library-journey-${lib.id}`,
-      source: "library" as const,
-      label: lib.name,
-      stages: lib.defaultStages.map((s) => ({
+
+  // Journeys scoped to the active episode only (library outline + persona + applied).
+  const journeyCandidates: {
+    id: string;
+    source: string;
+    label: string;
+    stages: { name: string; actor: string; outcome?: string | null }[];
+  }[] = [];
+
+  if (active?.stages.length) {
+    journeyCandidates.push({
+      id: `existing-${active.id}`,
+      source: "applied",
+      label: `Applied — ${active.name}`,
+      stages: active.stages.map((s) => ({
         name: s.name,
         actor: s.actor,
         outcome: s.outcome,
       })),
-    })),
-  ];
+    });
+  }
+
+  if (active?.libraryId) {
+    const lib = getLibraryEpisode(active.libraryId);
+    if (lib?.defaultStages.length) {
+      journeyCandidates.push({
+        id: `library-${lib.id}`,
+        source: "library",
+        label: `${lib.name} journey`,
+        stages: lib.defaultStages.map((s) => ({
+          name: s.name,
+          actor: s.actor,
+          outcome: s.outcome,
+        })),
+      });
+    }
+  }
+
+  if (persona?.gpssaJourney.steps.length) {
+    journeyCandidates.push({
+      id: `persona-${persona.id}`,
+      source: "persona",
+      label: `${persona.name} research journey`,
+      stages: persona.gpssaJourney.steps.map((s) => ({
+        name: s.title,
+        actor: "customer",
+        outcome: s.description,
+      })),
+    });
+  }
 
   let painPoints: string[] = [];
   try {
@@ -167,30 +176,34 @@ export async function POST(
       data: { isActive: false },
     });
 
-    const episode = await prisma.customerEpisode.create({
-      data: {
-        serviceId,
-        name: lib.name,
-        description: lib.description,
-        lifecycleCategory: lib.category,
-        personaKey,
-        libraryId: lib.id,
-        source: "library",
-        isActive: true,
-        sortOrder: 0,
-        stages: {
-          create: lib.defaultStages.map((s, i) => ({
-            serviceId,
-            name: s.name,
-            actor: s.actor,
-            outcome: s.outcome,
-            source: "library",
-            sortOrder: i,
-          })),
-        },
-      },
-      include: { stages: true },
+    // Create/activate episode only — Journey act owns outline + apply-journey.
+    const existing = await prisma.customerEpisode.findFirst({
+      where: { serviceId, libraryId: lib.id },
     });
+
+    const episode = existing
+      ? await prisma.customerEpisode.update({
+          where: { id: existing.id },
+          data: {
+            isActive: true,
+            ...(personaKey ? { personaKey } : {}),
+          },
+          include: { stages: { orderBy: { sortOrder: "asc" } } },
+        })
+      : await prisma.customerEpisode.create({
+          data: {
+            serviceId,
+            name: lib.name,
+            description: lib.description,
+            lifecycleCategory: lib.category,
+            personaKey,
+            libraryId: lib.id,
+            source: "library",
+            isActive: true,
+            sortOrder: 0,
+          },
+          include: { stages: { orderBy: { sortOrder: "asc" } } },
+        });
 
     await prisma.spineConfig.upsert({
       where: { serviceId },
@@ -198,12 +211,11 @@ export async function POST(
         serviceId,
         activeEpisodeId: episode.id,
         activePersonaKey: personaKey,
-        activeJourneySource: "library",
+        activeJourneySource: null,
       },
       update: {
         activeEpisodeId: episode.id,
         activePersonaKey: personaKey,
-        activeJourneySource: "library",
       },
     });
 
