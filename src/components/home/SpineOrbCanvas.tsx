@@ -3,19 +3,17 @@
 import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { SpineOrbScene } from "./SpineOrbScene";
-import type { SpineNodeId } from "@/lib/spine/types";
+import type { ActStatus, ConductorAct } from "@/lib/spine/conductor-acts";
 
 export default function SpineOrbCanvas({
   selected,
   hovered,
-  emphasized,
-  conducting,
+  statuses,
   accent,
 }: {
-  selected: SpineNodeId | null;
-  hovered: SpineNodeId | null;
-  emphasized: Set<SpineNodeId>;
-  conducting: boolean;
+  selected: ConductorAct | null;
+  hovered: ConductorAct | null;
+  statuses: Record<ConductorAct, ActStatus>;
   accent: string | null;
 }) {
   return (
@@ -30,8 +28,7 @@ export default function SpineOrbCanvas({
         <SpineOrbScene
           selected={selected}
           hovered={hovered}
-          emphasized={emphasized}
-          conducting={conducting}
+          statuses={statuses}
           accent={accent}
         />
       </Suspense>

@@ -4,22 +4,28 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, GitBranch, Loader2, Star, Wand2 } from "lucide-react";
+import { ArrowRight, Check, GitBranch, Loader2, Lock, Star, Wand2 } from "lucide-react";
 import { useEngagementStore } from "@/lib/engagement/store";
-import { emphasizedNodes, PHASE_SPINE_ACCENT } from "@/lib/spine/conductor";
+import { PHASE_SPINE_ACCENT } from "@/lib/spine/conductor";
 import {
+  ACT_LABELS,
+  ACT_LOCK_REASON,
+  ACT_ORDER,
+  actToBrowseNode,
   computeConductorSnapshot,
-  useConductorStore,
+  nodeToAct,
+  type ActStatus,
   type ConductorAct,
 } from "@/lib/spine/conductor-acts";
 import type { SpineDraft } from "@/lib/spine/generate";
 import type { SpineGraphPayload, SpineNodeId, SpineServiceListItem } from "@/lib/spine/types";
 import { filterEligibleEpisodes } from "@/lib/spine/eligibility";
 import { EASE } from "@/lib/motion";
+import { getPersonaById } from "@/data/personas";
+import { PersonaAvatar } from "@/components/personas/PersonaAvatar";
 import { SpineSetupWizard, type WizardStep } from "./SpineSetupWizard";
-import { SpineNodeGate } from "./SpineNodeGate";
 import { SpineBrowseModal } from "./SpineBrowseModal";
-import { SpinePersonaLens } from "./SpinePersonaLens";
+import { PersonaChooserModal } from "./PersonaChooserModal";
 import { SystemsQaActModal } from "./SystemsQaActModal";
 import type { LibraryPayload, Workspace } from "./workspace-types";
 
@@ -30,33 +36,23 @@ const SpineOrbCanvas = dynamic(() => import("@/components/home/SpineOrbCanvas"),
   ),
 });
 
-const NODE_ORDER: SpineNodeId[] = ["episode", "journey", "process", "systems", "qa"];
-const SHORT: Record<SpineNodeId, string> = {
-  episode: "Episode",
-  journey: "Journey",
-  process: "Process",
-  systems: "Systems",
-  qa: "QA",
-};
-
 const DEFAULT_PERSONA = "emirati-govt-employee";
 
-/** Which wizard step a node's Set up path opens. */
-export const NODE_TO_STEP: Record<SpineNodeId, WizardStep> = {
-  episode: "persona",
-  journey: "journey",
-  process: "process",
-  systems: "process",
-  qa: "review",
+const EMPTY_STATUSES: Record<ConductorAct, ActStatus> = {
+  persona: "current",
+  episode: "locked",
+  journey: "locked",
+  process: "locked",
+  systemsqa: "locked",
 };
 
-/** Which planet lights up while the wizard is on a given step. */
-const STEP_TO_NODE: Record<WizardStep, SpineNodeId> = {
-  persona: "episode",
+/** Wizard step → act for lighting while wizard is open. */
+const STEP_TO_ACT: Record<WizardStep, ConductorAct> = {
+  persona: "persona",
   episode: "episode",
   journey: "journey",
   process: "process",
-  review: "qa",
+  review: "systemsqa",
 };
 
 function readUrlPersona(): string | null {
@@ -71,31 +67,10 @@ function writeUrlPersona(personaKey: string) {
   window.history.replaceState({}, "", url.toString());
 }
 
-function existingSummary(
-  node: SpineNodeId,
-  graph: SpineGraphPayload | null,
-  workspace: Workspace | null,
-  eligibleCount: number
-): string {
-  if (!graph) return "Loading…";
-  if (node === "episode") {
-    return eligibleCount
-      ? `${eligibleCount} episode${eligibleCount === 1 ? "" : "s"} for this customer`
-      : "None for this customer";
-  }
-  if (node === "journey") {
-    const n = graph.stages.length;
-    return n ? `${n} stages` : "No journey yet";
-  }
-  if (node === "process") {
-    const sop = graph.processes[0]?.sop;
-    return sop ? `${sop.steps.length} SOP steps` : "No SOP yet";
-  }
-  if (node === "systems") {
-    const n = graph.fulfilment.cases.length;
-    return `${n} cases · ${graph.fulfilment.breachCount} breached`;
-  }
-  return `${graph.quality.scorecards.length} scorecards · ${graph.quality.capas.length} CAPAs`;
+function actToSpineNode(act: ConductorAct): SpineNodeId {
+  if (act === "persona") return "episode";
+  if (act === "systemsqa") return "qa";
+  return act;
 }
 
 export function OperatingSpine({
@@ -115,10 +90,6 @@ export function OperatingSpine({
 }) {
   const engagementOpen = useEngagementStore((s) => s.engagementOpen);
   const phaseId = useEngagementStore((s) => s.phaseId);
-  const phaseEmphasis = useMemo(
-    () => emphasizedNodes(phaseId, engagementOpen),
-    [phaseId, engagementOpen]
-  );
   const accent = engagementOpen ? PHASE_SPINE_ACCENT[phaseId] : null;
 
   const [services, setServices] = useState<SpineServiceListItem[]>([]);
@@ -127,20 +98,19 @@ export function OperatingSpine({
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [library, setLibrary] = useState<LibraryPayload | null>(null);
   const [personaKey, setPersonaKey] = useState<string | null>(null);
-  const [selected, setSelected] = useState<SpineNodeId>("episode");
-  const [hovered, setHovered] = useState<SpineNodeId | null>(null);
+  const [selected, setSelected] = useState<ConductorAct>("persona");
+  const [hovered, setHovered] = useState<ConductorAct | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<SpineDraft | null>(null);
   const [draftSource, setDraftSource] = useState<string | null>(null);
 
-  const [gateOpen, setGateOpen] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
+  const [browseNode, setBrowseNode] = useState<SpineNodeId>("episode");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardEntryStep, setWizardEntryStep] = useState<WizardStep>("persona");
-  /** Live wizard step for planet lighting only — never fed back as entryStep. */
   const [wizardLitStep, setWizardLitStep] = useState<WizardStep | null>(null);
-  const [personaLensOpen, setPersonaLensOpen] = useState(false);
+  const [personaChooserOpen, setPersonaChooserOpen] = useState(false);
   const [systemsQaOpen, setSystemsQaOpen] = useState(false);
 
   const bootstrapped = useRef(false);
@@ -167,15 +137,16 @@ export function OperatingSpine({
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const node = params.get("node");
-    if (node && NODE_ORDER.includes(node as SpineNodeId)) {
-      setSelected(node as SpineNodeId);
+    if (node) {
+      const act = nodeToAct(node);
+      if (act) setSelected(act);
     }
     const p = params.get("persona");
     if (p) setPersonaKey(p);
   }, []);
 
   useEffect(() => {
-    onSelectedNodeChange?.(selected);
+    onSelectedNodeChange?.(actToSpineNode(selected));
   }, [selected, onSelectedNodeChange]);
 
   useEffect(() => {
@@ -249,6 +220,7 @@ export function OperatingSpine({
           const key = readUrlPersona() || DEFAULT_PERSONA;
           await applyPersonaLens(key, list);
         } else if (list.length && lockService && initialServiceId) {
+          bootstrapped.current = true;
           const key = readUrlPersona() || DEFAULT_PERSONA;
           setPersonaKey(key);
           await refresh(initialServiceId, key);
@@ -260,7 +232,6 @@ export function OperatingSpine({
     return () => {
       cancelled = true;
     };
-    // Bootstrap once on mount; applyPersonaLens identity changes are ignored here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialServiceId, lockService]);
 
@@ -315,7 +286,6 @@ export function OperatingSpine({
     if (!serviceId || !draft) return;
     setBusy(true);
     try {
-      // Process act applies process + SOP only — Act 5's agent handles systems & QA.
       await fetch(`/api/spine/${serviceId}/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -327,100 +297,81 @@ export function OperatingSpine({
     }
   }, [serviceId, draft, refresh, personaKey]);
 
-  function openGateFor(node: SpineNodeId) {
-    setSelected(node);
-    setGateOpen(true);
-  }
-
   function openWizard(step: WizardStep) {
     setWizardEntryStep(step);
     setWizardLitStep(step);
     setWizardOpen(true);
-    setGateOpen(false);
     setBrowseOpen(false);
   }
-
-  const litSelection =
-    wizardOpen && wizardLitStep ? STEP_TO_NODE[wizardLitStep] : selected;
 
   const eligibleEpisodes = useMemo(() => {
     if (workspace?.eligibleEpisodes) return workspace.eligibleEpisodes;
     return filterEligibleEpisodes(workspace?.episodes ?? [], personaKey);
   }, [workspace, personaKey]);
 
-  /** Catalogue + on-service — what the user can actually choose for this persona. */
-  const personaEpisodePoolCount = useMemo(() => {
-    const catalogue = workspace?.catalogueEpisodes?.length ?? 0;
-    if (catalogue > 0) return catalogue;
-    return eligibleEpisodes.length;
-  }, [workspace?.catalogueEpisodes, eligibleEpisodes.length]);
-
   const activeEpisode =
     eligibleEpisodes.find((e) => e.isActive) ??
     workspace?.episodes.find((e) => e.isActive && eligibleEpisodes.some((x) => x.id === e.id)) ??
     null;
 
-  /* ── Conductor: publish act statuses; answer act requests from the dock ── */
+  const conductorSnap = useMemo(() => {
+    if (!graph) {
+      return {
+        statuses: EMPTY_STATUSES,
+        summaries: {
+          persona: "",
+          episode: "",
+          journey: "",
+          process: "",
+          systemsqa: "",
+        } as Record<ConductorAct, string>,
+      };
+    }
+    return computeConductorSnapshot({
+      personaName: workspace?.persona?.name ?? null,
+      episodeName: activeEpisode?.name ?? null,
+      stageCount: graph.stages.length,
+      sopStepCount: graph.processes[0]?.sop?.steps.length ?? 0,
+      systemCount: graph.processes.reduce((n, p) => n + p.systems.length, 0),
+      scorecardCount: graph.quality.scorecards.length,
+    });
+  }, [graph, workspace, activeEpisode]);
 
-  const setConductorSnapshot = useConductorStore((s) => s.setSnapshot);
-  const requestedAct = useConductorStore((s) => s.requestedAct);
-  const clearActRequest = useConductorStore((s) => s.clearRequest);
-
-  useEffect(() => {
-    if (!graph) return;
-    setConductorSnapshot(
-      computeConductorSnapshot({
-        personaName: workspace?.persona?.name ?? null,
-        episodeName: activeEpisode?.name ?? null,
-        stageCount: graph.stages.length,
-        sopStepCount: graph.processes[0]?.sop?.steps.length ?? 0,
-        systemCount: graph.processes.reduce((n, p) => n + p.systems.length, 0),
-        scorecardCount: graph.quality.scorecards.length,
-      })
-    );
-  }, [graph, workspace, activeEpisode, setConductorSnapshot]);
-
-  useEffect(() => {
-    if (!requestedAct) return;
-    const act: ConductorAct = requestedAct;
-    clearActRequest();
-    setGateOpen(false);
+  function openAct(act: ConductorAct) {
+    const status = conductorSnap.statuses[act];
+    if (status === "locked") return;
+    setSelected(act);
     if (act === "persona") {
-      setPersonaLensOpen(true);
+      setPersonaChooserOpen(true);
       return;
     }
-    if (act === "episode") {
-      setSelected("episode");
-      setBrowseOpen(true);
-      return;
-    }
-    if (act === "journey") {
-      setSelected("journey");
-      setBrowseOpen(true);
+    if (act === "systemsqa") {
+      setSystemsQaOpen(true);
       return;
     }
     if (act === "process") {
-      setSelected("process");
       openWizard("process");
       return;
     }
-    setSelected("qa");
-    setSystemsQaOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestedAct, clearActRequest]);
+    const browse = actToBrowseNode(act);
+    if (browse) {
+      setBrowseNode(browse);
+      setBrowseOpen(true);
+    }
+  }
 
-  /** When an episode is active, outline the whole lit chain (Episode→QA). */
-  const chainEmphasis = useMemo(() => {
-    if (engagementOpen && phaseEmphasis.size > 0) return phaseEmphasis;
-    if (!graph) return new Set<SpineNodeId>();
-    const lit = new Set(graph.nodes.filter((n) => n.lit).map((n) => n.id));
-    if (activeEpisode) lit.add("episode");
-    return lit;
-  }, [engagementOpen, phaseEmphasis, graph, activeEpisode]);
+  const litSelection =
+    wizardOpen && wizardLitStep ? STEP_TO_ACT[wizardLitStep] : selected;
 
-  const chainConducting = engagementOpen || Boolean(activeEpisode);
+  const currentActIndex = ACT_ORDER.findIndex(
+    (a) => conductorSnap.statuses[a] === "current"
+  );
+  const progressAct = currentActIndex >= 0 ? currentActIndex + 1 : 5;
+  const progressVerb =
+    currentActIndex >= 0
+      ? ACT_LABELS[ACT_ORDER[currentActIndex]].verb
+      : "Spine path complete — open Blueprint for detail";
 
-  // Never flip the whole spine back to loading while wizard/browse is open.
   if (loading && !graph) {
     return (
       <div
@@ -443,44 +394,31 @@ export function OperatingSpine({
 
   const serviceName = graph.service.name;
   const lensKey = personaKey ?? workspace?.personaKey ?? null;
+  const persona = lensKey ? getPersonaById(lensKey) : null;
 
   return (
     <section
       className={`relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent ${className}`}
       data-tour="compass-operating-spine"
     >
-      {/* Header — persona lens + service context */}
-      <div className="flex shrink-0 items-start justify-between gap-2 px-3 py-2 sm:px-4">
-        <div className="flex min-w-0 items-start gap-3">
-          {variant === "hero" && (
-            <SpinePersonaLens
-              personaKey={lensKey}
-              busy={busy}
-              onSelect={(key) => void applyPersonaLens(key)}
-              open={personaLensOpen}
-              onOpenChange={setPersonaLensOpen}
-            />
-          )}
-          <div className="min-w-0 pt-1">
-            <div className="flex items-center gap-2">
-              <GitBranch size={12} className="shrink-0 text-[var(--gpssa-green)]" />
-              <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[var(--gpssa-green)]">
-                Operating spine
-              </span>
-              {graph.isGoldPath && (
-                <Star size={10} className="shrink-0 text-amber-300" aria-label="Gold path" />
-              )}
-            </div>
-            <p className="mt-0.5 truncate text-[11px] text-white/35">{serviceName}</p>
-            <p className="mt-0.5 hidden text-[10px] text-white/25 sm:block">
-              Path for this customer — episodes may serve more than one persona
-            </p>
+      {/* Header — service context only; persona lives on the line */}
+      <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <GitBranch size={12} className="shrink-0 text-[var(--gpssa-green)]" />
+            <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[var(--gpssa-green)]">
+              Operating spine
+            </span>
+            {graph.isGoldPath && (
+              <Star size={10} className="shrink-0 text-amber-300" aria-label="Gold path" />
+            )}
           </div>
+          <p className="mt-0.5 truncate pl-5 text-[11px] text-white/35">{serviceName}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 pt-1">
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
-            onClick={() => openGateFor(selected)}
+            onClick={() => openWizard("persona")}
             className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--gpssa-green)]/40 bg-[var(--gpssa-green)]/15 px-2.5 py-1.5 text-[11px] font-semibold text-[var(--gpssa-green)] transition hover:bg-[var(--gpssa-green)]/25"
           >
             <Wand2 size={11} /> Set up
@@ -495,50 +433,86 @@ export function OperatingSpine({
         </div>
       </div>
 
-      {/* Planet stage */}
-      <div className="relative shrink-0" style={{ height: variant === "hero" ? 172 : 132 }}>
-        <div className="absolute inset-x-0 top-0" style={{ bottom: 40 }}>
+      {/* Act line — Persona → Episode → Journey → Process → Systems & QA */}
+      <div className="relative shrink-0" style={{ height: variant === "hero" ? 200 : 148 }}>
+        <div className="absolute inset-x-0 top-0" style={{ bottom: 52 }}>
           <SpineOrbCanvas
             selected={litSelection}
             hovered={hovered}
-            emphasized={chainEmphasis}
-            conducting={chainConducting}
-            accent={accent ?? (chainConducting ? "#00A86B" : null)}
+            statuses={conductorSnap.statuses}
+            accent={accent ?? (conductorSnap.statuses[litSelection] !== "locked" ? "#00A86B" : null)}
           />
         </div>
         <div className="absolute inset-0 flex">
-          {NODE_ORDER.map((id) => {
-            const node = graph.nodes.find((n) => n.id === id)!;
-            const emp = chainEmphasis.has(id);
-            const dim = chainConducting && chainEmphasis.size > 0 && !emp && litSelection !== id;
-            const isSel = litSelection === id;
-            const count =
-              id === "episode"
-                ? personaEpisodePoolCount
-                : node.lit
-                  ? node.count
-                  : null;
+          {ACT_ORDER.map((act, i) => {
+            const status = conductorSnap.statuses[act];
+            const locked = status === "locked";
+            const isSel = litSelection === act;
+            const summary = conductorSnap.summaries[act];
             return (
               <button
-                key={id}
+                key={act}
                 type="button"
-                onClick={() => openGateFor(id)}
-                onMouseEnter={() => setHovered(id)}
+                disabled={locked}
+                onClick={() => openAct(act)}
+                onMouseEnter={() => setHovered(act)}
                 onMouseLeave={() => setHovered(null)}
-                className="group flex w-1/5 flex-col items-center justify-end pb-2"
-                style={{ opacity: dim ? 0.45 : 1 }}
+                title={locked ? ACT_LOCK_REASON[act] : ACT_LABELS[act].verb}
+                className={`group relative flex w-1/5 flex-col items-center justify-end pb-1.5 ${
+                  locked ? "cursor-not-allowed opacity-50" : ""
+                }`}
               >
-                <motion.span
-                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
-                    isSel
-                      ? "bg-[var(--gpssa-green)]/20 text-cream ring-1 ring-[var(--gpssa-green)]/40"
-                      : "text-white/50 group-hover:text-white/80"
-                  }`}
-                >
-                  {SHORT[id]}
-                </motion.span>
-                <span className="mt-0.5 text-[9px] tabular-nums text-white/30">
-                  {count === null ? "—" : count}
+                {/* Persona avatar sits on the living aura */}
+                {act === "persona" && (
+                  <div className="pointer-events-none absolute left-1/2 top-[18%] z-10 -translate-x-1/2">
+                    {persona ? (
+                      <PersonaAvatar
+                        persona={persona}
+                        size={variant === "hero" ? "md" : "sm"}
+                        showGlow={status === "current" || isSel}
+                      />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/40 text-[10px] text-white/40">
+                        ?
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <span className="mb-0.5 flex items-center gap-1">
+                  <span
+                    className={`flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold ${
+                      status === "done"
+                        ? "bg-[var(--gpssa-green)] text-[#071322]"
+                        : status === "current"
+                          ? "bg-[var(--gpssa-green)]/90 text-[#071322]"
+                          : locked
+                            ? "bg-white/[0.06] text-white/35"
+                            : "bg-white/[0.1] text-white/50"
+                    }`}
+                  >
+                    {status === "done" ? (
+                      <Check size={8} />
+                    ) : locked ? (
+                      <Lock size={7} />
+                    ) : (
+                      i + 1
+                    )}
+                  </span>
+                  <motion.span
+                    className={`text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
+                      isSel
+                        ? "text-cream"
+                        : locked
+                          ? "text-white/35"
+                          : "text-white/55 group-hover:text-white/85"
+                    }`}
+                  >
+                    {ACT_LABELS[act].label}
+                  </motion.span>
+                </span>
+                <span className="max-w-[92%] truncate text-center text-[9px] tabular-nums text-white/35">
+                  {summary || (locked ? ACT_LOCK_REASON[act] : ACT_LABELS[act].verb)}
                 </span>
               </button>
             );
@@ -546,52 +520,37 @@ export function OperatingSpine({
         </div>
       </div>
 
-      {/* Quiet presence strip — persona lives in the lens above */}
+      {/* Single guidance line */}
       <div className="min-h-0 flex-1 border-t border-white/[0.05] px-3 py-2 sm:px-4">
         <motion.div
-          key={selected}
+          key={progressAct}
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: EASE }}
-          className="flex h-full min-h-0 items-center gap-2"
+          className="flex h-full min-h-0 items-center gap-3"
         >
-          <PresenceChip label="Active" value={activeEpisode?.name ?? "Choose episode"} />
-          <PresenceChip
-            label="Journey"
-            value={graph.stages.length ? `${graph.stages.length} stages` : "—"}
-          />
-          <PresenceChip
-            label="Chain"
-            value={`${graph.nodes.filter((n) => n.lit).length}/5 lit`}
-          />
-          <PresenceChip
-            label="Eligible"
-            value={`${personaEpisodePoolCount} episode${personaEpisodePoolCount === 1 ? "" : "s"}`}
-          />
+          <span className="shrink-0 rounded-full border border-[var(--gpssa-green)]/30 bg-[var(--gpssa-green)]/10 px-2.5 py-1 text-[10px] font-semibold text-[var(--gpssa-green)]">
+            Act {progressAct} of 5
+          </span>
+          <p className="min-w-0 truncate text-[12px] text-cream">{progressVerb}</p>
           <p className="ml-auto hidden text-[10px] text-white/25 sm:block">
-            {activeEpisode
-              ? "Working unit outlined — click a planet"
-              : "Pick a planet or choose an eligible episode"}
+            Click a step on the line to continue
           </p>
         </motion.div>
       </div>
 
-      <SpineNodeGate
-        isOpen={gateOpen}
-        onClose={() => setGateOpen(false)}
-        node={selected}
-        existingSummary={existingSummary(selected, graph, workspace, personaEpisodePoolCount)}
-        onBrowse={() => {
-          setGateOpen(false);
-          setBrowseOpen(true);
-        }}
-        onSetup={() => openWizard(NODE_TO_STEP[selected])}
+      <PersonaChooserModal
+        isOpen={personaChooserOpen}
+        onClose={() => setPersonaChooserOpen(false)}
+        personaKey={lensKey}
+        busy={busy}
+        onSelect={(key) => void applyPersonaLens(key)}
       />
 
       <SpineBrowseModal
         isOpen={browseOpen}
         onClose={() => setBrowseOpen(false)}
-        node={selected}
+        node={browseNode}
         graph={graph}
         workspace={workspace}
         personaKey={lensKey}
@@ -632,14 +591,5 @@ export function OperatingSpine({
         onPersonaSelect={(key) => void applyPersonaLens(key)}
       />
     </section>
-  );
-}
-
-function PresenceChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 flex-1 rounded-xl border border-white/[0.05] bg-black/20 px-2.5 py-1.5">
-      <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-white/30">{label}</p>
-      <p className="truncate text-[11px] text-cream">{value}</p>
-    </div>
   );
 }

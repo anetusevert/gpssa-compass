@@ -5,7 +5,6 @@ import { motion, useReducedMotion } from "framer-motion";
 import { GitBranch } from "lucide-react";
 import { HERO_MODULES, CORE_MODULES, OPS_MODULES } from "./home-modules";
 import { EASE } from "@/lib/motion";
-import { SpineConductorRail } from "./SpineConductorRail";
 
 const MODULES = [...HERO_MODULES, ...CORE_MODULES, ...OPS_MODULES];
 
@@ -34,10 +33,7 @@ export function SpineGuideDock() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15, duration: 0.45, ease: EASE }}
     >
-      {/* Operational conductor — persona → episode → journey → process → systems & QA */}
-      <SpineConductorRail />
-
-      {/* Compact secondary module rail */}
+      {/* Compact module rail — conductor lives on the spine line above */}
       <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-2xl border border-white/[0.06] bg-black/20 px-1.5 py-0.5 backdrop-blur-md scrollbar-none">
         {MODULES.map((mod) => {
           const Icon = mod.icon;

@@ -1,7 +1,3 @@
-"use client";
-
-import { create } from "zustand";
-
 /** The five operational acts of conducting a service spine. */
 export type ConductorAct = "persona" | "episode" | "journey" | "process" | "systemsqa";
 
@@ -35,38 +31,6 @@ export type ConductorSnapshot = {
   statuses: Record<ConductorAct, ActStatus>;
   summaries: Record<ConductorAct, string>;
 };
-
-interface ConductorState extends ConductorSnapshot {
-  requestedAct: ConductorAct | null;
-  setSnapshot: (snap: ConductorSnapshot) => void;
-  requestAct: (act: ConductorAct) => void;
-  clearRequest: () => void;
-}
-
-const EMPTY_STATUSES: Record<ConductorAct, ActStatus> = {
-  persona: "current",
-  episode: "locked",
-  journey: "locked",
-  process: "locked",
-  systemsqa: "locked",
-};
-
-const EMPTY_SUMMARIES: Record<ConductorAct, string> = {
-  persona: "",
-  episode: "",
-  journey: "",
-  process: "",
-  systemsqa: "",
-};
-
-export const useConductorStore = create<ConductorState>()((set) => ({
-  statuses: EMPTY_STATUSES,
-  summaries: EMPTY_SUMMARIES,
-  requestedAct: null,
-  setSnapshot: (snap) => set({ statuses: snap.statuses, summaries: snap.summaries }),
-  requestAct: (act) => set({ requestedAct: act }),
-  clearRequest: () => set({ requestedAct: null }),
-}));
 
 /** Derive act statuses from spine facts. Acts unlock strictly in sequence. */
 export function computeConductorSnapshot(facts: {
@@ -117,4 +81,24 @@ export function computeConductorSnapshot(facts: {
   };
 
   return { statuses, summaries };
+}
+
+/** Map legacy ?node= / SpineNodeId deep links onto conductor acts. */
+export function nodeToAct(node: string): ConductorAct | null {
+  if (node === "persona") return "persona";
+  if (node === "episode") return "episode";
+  if (node === "journey") return "journey";
+  if (node === "process") return "process";
+  if (node === "systems" || node === "qa" || node === "systemsqa") return "systemsqa";
+  return null;
+}
+
+export function actToBrowseNode(
+  act: ConductorAct
+): "episode" | "journey" | "process" | "systems" | "qa" | null {
+  if (act === "episode") return "episode";
+  if (act === "journey") return "journey";
+  if (act === "process") return "process";
+  if (act === "systemsqa") return "qa";
+  return null;
 }
