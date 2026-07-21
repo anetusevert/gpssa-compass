@@ -5,33 +5,37 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Color, type Group, type Mesh } from "three";
 import { createSpineBlobMaterial } from "./SpineBlobMaterial";
 import {
-  ACT_ORDER,
+  BLOB_ACTS,
   type ActStatus,
   type ConductorAct,
 } from "@/lib/spine/conductor-acts";
 
-/** Blob palette — persona opens the line, then episode → systems & QA. */
-const PALETTE: Record<ConductorAct, { primary: string; secondary: string; accent: string }> = {
-  persona: { primary: "#00C48C", secondary: "#3ee0b0", accent: "#b8ffe8" },
+/** Blob palette for Episode → QA (persona has no blob). */
+const PALETTE: Record<
+  Exclude<ConductorAct, "persona">,
+  { primary: string; secondary: string; accent: string }
+> = {
   episode: { primary: "#00A86B", secondary: "#2fd39a", accent: "#a8f0d4" },
   journey: { primary: "#3B82C4", secondary: "#6fb1e8", accent: "#c4e2ff" },
   process: { primary: "#C99A3C", secondary: "#e8c06a", accent: "#ffe9b8" },
-  systemsqa: { primary: "#C5A572", secondary: "#e2c795", accent: "#fff0d4" },
+  systems: { primary: "#B0764A", secondary: "#d99e70", accent: "#ffd9b8" },
+  qa: { primary: "#C5A572", secondary: "#e2c795", accent: "#fff0d4" },
 };
 
 const MUTED = "#33475e";
+const COLS = 6; // persona + 5 blobs — blobs occupy columns 1–5
 
 function BlobNode({
   id,
-  index,
+  blobIndex,
   radius,
   selected,
   hovered,
   status,
   accent,
 }: {
-  id: ConductorAct;
-  index: number;
+  id: Exclude<ConductorAct, "persona">;
+  blobIndex: number; // 0..4 within BLOB_ACTS
   radius: number;
   selected: boolean;
   hovered: boolean;
@@ -52,21 +56,22 @@ function BlobNode({
         secondary: PALETTE[id].secondary,
         accent: PALETTE[id].accent,
         muted: MUTED,
-        seed: index * 13.7,
+        seed: blobIndex * 13.7,
       }),
-    [id, index]
+    [id, blobIndex]
   );
 
   useEffect(() => () => material.dispose(), [material]);
 
-  const x = ((index + 0.5) / 5 - 0.5) * viewport.width;
+  // Column index on the six-column line (persona = 0)
+  const colIndex = blobIndex + 1;
+  const x = ((colIndex + 0.5) / COLS - 0.5) * viewport.width;
 
   const active = selected || hovered;
   const done = status === "done";
   const current = status === "current";
   const locked = status === "locked";
 
-  // done = full color calm; current = brighter higher amp; locked/ready muted
   const targetAmp = active ? 0.95 : current ? 0.7 : done ? 0.35 : 0.12;
   const targetMute = active || current ? 0 : done ? 0.15 : locked ? 1 : 0.55;
   const targetScale = active ? 1.14 : current ? 1.08 : done ? 1.02 : locked ? 0.88 : 0.96;
@@ -86,7 +91,7 @@ function BlobNode({
 
     if (mesh.current) {
       mesh.current.rotation.y += delta * (active || current ? 0.18 : 0.05);
-      const t = state.clock.elapsedTime + index * 1.7;
+      const t = state.clock.elapsedTime + blobIndex * 1.7;
       const pulse =
         1 +
         Math.sin(t * 0.35) * 0.04 +
@@ -94,9 +99,7 @@ function BlobNode({
         smoothedAmp.current * 0.05 +
         (current ? Math.sin(t * 2.2) * 0.02 : 0);
       smoothedScale.current += (targetScale - smoothedScale.current) * lerpSpeed;
-      // Persona column is a slightly smaller aura so the avatar sits cleanly on top.
-      const base = id === "persona" ? radius * 0.92 : radius;
-      mesh.current.scale.setScalar(base * smoothedScale.current * pulse);
+      mesh.current.scale.setScalar(radius * smoothedScale.current * pulse);
       mesh.current.position.y = Math.sin(t * 0.4) * radius * 0.06;
     }
   });
@@ -112,9 +115,14 @@ function BlobNode({
 
 function OrbitLine() {
   const { viewport } = useThree();
+  // Line under the five blob columns (skip persona column)
+  const full = viewport.width * 0.82;
+  const segment = full / COLS;
+  const width = segment * 5;
+  const x = segment * 0.5; // shift right by half a persona column
   return (
-    <mesh position={[0, 0, -2]}>
-      <planeGeometry args={[viewport.width * 0.82, 0.01]} />
+    <mesh position={[x, 0, -2]}>
+      <planeGeometry args={[width, 0.01]} />
       <meshBasicMaterial color="#3a5570" transparent opacity={0.35} />
     </mesh>
   );
@@ -133,7 +141,7 @@ export function SpineOrbScene({
 }) {
   const group = useRef<Group>(null);
   const { viewport } = useThree();
-  const radius = Math.min(viewport.height / 2.9, viewport.width / 14);
+  const radius = Math.min(viewport.height / 2.9, viewport.width / 16);
 
   useFrame((state) => {
     if (group.current) {
@@ -146,11 +154,11 @@ export function SpineOrbScene({
       <ambientLight intensity={0.55} />
       <group ref={group}>
         <OrbitLine />
-        {ACT_ORDER.map((id, i) => (
+        {BLOB_ACTS.map((id, i) => (
           <BlobNode
             key={id}
-            id={id}
-            index={i}
+            id={id as Exclude<ConductorAct, "persona">}
+            blobIndex={i}
             radius={radius}
             selected={selected === id}
             hovered={hovered === id}

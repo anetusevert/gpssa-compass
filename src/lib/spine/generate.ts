@@ -67,37 +67,34 @@ export function templateDraft(input: {
   };
 }
 
-export interface SystemsQaOutline {
+export interface SystemsOutline {
   systems: { code: string; name: string; kind: string; role: string }[];
-  qaApproach: {
-    scorecardName: string;
-    summary: string;
-    checkpointFocus: string[];
-  };
 }
 
-/** Second agent: outline systems + QA from an *applied* SOP, not a pre-draft. */
-export async function generateSystemsQaOutline(input: {
+export interface QaOutline {
+  scorecardName: string;
+  summary: string;
+  kpis: { name: string; target?: string; unit?: string }[];
+  criteria: string[];
+  checkpointFocus: string[];
+}
+
+/** @deprecated Prefer SystemsOutline + QaOutline */
+export type SystemsQaOutline = SystemsOutline & { qaApproach: QaOutline };
+
+/** Systems agent: map back-office systems from an applied SOP. */
+export async function generateSystemsOutline(input: {
   serviceName: string;
   processName: string;
   sopTitle: string;
   steps: { title: string; instruction?: string | null; qaCheckpoint: boolean }[];
-}): Promise<{ outline: SystemsQaOutline; source: "ai" | "template" }> {
-  const fallback: SystemsQaOutline = {
+}): Promise<{ outline: SystemsOutline; source: "ai" | "template" }> {
+  const fallback: SystemsOutline = {
     systems: [
       { code: "maashi", name: "Ma’ashi", kind: "core", role: "system-of-record" },
       { code: "crm", name: "CRM / case desk", kind: "crm", role: "workflow" },
       { code: "portal", name: "GPSSA Portal", kind: "channel", role: "intake" },
     ],
-    qaApproach: {
-      scorecardName: `${input.serviceName} – agent quality scorecard`,
-      summary:
-        "Call-center-style back-office QA aligned to SOP checkpoints (not software QA).",
-      checkpointFocus: input.steps
-        .filter((s) => s.qaCheckpoint)
-        .map((s) => s.title)
-        .slice(0, 5),
-    },
   };
 
   const client = await getOpenAIClient();
@@ -111,24 +108,96 @@ export async function generateSystemsQaOutline(input: {
         {
           role: "system",
           content:
-            "You map back-office systems and QA coverage for GPSSA (UAE pension authority) " +
-            "given an already-applied SOP. Systems are inventory labels (maashi/crm/portal/dms/payments). " +
-            "QA is agent process QA with checkpoints — not software QA. Respond ONLY JSON matching: " +
-            "{ systems:[{code,name,kind,role}], qaApproach:{scorecardName,summary,checkpointFocus:string[]} }. " +
-            "3–5 systems; checkpointFocus references actual SOP step titles.",
+            "You map back-office systems for GPSSA (UAE pension authority) given an applied SOP. " +
+            "Systems are inventory labels (maashi/crm/portal/dms/payments). " +
+            "Respond ONLY JSON: { systems:[{code,name,kind,role}] }. 3–5 systems with clear roles.",
         },
         { role: "user", content: JSON.stringify(input, null, 2) },
       ],
     });
     const raw = completion.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(raw) as SystemsQaOutline;
-    if (!parsed.systems?.length || !parsed.qaApproach) {
+    const parsed = JSON.parse(raw) as SystemsOutline;
+    if (!parsed.systems?.length) return { outline: fallback, source: "template" };
+    return { outline: { systems: parsed.systems }, source: "ai" };
+  } catch {
+    return { outline: fallback, source: "template" };
+  }
+}
+
+/** QA agent: KPIs, criteria, checkpoints from applied SOP. */
+export async function generateQaOutline(input: {
+  serviceName: string;
+  processName: string;
+  sopTitle: string;
+  steps: { title: string; instruction?: string | null; qaCheckpoint: boolean }[];
+}): Promise<{ outline: QaOutline; source: "ai" | "template" }> {
+  const checkpoints = input.steps
+    .filter((s) => s.qaCheckpoint)
+    .map((s) => s.title)
+    .slice(0, 6);
+  const fallback: QaOutline = {
+    scorecardName: `${input.serviceName} – agent quality scorecard`,
+    summary:
+      "Call-center-style back-office QA aligned to SOP checkpoints (not software QA).",
+    kpis: [
+      { name: "First-time-right rate", target: "≥ 95%", unit: "%" },
+      { name: "Cycle time vs SLA", target: "≤ 100%", unit: "% of SLA" },
+      { name: "Checkpoint pass rate", target: "≥ 90%", unit: "%" },
+    ],
+    criteria: [
+      "Identity and authority verified before processing",
+      "Contribution / entitlement calculation evidenced",
+      "Customer notified of decision and next steps",
+      "Case notes complete for audit",
+    ],
+    checkpointFocus: checkpoints.length ? checkpoints : input.steps.map((s) => s.title).slice(0, 4),
+  };
+
+  const client = await getOpenAIClient();
+  if (!client) return { outline: fallback, source: "template" };
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You design agent-process QA for GPSSA (UAE pension authority) from an applied SOP. " +
+            "Not software QA. Respond ONLY JSON: " +
+            "{ scorecardName, summary, kpis:[{name,target?,unit?}], criteria:string[], checkpointFocus:string[] }. " +
+            "3–5 KPIs; 4–6 criteria; checkpointFocus references SOP step titles.",
+        },
+        { role: "user", content: JSON.stringify(input, null, 2) },
+      ],
+    });
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    const parsed = JSON.parse(raw) as QaOutline;
+    if (!parsed.scorecardName || !parsed.criteria?.length) {
       return { outline: fallback, source: "template" };
     }
     return { outline: { ...fallback, ...parsed }, source: "ai" };
   } catch {
     return { outline: fallback, source: "template" };
   }
+}
+
+/** Combined outline (legacy callers). */
+export async function generateSystemsQaOutline(input: {
+  serviceName: string;
+  processName: string;
+  sopTitle: string;
+  steps: { title: string; instruction?: string | null; qaCheckpoint: boolean }[];
+}): Promise<{ outline: SystemsQaOutline; source: "ai" | "template" }> {
+  const [sys, qa] = await Promise.all([
+    generateSystemsOutline(input),
+    generateQaOutline(input),
+  ]);
+  return {
+    outline: { systems: sys.outline.systems, qaApproach: qa.outline },
+    source: sys.source === "ai" || qa.source === "ai" ? "ai" : "template",
+  };
 }
 
 export async function generateSpineDraft(input: {

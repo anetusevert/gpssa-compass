@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/admin-guard";
 import { prisma } from "@/lib/db";
-import type { SpineDraft, SystemsQaOutline } from "@/lib/spine/generate";
+import type { QaOutline, SpineDraft, SystemsOutline } from "@/lib/spine/generate";
 
-type ApplySection = "all" | "process" | "systems-qa";
+type ApplySection = "all" | "process" | "systems" | "qa" | "systems-qa";
 
-async function applySystemsQa(
-  serviceId: string,
+async function latestProcess(serviceId: string) {
+  return prisma.operatingProcess.findFirst({
+    where: { serviceId, sops: { some: {} } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+async function applySystems(
   processId: string,
-  processName: string,
-  outline: SystemsQaOutline
+  outline: SystemsOutline
 ) {
   for (const sys of outline.systems ?? []) {
     const row = await prisma.backofficeSystem.upsert({
@@ -27,13 +32,44 @@ async function applySystemsQa(
       update: { role: sys.role || "workflow" },
     });
   }
+}
 
+async function applyQa(
+  serviceId: string,
+  processName: string,
+  outline: QaOutline
+) {
   const existingSc = await prisma.qAScorecard.findFirst({ where: { serviceId } });
-  if (!existingSc && outline.qaApproach) {
+  const description = [
+    outline.summary,
+    "",
+    "KPIs:",
+    ...(outline.kpis ?? []).map(
+      (k) => `- ${k.name}${k.target ? `: ${k.target}` : ""}${k.unit ? ` (${k.unit})` : ""}`
+    ),
+    "",
+    "Criteria:",
+    ...(outline.criteria ?? []).map((c) => `- ${c}`),
+    "",
+    "Checkpoint focus:",
+    ...(outline.checkpointFocus ?? []).map((c) => `- ${c}`),
+  ].join("\n");
+
+  if (existingSc) {
+    await prisma.qAScorecard.update({
+      where: { id: existingSc.id },
+      data: {
+        name: outline.scorecardName,
+        description,
+        serviceScope: processName,
+        status: "draft",
+      },
+    });
+  } else {
     await prisma.qAScorecard.create({
       data: {
-        name: outline.qaApproach.scorecardName,
-        description: outline.qaApproach.summary,
+        name: outline.scorecardName,
+        description,
         serviceId,
         serviceScope: processName,
         status: "draft",
@@ -53,20 +89,39 @@ export async function POST(
   const body = await req.json();
   const section = (body.section ?? "all") as ApplySection;
 
-  // Act 5: apply only the systems + QA outline onto the latest applied process.
-  if (section === "systems-qa") {
-    const outline = body.outline as SystemsQaOutline | null;
-    if (!outline?.systems?.length) {
-      return NextResponse.json({ error: "No outline to apply" }, { status: 400 });
+  if (section === "systems" || section === "systems-qa") {
+    const systems =
+      (body.outline as SystemsOutline | null)?.systems ??
+      (body.systems as SystemsOutline["systems"] | undefined);
+    if (!systems?.length) {
+      return NextResponse.json({ error: "No systems outline to apply" }, { status: 400 });
     }
-    const process = await prisma.operatingProcess.findFirst({
-      where: { serviceId, sops: { some: {} } },
-      orderBy: { createdAt: "desc" },
-    });
+    const process = await latestProcess(serviceId);
     if (!process) {
       return NextResponse.json({ error: "Apply a process first" }, { status: 400 });
     }
-    await applySystemsQa(serviceId, process.id, process.name, outline);
+    await applySystems(process.id, { systems });
+
+    // Legacy combined payload may include qaApproach
+    const qa =
+      (body.outline as { qaApproach?: QaOutline } | null)?.qaApproach ??
+      (body.qaOutline as QaOutline | undefined);
+    if (section === "systems-qa" && qa) {
+      await applyQa(serviceId, process.name, qa);
+    }
+    return NextResponse.json({ ok: true, processId: process.id });
+  }
+
+  if (section === "qa") {
+    const outline = (body.outline ?? body.qaOutline) as QaOutline | null;
+    if (!outline?.scorecardName) {
+      return NextResponse.json({ error: "No QA outline to apply" }, { status: 400 });
+    }
+    const process = await latestProcess(serviceId);
+    if (!process) {
+      return NextResponse.json({ error: "Apply a process first" }, { status: 400 });
+    }
+    await applyQa(serviceId, process.name, outline);
     return NextResponse.json({ ok: true, processId: process.id });
   }
 
@@ -105,12 +160,17 @@ export async function POST(
     },
   });
 
-  // "process" section stops here — systems + QA arrive via the Act 5 agent.
   if (section === "all") {
-    await applySystemsQa(serviceId, process.id, resolved.processName, {
-      systems: resolved.systems ?? [],
-      qaApproach: resolved.qaApproach,
-    });
+    await applySystems(process.id, { systems: resolved.systems ?? [] });
+    if (resolved.qaApproach) {
+      await applyQa(serviceId, resolved.processName, {
+        scorecardName: resolved.qaApproach.scorecardName,
+        summary: resolved.qaApproach.summary,
+        kpis: [],
+        criteria: resolved.qaApproach.checkpointFocus ?? [],
+        checkpointFocus: resolved.qaApproach.checkpointFocus ?? [],
+      });
+    }
   }
 
   return NextResponse.json({
