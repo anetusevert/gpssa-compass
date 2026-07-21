@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Color, DoubleSide, MeshPhysicalMaterial, type Group } from "three";
+import { Color, MeshPhysicalMaterial, type Group } from "three";
 import {
   prefersReducedMotion,
   statusToMotion,
@@ -37,18 +37,18 @@ export const ACT_ICON_PALETTE: Record<
     energy: "#39FF14",
   },
   systems: {
-    primary: "#1A8FA8",
-    secondary: "#3EC4DE",
-    accent: "#B8F0FF",
-    metal: "#8FD4E8",
-    energy: "#7DFFF0",
+    primary: "#3A7A7E",
+    secondary: "#4A9498",
+    accent: "#1A2830",
+    metal: "#B8C0C8",
+    energy: "#3EC8D0",
   },
   qa: {
-    primary: "#A8C4C0",
-    secondary: "#D0E8E4",
-    accent: "#F0FFFC",
-    metal: "#C8D4D8",
-    energy: "#39FF14",
+    primary: "#2A5F6E",
+    secondary: "#3A7A8A",
+    accent: "#8A9AA4",
+    metal: "#C5CAD0",
+    energy: "#5AB8C8",
   },
 };
 
@@ -96,54 +96,60 @@ export function ActIconNode({
 
   const bodyMaterial = useMemo(() => {
     const c = ACT_ICON_PALETTE[id].primary;
-    const isGlass = id === "qa" || id === "systems";
+    const isSolid = id === "qa" || id === "systems";
     return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
-      emissiveIntensity: isGlass ? 0.15 : 0.12,
-      metalness: id === "process" ? 0.75 : id === "journey" || id === "episode" ? 0.35 : 0.08,
-      roughness: id === "episode" ? 0.45 : id === "process" ? 0.35 : 0.18,
-      clearcoat: isGlass ? 1 : 0.55,
+      emissiveIntensity: 0.1,
+      metalness: isSolid
+        ? 0.45
+        : id === "process"
+          ? 0.75
+          : id === "journey" || id === "episode"
+            ? 0.35
+            : 0.08,
+      roughness: isSolid ? 0.48 : id === "episode" ? 0.45 : id === "process" ? 0.35 : 0.18,
+      clearcoat: isSolid ? 0.25 : 0.55,
       clearcoatRoughness: 0.12,
-      transmission: isGlass ? 0.78 : id === "episode" ? 0.15 : 0.35,
-      thickness: isGlass ? 0.7 : 0.35,
+      transmission: isSolid ? 0 : id === "episode" ? 0.15 : 0.35,
+      thickness: 0.35,
       ior: 1.4,
-      transparent: true,
-      opacity: isGlass ? 0.35 : id === "episode" ? 0.92 : 0.75,
-      depthWrite: !isGlass,
+      transparent: !isSolid,
+      opacity: isSolid ? 1 : id === "episode" ? 0.92 : 0.75,
+      depthWrite: true,
       attenuationColor: c,
       attenuationDistance: 1.2,
-      side: id === "systems" ? DoubleSide : undefined,
     });
   }, [id]);
 
   const accentMaterial = useMemo(() => {
     const c = ACT_ICON_PALETTE[id].accent;
+    const isScreen = id === "systems";
     return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
-      emissiveIntensity: 0.25,
-      metalness: 0.1,
-      roughness: 0.35,
-      clearcoat: 0.4,
-      transmission: id === "systems" ? 0.45 : 0.1,
+      emissiveIntensity: isScreen ? 0.08 : 0.25,
+      metalness: isScreen ? 0.2 : 0.1,
+      roughness: isScreen ? 0.55 : 0.35,
+      clearcoat: 0.3,
+      transmission: 0.1,
       thickness: 0.2,
-      transparent: true,
-      opacity: id === "systems" ? 0.35 : 0.85,
-      depthWrite: false,
-      side: id === "systems" ? DoubleSide : undefined,
+      transparent: !isScreen,
+      opacity: isScreen ? 1 : 0.85,
+      depthWrite: isScreen,
     });
   }, [id]);
 
   const metalMaterial = useMemo(() => {
     const c = ACT_ICON_PALETTE[id].metal;
+    const isMatte = id === "qa" || id === "systems";
     return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
-      emissiveIntensity: 0.08,
-      metalness: 0.92,
-      roughness: 0.28,
-      clearcoat: 0.6,
+      emissiveIntensity: 0.06,
+      metalness: isMatte ? 0.55 : 0.92,
+      roughness: isMatte ? 0.42 : 0.28,
+      clearcoat: isMatte ? 0.2 : 0.6,
       clearcoatRoughness: 0.2,
       transparent: false,
       opacity: 1,
@@ -191,7 +197,7 @@ export function ActIconNode({
     const live =
       accent && (current || active) ? accent : palette.primary;
     const mute = smoothedMute.current;
-    const isGlass = id === "qa" || id === "systems";
+    const isSolid = id === "qa" || id === "systems";
 
     colorGoal.current.set(live).lerp(mutedColor.current, mute * 0.85);
     emissiveGoal.current
@@ -210,23 +216,22 @@ export function ActIconNode({
     bodyMaterial.color.copy(colorGoal.current);
     bodyMaterial.emissive.copy(emissiveGoal.current);
     bodyMaterial.emissiveIntensity =
-      (isGlass ? 0.1 : 0.08) + smoothedAmp.current * 0.28 * (1 - mute * 0.6);
-    bodyMaterial.opacity = isGlass
-      ? 0.22 + (1 - mute) * 0.2
-      : id === "episode"
-        ? 0.75 + (1 - mute) * 0.2
-        : 0.55 + (1 - mute) * 0.3;
-    if (isGlass) {
-      bodyMaterial.transmission = 0.55 + (1 - mute) * 0.3;
-      bodyMaterial.attenuationColor.copy(colorGoal.current);
+      0.06 + smoothedAmp.current * 0.28 * (1 - mute * 0.6);
+    if (isSolid) {
+      bodyMaterial.opacity = 1;
+    } else {
+      bodyMaterial.opacity =
+        id === "episode"
+          ? 0.75 + (1 - mute) * 0.2
+          : 0.55 + (1 - mute) * 0.3;
     }
 
     accentMaterial.color.copy(accentColorGoal.current);
     accentMaterial.emissive.copy(accentColorGoal.current);
     accentMaterial.emissiveIntensity =
-      0.15 + smoothedAmp.current * 0.35 * (1 - mute);
+      (id === "systems" ? 0.05 : 0.15) + smoothedAmp.current * 0.35 * (1 - mute);
     accentMaterial.opacity =
-      id === "systems" ? 0.2 + (1 - mute) * 0.25 : 0.55 + (1 - mute) * 0.35;
+      id === "systems" ? 1 : 0.55 + (1 - mute) * 0.35;
 
     metalMaterial.color.copy(metalColorGoal.current);
     metalMaterial.emissive.copy(metalColorGoal.current);

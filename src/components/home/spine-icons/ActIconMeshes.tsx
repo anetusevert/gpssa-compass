@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, type ReactNode, type RefObject } from "react";
+import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   ExtrudeGeometry,
@@ -68,9 +68,10 @@ export function ActIconMeshes({
       );
     case "systems":
       return (
-        <SystemsHud
+        <SystemsMonitor
           body={body}
           accent={accent}
+          metal={metal}
           energy={energy}
           reduceMotion={reduceMotion}
           amp={amp}
@@ -78,10 +79,10 @@ export function ActIconMeshes({
       );
     case "qa":
       return (
-        <QaPyramid
+        <QaRoboticArm
           body={body}
           accent={accent}
-          energy={energy}
+          metal={metal}
           reduceMotion={reduceMotion}
           amp={amp}
         />
@@ -373,11 +374,11 @@ function GearMesh({
   innerR: number;
   depth: number;
   position: [number, number, number];
-  groupRef: RefObject<Group | null>;
+  groupRef?: RefObject<Group | null>;
 }) {
   const geo = useGearGeometry(teeth, outerR, innerR, depth);
   return (
-    <group ref={groupRef as RefObject<Group>} position={position}>
+    <group ref={groupRef as RefObject<Group> | undefined} position={position}>
       <mesh geometry={geo} material={material} />
       <mesh material={material} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[innerR * 0.55, innerR * 0.55, depth * 0.9, 16]} />
@@ -489,285 +490,388 @@ function ProcessGears({
   );
 }
 
-/** Thin HUD panel frame with corner brackets. */
-function HudFrame({
-  w,
-  h,
-  material,
-  children,
+/** 4 — Ultra-wide systems workstation with living diagnostic UI. */
+function SystemsMonitor({
+  body,
+  accent,
+  metal,
+  energy,
+  reduceMotion,
+  amp,
 }: {
-  w: number;
-  h: number;
-  material: Material;
-  children?: ReactNode;
+  body: Material;
+  accent: Material;
+  metal: Material;
+  energy: Material;
+  reduceMotion: boolean;
+  amp: number;
 }) {
-  const t = 0.012;
-  const corner = 0.06;
+  const root = useRef<Group>(null);
+  const gCenter = useRef<Group>(null);
+  const gTop = useRef<Group>(null);
+  const gBottom = useRef<Group>(null);
+  const gLeft = useRef<Group>(null);
+  const gRight = useRef<Group>(null);
+  const trails = useRef<Group>(null);
+  const led = useRef<Mesh>(null);
+  const trackball = useRef<Mesh>(null);
+
+  useFrame((state, delta) => {
+    const speed = (0.9 + amp * 0.6) * (reduceMotion ? 0.12 : 1);
+    if (gCenter.current) gCenter.current.rotation.z += delta * speed;
+    if (gTop.current) gTop.current.rotation.z -= delta * speed * 1.25;
+    if (gBottom.current) gBottom.current.rotation.z -= delta * speed * 1.1;
+    if (gLeft.current) gLeft.current.rotation.z += delta * speed * 1.4;
+    if (gRight.current) gRight.current.rotation.z += delta * speed * 1.35;
+
+    if (trails.current && !reduceMotion) {
+      trails.current.rotation.z += delta * (1.3 + amp);
+      const pulse = 0.9 + Math.sin(state.clock.elapsedTime * 3.2) * 0.12;
+      trails.current.scale.setScalar(pulse);
+    }
+    if (led.current && !reduceMotion) {
+      const blink = 0.7 + Math.sin(state.clock.elapsedTime * 4.5) * 0.3;
+      led.current.scale.setScalar(0.85 + blink * 0.2);
+    }
+    if (trackball.current && !reduceMotion) {
+      trackball.current.rotation.x += delta * 0.8;
+      trackball.current.rotation.y += delta * 0.45;
+    }
+    if (root.current && !reduceMotion) {
+      root.current.position.y = Math.sin(state.clock.elapsedTime * 1.15) * 0.015;
+    }
+  });
+
   return (
-    <group>
-      <mesh material={material} position={[0, 0, -0.01]}>
-        <planeGeometry args={[w, h]} />
-      </mesh>
-      {/* Border edges */}
-      <mesh material={material} position={[0, h / 2, 0]}>
-        <boxGeometry args={[w, t, t]} />
-      </mesh>
-      <mesh material={material} position={[0, -h / 2, 0]}>
-        <boxGeometry args={[w, t, t]} />
-      </mesh>
-      <mesh material={material} position={[-w / 2, 0, 0]}>
-        <boxGeometry args={[t, h, t]} />
-      </mesh>
-      <mesh material={material} position={[w / 2, 0, 0]}>
-        <boxGeometry args={[t, h, t]} />
-      </mesh>
-      {/* Corner brackets */}
-      {(
-        [
-          [-w / 2, h / 2],
-          [w / 2, h / 2],
-          [-w / 2, -h / 2],
-          [w / 2, -h / 2],
-        ] as const
-      ).map(([x, y], i) => (
-        <group key={i} position={[x, y, 0.01]}>
-          <mesh material={material}>
-            <boxGeometry args={[corner, t * 1.6, t]} />
+    <group ref={root} rotation={[0.18, 0.35, 0]} scale={0.88} position={[0, -0.12, 0]}>
+      {/* Cable bundle from rear-left */}
+      <group position={[-0.55, -0.22, -0.12]} rotation={[0.2, 0.4, 0.5]}>
+        {[0, 1, 2, 3].map((i) => (
+          <mesh key={i} material={metal} position={[i * 0.025, 0, i * 0.01]} rotation={[0, 0, 0.6 + i * 0.08]}>
+            <capsuleGeometry args={[0.014, 0.42, 4, 6]} />
           </mesh>
-          <mesh material={material}>
-            <boxGeometry args={[t * 1.6, corner, t]} />
+        ))}
+      </group>
+
+      {/* V-stand */}
+      <mesh material={metal} position={[-0.1, -0.28, 0.02]} rotation={[0, 0, 0.55]}>
+        <boxGeometry args={[0.28, 0.04, 0.05]} />
+      </mesh>
+      <mesh material={metal} position={[0.1, -0.28, 0.02]} rotation={[0, 0, -0.55]}>
+        <boxGeometry args={[0.28, 0.04, 0.05]} />
+      </mesh>
+      <mesh material={metal} position={[0, -0.18, 0]}>
+        <boxGeometry args={[0.08, 0.16, 0.04]} />
+      </mesh>
+
+      {/* Monitor housing — slight wrap via three panels */}
+      <group position={[0, 0.18, 0]}>
+        {/* Outer teal bezel */}
+        <mesh material={body} position={[0, 0, -0.02]}>
+          <boxGeometry args={[1.15, 0.58, 0.08]} />
+        </mesh>
+        {/* Curved side wings */}
+        <mesh material={body} position={[-0.58, 0, -0.01]} rotation={[0, 0.28, 0]}>
+          <boxGeometry args={[0.12, 0.56, 0.07]} />
+        </mesh>
+        <mesh material={body} position={[0.58, 0, -0.01]} rotation={[0, -0.28, 0]}>
+          <boxGeometry args={[0.12, 0.56, 0.07]} />
+        </mesh>
+        {/* Inner silver bezel */}
+        <mesh material={metal} position={[0, 0, 0.03]}>
+          <boxGeometry args={[1.02, 0.48, 0.03]} />
+        </mesh>
+        {/* Dark screen plane */}
+        <mesh material={accent} position={[0, 0, 0.05]}>
+          <boxGeometry args={[0.94, 0.4, 0.015]} />
+        </mesh>
+
+        {/* Screen UI content */}
+        <group position={[0, 0, 0.07]}>
+          {/* Left status block */}
+          <group position={[-0.32, 0.02, 0]}>
+            <mesh material={energy} position={[0.08, 0.08, 0]}>
+              <boxGeometry args={[0.005, 0.18, 0.005]} />
+            </mesh>
+            <mesh material={energy} position={[0.02, 0.12, 0]}>
+              <boxGeometry args={[0.14, 0.025, 0.005]} />
+            </mesh>
+            <mesh material={energy} position={[0.0, 0.05, 0]}>
+              <boxGeometry args={[0.1, 0.02, 0.005]} />
+            </mesh>
+            <mesh material={accent} position={[0.01, -0.02, 0]}>
+              <boxGeometry args={[0.12, 0.018, 0.004]} />
+            </mesh>
+          </group>
+
+          {/* Right status block */}
+          <group position={[0.32, 0.02, 0]}>
+            <mesh material={energy} position={[-0.08, 0.08, 0]}>
+              <boxGeometry args={[0.005, 0.18, 0.005]} />
+            </mesh>
+            <mesh material={energy} position={[-0.02, 0.12, 0]}>
+              <boxGeometry args={[0.14, 0.025, 0.005]} />
+            </mesh>
+            <mesh material={energy} position={[0.0, 0.05, 0]}>
+              <boxGeometry args={[0.12, 0.02, 0.005]} />
+            </mesh>
+            <mesh material={accent} position={[-0.01, -0.02, 0]}>
+              <boxGeometry args={[0.1, 0.018, 0.004]} />
+            </mesh>
+          </group>
+
+          {/* Central gear cluster */}
+          <group scale={0.55}>
+            <GearMesh
+              groupRef={gCenter}
+              material={energy}
+              teeth={12}
+              outerR={0.22}
+              innerR={0.12}
+              depth={0.04}
+              position={[0, 0.02, 0.01]}
+            />
+            <GearMesh
+              groupRef={gTop}
+              material={body}
+              teeth={9}
+              outerR={0.12}
+              innerR={0.07}
+              depth={0.03}
+              position={[0, 0.28, 0]}
+            />
+            <GearMesh
+              groupRef={gBottom}
+              material={body}
+              teeth={9}
+              outerR={0.12}
+              innerR={0.07}
+              depth={0.03}
+              position={[0, -0.24, 0]}
+            />
+            <GearMesh
+              groupRef={gLeft}
+              material={body}
+              teeth={8}
+              outerR={0.11}
+              innerR={0.06}
+              depth={0.03}
+              position={[-0.24, 0.02, 0]}
+            />
+            <GearMesh
+              groupRef={gRight}
+              material={body}
+              teeth={8}
+              outerR={0.11}
+              innerR={0.06}
+              depth={0.03}
+              position={[0.24, 0.02, 0]}
+            />
+            {/* Concentric glow rings on center gear */}
+            <mesh material={energy} position={[0, 0.02, 0.03]}>
+              <torusGeometry args={[0.1, 0.01, 8, 24]} />
+            </mesh>
+            <mesh material={energy} position={[0, 0.02, 0.03]}>
+              <torusGeometry args={[0.06, 0.008, 8, 20]} />
+            </mesh>
+            <group ref={trails}>
+              <mesh material={energy} rotation={[0.3, 0.2, 0.4]}>
+                <torusGeometry args={[0.3, 0.012, 8, 28, Math.PI * 1.2]} />
+              </mesh>
+              <mesh material={energy} rotation={[-0.4, 0.5, 1.2]}>
+                <torusGeometry args={[0.22, 0.01, 8, 24, Math.PI]} />
+              </mesh>
+            </group>
+          </group>
+
+          {/* Power status */}
+          <mesh ref={led} material={energy} position={[0, -0.14, 0.01]}>
+            <boxGeometry args={[0.05, 0.025, 0.01]} />
+          </mesh>
+          <mesh material={accent} position={[0, -0.17, 0.008]}>
+            <boxGeometry args={[0.22, 0.016, 0.005]} />
           </mesh>
         </group>
-      ))}
-      {children}
-    </group>
-  );
-}
-
-/** 4 — Floating cyan holographic system panels. */
-function SystemsHud({
-  body,
-  accent,
-  energy,
-  reduceMotion,
-  amp,
-}: {
-  body: Material;
-  accent: Material;
-  energy: Material;
-  reduceMotion: boolean;
-  amp: number;
-}) {
-  const root = useRef<Group>(null);
-  const codeLines = useRef<Group>(null);
-  const bars = useRef<Group>(null);
-  const pills = useRef<Group>(null);
-  const dial = useRef<Group>(null);
-  const progress = useRef<Mesh>(null);
-
-  useFrame((state) => {
-    const t = state.clock.elapsedTime * (1.1 + amp * 0.5);
-    if (root.current && !reduceMotion) {
-      root.current.position.y = Math.sin(t * 0.9) * 0.02;
-      root.current.rotation.y = Math.sin(t * 0.35) * 0.08;
-    }
-    if (codeLines.current && !reduceMotion) {
-      const scroll = (t * 0.08) % 0.12;
-      codeLines.current.position.y = scroll;
-    }
-    if (pills.current) {
-      const active = reduceMotion ? 1 : Math.floor(t * 0.7) % 4;
-      pills.current.children.forEach((child, i) => {
-        const s = i === active ? 1.15 : 0.72;
-        child.scale.setScalar(s);
-      });
-    }
-    if (dial.current && !reduceMotion) {
-      dial.current.rotation.z = t * 0.8;
-    }
-    if (progress.current) {
-      const fill = reduceMotion ? 0.72 : 0.35 + ease((Math.sin(t * 0.6) * 0.5 + 0.5)) * 0.55;
-      progress.current.scale.x = Math.max(0.04, fill);
-      progress.current.position.x = -0.22 + (0.44 * fill) / 2;
-    }
-    if (bars.current && !reduceMotion) {
-      bars.current.children.forEach((child, i) => {
-        const mesh = child as Mesh;
-        const w = 0.3 + Math.sin(t * 1.4 + i) * 0.2;
-        mesh.scale.x = Math.max(0.15, w);
-      });
-    }
-  });
-
-  return (
-    <group ref={root} rotation={[0.25, 0.4, 0]} scale={0.85}>
-      {/* Main systems / code panel */}
-      <group position={[-0.22, 0.05, 0.05]} rotation={[0, 0.15, 0.05]}>
-        <HudFrame w={0.55} h={0.85} material={body}>
-          <mesh material={accent} position={[0, 0.35, 0.01]}>
-            <boxGeometry args={[0.42, 0.06, 0.01]} />
-          </mesh>
-          <group ref={codeLines} position={[0, 0.05, 0.02]}>
-            {[0.2, 0.12, 0.04, -0.04, -0.12, -0.2, -0.28].map((y, i) => (
-              <mesh key={i} material={energy} position={[-0.05 + (i % 3) * 0.02, y, 0]}>
-                <boxGeometry args={[0.28 - (i % 4) * 0.04, 0.035, 0.008]} />
-              </mesh>
-            ))}
-          </group>
-          <group ref={bars} position={[0, -0.32, 0.02]}>
-            {[0, 1, 2, 3].map((i) => (
-              <mesh key={i} material={accent} position={[(-0.15 + (i % 2) * 0.22), i < 2 ? 0.06 : -0.04, 0]}>
-                <boxGeometry args={[0.18, 0.04, 0.008]} />
-              </mesh>
-            ))}
-          </group>
-        </HudFrame>
       </group>
 
-      {/* Process-style pill stack */}
-      <group position={[0.32, 0.22, -0.02]} rotation={[0, -0.25, -0.05]}>
-        <HudFrame w={0.32} h={0.55} material={body}>
-          <group ref={pills} position={[0, 0.05, 0.02]}>
-            {[0.16, 0.04, -0.08, -0.2].map((y, i) => (
-              <mesh key={i} material={energy} position={[0.02, y, 0]}>
-                <capsuleGeometry args={[0.04, 0.14, 4, 8]} />
-              </mesh>
-            ))}
-          </group>
-        </HudFrame>
-      </group>
+      {/* Keyboard */}
+      <mesh material={metal} position={[0, -0.38, 0.18]} rotation={[-0.15, 0, 0]}>
+        <boxGeometry args={[0.55, 0.03, 0.18]} />
+      </mesh>
+      <mesh material={accent} position={[0, -0.36, 0.18]} rotation={[-0.15, 0, 0]}>
+        <boxGeometry args={[0.5, 0.008, 0.14]} />
+      </mesh>
 
-      {/* QA-style dial + progress panel */}
-      <group position={[0.18, -0.32, 0.08]} rotation={[0.1, -0.1, 0.08]}>
-        <HudFrame w={0.62} h={0.32} material={body}>
-          <group ref={dial} position={[-0.18, 0.02, 0.02]}>
-            <mesh material={energy}>
-              <torusGeometry args={[0.08, 0.01, 8, 24]} />
-            </mesh>
-            <mesh material={accent}>
-              <torusGeometry args={[0.055, 0.008, 8, 20]} />
-            </mesh>
-            <mesh material={energy} position={[0.06, 0, 0]}>
-              <boxGeometry args={[0.05, 0.012, 0.01]} />
-            </mesh>
-          </group>
-          <mesh material={accent} position={[0.12, 0.06, 0.02]}>
-            <boxGeometry args={[0.28, 0.12, 0.008]} />
-          </mesh>
-          <mesh material={body} position={[0, -0.1, 0.02]}>
-            <boxGeometry args={[0.48, 0.05, 0.008]} />
-          </mesh>
-          <mesh ref={progress} material={energy} position={[0, -0.1, 0.03]}>
-            <boxGeometry args={[0.44, 0.035, 0.01]} />
-          </mesh>
-        </HudFrame>
+      {/* Trackball */}
+      <group position={[0.38, -0.38, 0.2]}>
+        <mesh material={metal}>
+          <boxGeometry args={[0.14, 0.04, 0.14]} />
+        </mesh>
+        <mesh ref={trackball} material={body} position={[0, 0.06, 0]}>
+          <sphereGeometry args={[0.055, 14, 14]} />
+        </mesh>
       </group>
     </group>
   );
 }
 
-/** 5 — Glass pyramid with plasma core and radar aura. */
-function QaPyramid({
+/** 5 — Industrial QA robotic arm: scan, reach, grip. */
+function QaRoboticArm({
   body,
   accent,
-  energy,
+  metal,
   reduceMotion,
   amp,
 }: {
   body: Material;
   accent: Material;
-  energy: Material;
+  metal: Material;
   reduceMotion: boolean;
   amp: number;
 }) {
   const root = useRef<Group>(null);
-  const core = useRef<Group>(null);
-  const bolts = useRef<Group>(null);
-  const aura = useRef<Group>(null);
+  const baseYaw = useRef<Group>(null);
+  const shoulder = useRef<Group>(null);
+  const elbow = useRef<Group>(null);
+  const wrist = useRef<Group>(null);
+  const jawL = useRef<Group>(null);
+  const jawR = useRef<Group>(null);
 
   useFrame((state) => {
-    const t = state.clock.elapsedTime;
+    const t = state.clock.elapsedTime * (0.85 + amp * 0.45);
     if (root.current && !reduceMotion) {
-      root.current.position.y = Math.sin(t * 1.3) * 0.025;
-      root.current.rotation.y += 0.004 + amp * 0.004;
+      root.current.position.y = Math.sin(t * 1.1) * 0.012;
     }
-    if (core.current) {
-      const pulse = reduceMotion
-        ? 1
-        : 0.85 + Math.sin(t * (5 + amp * 3)) * 0.2;
-      core.current.scale.setScalar(pulse);
+
+    // Base scans side to side
+    if (baseYaw.current) {
+      baseYaw.current.rotation.y = reduceMotion
+        ? 0.15
+        : Math.sin(t * 0.55) * 0.55;
     }
-    if (bolts.current && !reduceMotion) {
-      bolts.current.children.forEach((child, i) => {
-        child.rotation.z = Math.sin(t * 8 + i * 1.7) * 0.5;
-        child.scale.y = 0.6 + Math.abs(Math.sin(t * 11 + i)) * 0.8;
-        child.visible = Math.sin(t * 14 + i * 2.1) > -0.3;
-      });
+    // Shoulder lifts / lowers (reach)
+    if (shoulder.current) {
+      shoulder.current.rotation.z = reduceMotion
+        ? 0.55
+        : 0.35 + Math.sin(t * 0.7) * 0.35;
     }
-    if (aura.current && !reduceMotion) {
-      aura.current.rotation.z = t * 0.6;
-      const s = 1 + Math.sin(t * 2.2) * 0.06;
-      aura.current.scale.setScalar(s);
+    // Elbow flexes opposite the shoulder for a natural fold
+    if (elbow.current) {
+      elbow.current.rotation.z = reduceMotion
+        ? -1.1
+        : -0.85 - Math.sin(t * 0.7 + 0.4) * 0.45;
     }
+    // Wrist tilts as if inspecting
+    if (wrist.current) {
+      wrist.current.rotation.z = reduceMotion
+        ? -0.35
+        : -0.25 + Math.sin(t * 1.1) * 0.35;
+      wrist.current.rotation.x = reduceMotion
+        ? 0
+        : Math.sin(t * 0.9) * 0.25;
+    }
+    // Gripper opens / closes on a slower cycle
+    const grip = reduceMotion
+      ? 0.35
+      : 0.15 + (Math.sin(t * 1.35) * 0.5 + 0.5) * 0.55;
+    if (jawL.current) jawL.current.rotation.z = grip;
+    if (jawR.current) jawR.current.rotation.z = -grip;
   });
 
   return (
-    <group ref={root} rotation={[0.15, 0.4, 0]}>
-      {/* Radial aura ticks behind pyramid */}
-      <group ref={aura} position={[0, -0.05, -0.2]} rotation={[0.2, 0, 0]}>
-        {Array.from({ length: 28 }, (_, i) => {
-          const a = (i / 28) * Math.PI * 2;
-          const r = 0.52;
-          return (
-            <mesh
-              key={i}
-              material={energy}
-              position={[Math.cos(a) * r, Math.sin(a) * r, 0]}
-              rotation={[0, 0, a]}
-            >
-              <boxGeometry args={[0.012, 0.08 + (i % 3) * 0.03, 0.008]} />
-            </mesh>
-          );
-        })}
-        <mesh material={energy}>
-          <torusGeometry args={[0.42, 0.008, 8, 48]} />
-        </mesh>
-      </group>
-
-      {/* Glass pyramid */}
-      <mesh material={body} position={[0, -0.05, 0]} rotation={[0, Math.PI / 4, 0]}>
-        <coneGeometry args={[0.42, 0.72, 4]} />
+    <group ref={root} rotation={[0.2, 0.65, 0]} scale={0.95} position={[0, -0.28, 0]}>
+      {/* Mounting plate */}
+      <mesh material={body} position={[0, 0.02, 0]}>
+        <boxGeometry args={[0.42, 0.05, 0.42]} />
       </mesh>
-      {/* Apex / facet catch lights */}
-      <mesh material={accent} position={[0, 0.28, 0.08]}>
-        <sphereGeometry args={[0.03, 8, 8]} />
+      <mesh material={accent} position={[0, 0.05, 0]}>
+        <cylinderGeometry args={[0.16, 0.18, 0.04, 20]} />
       </mesh>
 
-      {/* Plasma core */}
-      <group ref={core} position={[0, -0.08, 0]}>
-        <mesh material={energy}>
-          <sphereGeometry args={[0.1, 16, 16]} />
+      <group ref={baseYaw} position={[0, 0.08, 0]}>
+        {/* Rotating base drum */}
+        <mesh material={body} position={[0, 0.1, 0]}>
+          <cylinderGeometry args={[0.15, 0.17, 0.2, 20]} />
         </mesh>
-        <mesh material={accent}>
-          <sphereGeometry args={[0.045, 12, 12]} />
+        <mesh material={metal} position={[0, 0.22, 0]}>
+          <cylinderGeometry args={[0.12, 0.12, 0.06, 16]} />
         </mesh>
-      </group>
 
-      {/* Lightning bolts */}
-      <group ref={bolts} position={[0, -0.08, 0]}>
-        {[0, 1, 2, 3, 4, 5].map((i) => {
-          const a = (i / 6) * Math.PI * 2;
-          return (
-            <mesh
-              key={i}
-              material={energy}
-              position={[Math.cos(a) * 0.08, Math.sin(a) * 0.05, Math.sin(a * 2) * 0.06]}
-              rotation={[0.4, 0, a + 0.4]}
-            >
-              <boxGeometry args={[0.018, 0.22, 0.018]} />
+        {/* Shoulder hinge */}
+        <group ref={shoulder} position={[0, 0.26, 0]} rotation={[0, 0, 0.55]}>
+          <mesh material={body} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.09, 0.09, 0.16, 16]} />
+          </mesh>
+          <mesh material={accent} position={[0, 0, 0.1]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.07, 0.07, 0.04, 16]} />
+          </mesh>
+
+          {/* Lower arm boom */}
+          <mesh material={metal} position={[0.22, 0, 0]}>
+            <boxGeometry args={[0.38, 0.11, 0.11]} />
+          </mesh>
+          {/* Cable run along lower arm */}
+          <mesh material={accent} position={[0.22, 0.07, 0.07]}>
+            <capsuleGeometry args={[0.015, 0.28, 4, 6]} />
+          </mesh>
+          <mesh material={accent} position={[0.22, 0.07, -0.07]}>
+            <capsuleGeometry args={[0.015, 0.28, 4, 6]} />
+          </mesh>
+
+          {/* Elbow */}
+          <group ref={elbow} position={[0.42, 0, 0]} rotation={[0, 0, -1.1]}>
+            <mesh material={body} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.085, 0.085, 0.14, 16]} />
             </mesh>
-          );
-        })}
+            <mesh material={accent} position={[0, 0, 0.09]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.065, 0.065, 0.035, 16]} />
+            </mesh>
+
+            {/* Upper arm boom */}
+            <mesh material={metal} position={[0.2, 0, 0]}>
+              <boxGeometry args={[0.34, 0.1, 0.1]} />
+            </mesh>
+            <mesh material={accent} position={[0.2, 0.065, 0.06]}>
+              <capsuleGeometry args={[0.012, 0.24, 4, 6]} />
+            </mesh>
+
+            {/* Wrist cluster */}
+            <group ref={wrist} position={[0.4, 0, 0]} rotation={[0, 0, -0.35]}>
+              <mesh material={body} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[0.06, 0.06, 0.12, 14]} />
+              </mesh>
+              <mesh material={body} position={[0.08, 0, 0]}>
+                <sphereGeometry args={[0.055, 12, 12]} />
+              </mesh>
+              <mesh material={metal} position={[0.14, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.04, 0.045, 0.1, 12]} />
+              </mesh>
+
+              {/* Gripper base */}
+              <mesh material={metal} position={[0.24, 0, 0]}>
+                <boxGeometry args={[0.1, 0.08, 0.1]} />
+              </mesh>
+
+              {/* Jaws */}
+              <group ref={jawL} position={[0.3, 0.02, 0]} rotation={[0, 0, 0.35]}>
+                <mesh material={metal} position={[0.08, 0.02, 0]}>
+                  <boxGeometry args={[0.14, 0.035, 0.05]} />
+                </mesh>
+                <mesh material={metal} position={[0.15, -0.01, 0]} rotation={[0, 0, -0.45]}>
+                  <boxGeometry args={[0.08, 0.03, 0.045]} />
+                </mesh>
+              </group>
+              <group ref={jawR} position={[0.3, -0.02, 0]} rotation={[0, 0, -0.35]}>
+                <mesh material={metal} position={[0.08, -0.02, 0]}>
+                  <boxGeometry args={[0.14, 0.035, 0.05]} />
+                </mesh>
+                <mesh material={metal} position={[0.15, 0.01, 0]} rotation={[0, 0, 0.45]}>
+                  <boxGeometry args={[0.08, 0.03, 0.045]} />
+                </mesh>
+              </group>
+            </group>
+          </group>
+        </group>
       </group>
     </group>
   );
