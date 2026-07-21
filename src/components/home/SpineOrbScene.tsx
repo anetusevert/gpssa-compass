@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { Environment } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { Group } from "three";
 import {
@@ -19,7 +20,7 @@ function OrbitLine() {
   return (
     <mesh position={[x, -0.55, -2]}>
       <planeGeometry args={[width, 0.012]} />
-      <meshBasicMaterial color="#3a5570" transparent opacity={0.35} />
+      <meshBasicMaterial color="#3a5570" transparent opacity={0.28} />
     </mesh>
   );
 }
@@ -47,10 +48,12 @@ export function SpineOrbScene({
 
   return (
     <>
-      <ambientLight intensity={0.65} />
-      <directionalLight position={[2.5, 4, 6]} intensity={0.85} color="#e8f4ff" />
-      <directionalLight position={[-3, -1, 4]} intensity={0.35} color="#9ad4c0" />
-      <pointLight position={[0, 1.5, 5]} intensity={0.4} color="#ffffff" />
+      <ambientLight intensity={0.45} />
+      <directionalLight position={[3, 5, 7]} intensity={1.15} color="#f2f8ff" />
+      <directionalLight position={[-4, 1, 3]} intensity={0.55} color="#7fd4b8" />
+      <pointLight position={[0, 2, 6]} intensity={0.65} color="#ffffff" />
+      {/* Soft HDR for glass transmission / clearcoat reflections */}
+      <Environment preset="city" />
       <group ref={group}>
         <OrbitLine />
         {BLOB_ACTS.map((id, i) => (

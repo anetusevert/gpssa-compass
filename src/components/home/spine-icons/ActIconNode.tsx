@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Color, MeshStandardMaterial, type Group } from "three";
+import { Color, MeshPhysicalMaterial, type Group } from "three";
 import {
   prefersReducedMotion,
   statusToMotion,
@@ -10,18 +10,19 @@ import {
 import type { ActStatus, ConductorAct } from "@/lib/spine/conductor-acts";
 import { ActIconMeshes } from "./ActIconMeshes";
 
+/** Brighter, more separated hues so acts read apart through glass. */
 export const ACT_ICON_PALETTE: Record<
   Exclude<ConductorAct, "persona">,
   { primary: string; secondary: string; accent: string }
 > = {
-  episode: { primary: "#00A86B", secondary: "#2fd39a", accent: "#a8f0d4" },
-  journey: { primary: "#3B82C4", secondary: "#6fb1e8", accent: "#c4e2ff" },
-  process: { primary: "#C99A3C", secondary: "#e8c06a", accent: "#ffe9b8" },
-  systems: { primary: "#B0764A", secondary: "#d99e70", accent: "#ffd9b8" },
-  qa: { primary: "#C5A572", secondary: "#e2c795", accent: "#fff0d4" },
+  episode: { primary: "#12C47A", secondary: "#5EE9A8", accent: "#D4FFE8" },
+  journey: { primary: "#4A9BE8", secondary: "#8FCBFF", accent: "#E8F4FF" },
+  process: { primary: "#E0B04A", secondary: "#F5D078", accent: "#FFF3D0" },
+  systems: { primary: "#D48955", secondary: "#F0B08A", accent: "#FFE4D0" },
+  qa: { primary: "#D4B06A", secondary: "#EED9A0", accent: "#FFF6DE" },
 };
 
-const MUTED = "#33475e";
+const MUTED = "#3a5068";
 const COLS = 6;
 
 export function ActIconNode({
@@ -50,6 +51,7 @@ export function ActIconNode({
   const smoothedScale = useRef(1);
   const colorGoal = useRef(new Color());
   const emissiveGoal = useRef(new Color());
+  const accentColorGoal = useRef(new Color());
   const mutedColor = useRef(new Color(MUTED));
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -61,39 +63,67 @@ export function ActIconNode({
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  const material = useMemo(() => {
+  const bodyMaterial = useMemo(() => {
     const c = ACT_ICON_PALETTE[id].primary;
-    return new MeshStandardMaterial({
+    return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
-      emissiveIntensity: 0.25,
-      metalness: 0.22,
-      roughness: 0.45,
+      emissiveIntensity: 0.2,
+      metalness: 0.05,
+      roughness: 0.12,
+      clearcoat: 1,
+      clearcoatRoughness: 0.08,
+      transmission: 0.72,
+      thickness: 0.55,
+      ior: 1.38,
       transparent: true,
-      opacity: 0.95,
+      opacity: 0.42,
+      depthWrite: false,
+      attenuationColor: c,
+      attenuationDistance: 1.2,
+    });
+  }, [id]);
+
+  const accentMaterial = useMemo(() => {
+    const c = ACT_ICON_PALETTE[id].accent;
+    return new MeshPhysicalMaterial({
+      color: c,
+      emissive: c,
+      emissiveIntensity: 0.55,
+      metalness: 0.15,
+      roughness: 0.2,
+      clearcoat: 0.8,
+      transmission: 0.25,
+      thickness: 0.25,
+      transparent: true,
+      opacity: 0.78,
+      depthWrite: false,
     });
   }, [id]);
 
   const auraMaterial = useMemo(() => {
-    const c = ACT_ICON_PALETTE[id].accent;
-    return new MeshStandardMaterial({
+    const c = ACT_ICON_PALETTE[id].secondary;
+    return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
-      emissiveIntensity: 0.35,
+      emissiveIntensity: 0.4,
       metalness: 0,
       roughness: 1,
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.1,
       depthWrite: false,
+      transmission: 0.9,
+      thickness: 0.1,
     });
   }, [id]);
 
   useEffect(
     () => () => {
-      material.dispose();
+      bodyMaterial.dispose();
+      accentMaterial.dispose();
       auraMaterial.dispose();
     },
-    [material, auraMaterial]
+    [bodyMaterial, accentMaterial, auraMaterial]
   );
 
   const colIndex = blobIndex + 1;
@@ -111,20 +141,38 @@ export function ActIconNode({
     const palette = ACT_ICON_PALETTE[id];
     const live =
       accent && (current || active) ? accent : palette.primary;
-    colorGoal.current.set(live).lerp(mutedColor.current, smoothedMute.current);
-    emissiveGoal.current
-      .set(accent && (current || active) ? accent : palette.accent)
-      .lerp(mutedColor.current, Math.min(1, smoothedMute.current + 0.15));
+    const mute = smoothedMute.current;
 
-    material.color.copy(colorGoal.current);
-    material.emissive.copy(emissiveGoal.current);
-    material.emissiveIntensity =
-      0.12 + smoothedAmp.current * 0.55 * (1 - smoothedMute.current * 0.7);
-    material.opacity = 0.55 + (1 - smoothedMute.current) * 0.4;
+    colorGoal.current.set(live).lerp(mutedColor.current, mute * 0.85);
+    emissiveGoal.current
+      .set(accent && (current || active) ? accent : palette.secondary)
+      .lerp(mutedColor.current, Math.min(1, mute * 0.9));
+    accentColorGoal.current
+      .set(palette.accent)
+      .lerp(mutedColor.current, mute * 0.7);
+
+    const glassOpen = 0.28 + (1 - mute) * 0.22 + smoothedAmp.current * 0.08;
+    const transmission = 0.55 + (1 - mute) * 0.28;
+
+    bodyMaterial.color.copy(colorGoal.current);
+    bodyMaterial.emissive.copy(emissiveGoal.current);
+    bodyMaterial.emissiveIntensity =
+      0.08 + smoothedAmp.current * 0.35 * (1 - mute * 0.6);
+    bodyMaterial.opacity = glassOpen;
+    bodyMaterial.transmission = transmission;
+    bodyMaterial.attenuationColor.copy(colorGoal.current);
+
+    accentMaterial.color.copy(accentColorGoal.current);
+    accentMaterial.emissive.copy(accentColorGoal.current);
+    accentMaterial.emissiveIntensity =
+      0.35 + smoothedAmp.current * 0.45 * (1 - mute);
+    accentMaterial.opacity = 0.55 + (1 - mute) * 0.3;
+    accentMaterial.transmission = 0.15 + (1 - mute) * 0.2;
 
     auraMaterial.color.copy(emissiveGoal.current);
     auraMaterial.emissive.copy(emissiveGoal.current);
-    auraMaterial.opacity = 0.06 + smoothedAmp.current * 0.16 * (1 - smoothedMute.current);
+    auraMaterial.opacity =
+      0.04 + smoothedAmp.current * 0.1 * (1 - mute);
 
     if (!root.current || !icon.current) return;
 
@@ -132,42 +180,45 @@ export function ActIconNode({
     const pulse = reduceMotion
       ? 1
       : 1 +
-        Math.sin(t * 0.35) * 0.04 +
-        Math.sin(t * 0.13 + 1.7) * 0.025 +
-        smoothedAmp.current * 0.05 +
-        (current ? Math.sin(t * 2.2) * 0.02 : 0);
+        Math.sin(t * 0.35) * 0.035 +
+        Math.sin(t * 0.13 + 1.7) * 0.02 +
+        smoothedAmp.current * 0.045 +
+        (current ? Math.sin(t * 2.2) * 0.018 : 0);
 
-    const s = radius * 1.35 * smoothedScale.current * pulse;
+    const s = radius * 1.45 * smoothedScale.current * pulse;
     root.current.scale.setScalar(s);
     root.current.position.y = reduceMotion
       ? 0
       : Math.sin(t * 0.4) * radius * 0.06;
 
     if (!reduceMotion) {
-      icon.current.rotation.y += delta * (active || current ? 0.55 : 0.18);
-      icon.current.rotation.x = Math.sin(t * 0.25) * 0.08;
+      icon.current.rotation.y += delta * (active || current ? 0.48 : 0.16);
+      icon.current.rotation.x = 0.2 + Math.sin(t * 0.22) * 0.06;
     } else {
-      icon.current.rotation.y = 0.35;
-      icon.current.rotation.x = 0.1;
+      icon.current.rotation.y = 0.45;
+      icon.current.rotation.x = 0.22;
     }
 
     if (aura.current) {
-      aura.current.rotation.z = reduceMotion ? 0 : t * 0.15;
-      const auraScale = 1.15 + smoothedAmp.current * 0.2;
-      aura.current.scale.setScalar(auraScale);
+      aura.current.rotation.z = reduceMotion ? 0 : t * 0.12;
+      aura.current.scale.setScalar(1.2 + smoothedAmp.current * 0.18);
     }
   });
 
   return (
     <group position={[x, 0, 0]}>
       <group ref={root}>
-        <group ref={aura} position={[0, 0, -0.15]}>
-          <mesh material={auraMaterial}>
-            <circleGeometry args={[0.55, 24]} />
+        <group ref={aura} position={[0, 0, -0.2]}>
+          <mesh material={auraMaterial} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.48, 0.08, 12, 36]} />
           </mesh>
         </group>
         <group ref={icon}>
-          <ActIconMeshes act={id} material={material} />
+          <ActIconMeshes
+            act={id}
+            body={bodyMaterial}
+            accent={accentMaterial}
+          />
         </group>
       </group>
     </group>
