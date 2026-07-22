@@ -27,6 +27,24 @@ export const authOptions: AuthOptions = {
         );
         if (!valid) return null;
 
+        // Count successful shared-demo logins (standard password path only).
+        if (
+          user.email === "demo@gpssa.local" ||
+          user.userType === "demo"
+        ) {
+          try {
+            await prisma.activity.create({
+              data: {
+                actor: user.email,
+                action: "demo_login",
+                details: JSON.stringify({ at: new Date().toISOString() }),
+              },
+            });
+          } catch {
+            // Never block sign-in if telemetry write fails.
+          }
+        }
+
         return {
           id: user.id,
           email: user.email,

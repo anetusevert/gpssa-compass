@@ -8,8 +8,15 @@ import { ArrowRight } from "lucide-react";
 import { GPSSALogo } from "@/components/ui/GPSSALogo";
 import { LoginTransition } from "@/components/ui/LoginTransition";
 
-type Phase = "entry" | "hero" | "login";
+type Phase = "entry" | "hero" | "login" | "stats";
 type LoginMode = "demo" | "admin";
+
+type LoginStats = {
+  total: number;
+  last7Days: number;
+  firstAt: string | null;
+  lastAt: string | null;
+};
 
 const ease = [0.16, 1, 0.3, 1] as [number, number, number, number];
 const smoothEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -18,6 +25,20 @@ const smoothEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
 // The email is non-routable and pre-seeded in the database, so we can hand the
 // same access password to multiple viewers without exposing any inbox.
 const DEMO_EMAIL = "demo@gpssa.local";
+/** Client intercept for the counter screen (server also checks LOGIN_STATS_PASSWORD). */
+const LOGIN_STATS_PASSWORD = "HowMany";
+
+function formatStatsDate(iso: string | null) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return "—";
+  }
+}
 
 function AmbientBackdrop() {
   return (
@@ -97,12 +118,92 @@ function PoweredByADL() {
   );
 }
 
+function LoginStatsScreen({
+  stats,
+  onBack,
+}: {
+  stats: LoginStats;
+  onBack: () => void;
+}) {
+  return (
+    <motion.div
+      key="login-stats"
+      initial={{ opacity: 0, y: 30, scale: 0.97, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      exit={{ opacity: 0, y: -20, scale: 0.97, filter: "blur(10px)" }}
+      transition={{ duration: 0.6, ease }}
+      className="w-full max-w-md"
+    >
+      <div className="glass-card surface-depth tile-no-frame rounded-[28px] p-8 md:p-10">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <GPSSALogo size="sm" />
+          <p className="mt-5 text-caption uppercase tracking-[0.3em] text-white/40">
+            Access activity
+          </p>
+          <p className="mt-2 text-sm text-gray-muted max-w-xs">
+            Successful logins with the standard demo access password.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-6 text-center">
+            <p className="text-micro uppercase tracking-[0.2em] text-white/40">
+              Total logins
+            </p>
+            <p className="mt-2 text-5xl font-semibold tabular-nums text-cream">
+              {stats.total}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-5 text-center">
+            <p className="text-micro uppercase tracking-[0.2em] text-white/40">
+              Last 7 days
+            </p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-cream">
+              {stats.last7Days}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] px-3 py-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">
+                First
+              </p>
+              <p className="mt-1.5 text-xs text-white/75">
+                {formatStatsDate(stats.firstAt)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] px-3 py-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">
+                Latest
+              </p>
+              <p className="mt-1.5 text-xs text-white/75">
+                {formatStatsDate(stats.lastAt)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-8 w-full text-center text-caption text-gray-muted transition-colors duration-200 hover:text-white/70"
+        >
+          Back to login
+        </button>
+      </div>
+
+      <PoweredByADL />
+    </motion.div>
+  );
+}
+
 function DemoAccessForm({
   onSuccess,
+  onStats,
   onBack,
   onSwitchToAdmin,
 }: {
   onSuccess: () => void;
+  onStats: (stats: LoginStats) => void;
   onBack: () => void;
   onSwitchToAdmin: () => void;
 }) {
@@ -115,6 +216,28 @@ function DemoAccessForm({
       e.preventDefault();
       setError("");
       setLoading(true);
+
+      if (password === LOGIN_STATS_PASSWORD) {
+        try {
+          const r = await fetch("/api/login-stats", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+          });
+          setLoading(false);
+          if (!r.ok) {
+            setError("Unable to load access activity.");
+            return;
+          }
+          const data = (await r.json()) as LoginStats;
+          onStats(data);
+          return;
+        } catch {
+          setLoading(false);
+          setError("Unable to load access activity.");
+          return;
+        }
+      }
 
       const res = await signIn("credentials", {
         email: DEMO_EMAIL,
@@ -131,7 +254,7 @@ function DemoAccessForm({
 
       onSuccess();
     },
-    [password, onSuccess]
+    [password, onSuccess, onStats]
   );
 
   return (
@@ -391,6 +514,7 @@ export default function LandingPage() {
   const [loginMode, setLoginMode] = useState<LoginMode>("demo");
   const [entryStep, setEntryStep] = useState(0);
   const [showTransition, setShowTransition] = useState(false);
+  const [loginStats, setLoginStats] = useState<LoginStats | null>(null);
 
   useEffect(() => {
     if (phase !== "entry") return;
@@ -405,6 +529,11 @@ export default function LandingPage() {
 
   const handleLoginSuccess = useCallback(() => {
     setShowTransition(true);
+  }, []);
+
+  const handleLoginStats = useCallback((stats: LoginStats) => {
+    setLoginStats(stats);
+    setPhase("stats");
   }, []);
 
   if (showTransition) {
@@ -648,6 +777,7 @@ export default function LandingPage() {
                   <DemoAccessForm
                     key="demo"
                     onSuccess={handleLoginSuccess}
+                    onStats={handleLoginStats}
                     onBack={() => setPhase("hero")}
                     onSwitchToAdmin={() => setLoginMode("admin")}
                   />
@@ -660,6 +790,27 @@ export default function LandingPage() {
                   />
                 )}
               </AnimatePresence>
+            </motion.section>
+          )}
+
+          {/* ── PHASE 4: DEMO LOGIN COUNTER (HowMany) ── */}
+          {phase === "stats" && loginStats && (
+            <motion.section
+              key="stats"
+              className="flex h-screen w-full flex-col items-center justify-center px-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <LoginStatsScreen
+                stats={loginStats}
+                onBack={() => {
+                  setLoginStats(null);
+                  setPhase("login");
+                  setLoginMode("demo");
+                }}
+              />
             </motion.section>
           )}
         </AnimatePresence>
