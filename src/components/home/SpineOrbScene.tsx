@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useRef } from "react";
+import { useRef } from "react";
 import { Environment } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { Group } from "three";
@@ -10,22 +10,17 @@ import {
   type ConductorAct,
 } from "@/lib/spine/conductor-acts";
 import { ActIconNode } from "./spine-icons/ActIconNode";
-import { PersonaFigureNode } from "./spine-icons/icons/PersonaFigure";
 
 export function SpineOrbScene({
   selected,
   hovered,
   statuses,
   accent,
-  personaAccent,
-  personaAvatarUrl,
 }: {
   selected: ConductorAct | null;
   hovered: ConductorAct | null;
   statuses: Record<ConductorAct, ActStatus>;
   accent: string | null;
-  personaAccent?: string | null;
-  personaAvatarUrl?: string | null;
 }) {
   const group = useRef<Group>(null);
   const { viewport } = useThree();
@@ -45,17 +40,6 @@ export function SpineOrbScene({
       <pointLight position={[0, 2, 6]} intensity={0.55} color="#ffffff" />
       <Environment preset="city" />
       <group ref={group}>
-        <Suspense fallback={null}>
-          <PersonaFigureNode
-            colIndex={0}
-            radius={radius}
-            selected={selected === "persona"}
-            hovered={hovered === "persona"}
-            status={statuses.persona}
-            accent={personaAccent ?? accent}
-            avatarUrl={personaAvatarUrl}
-          />
-        </Suspense>
         {BLOB_ACTS.map((id, i) => (
           <ActIconNode
             key={id}
