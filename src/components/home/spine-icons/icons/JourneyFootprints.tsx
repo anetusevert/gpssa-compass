@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type RefObject } from "react";
+import React, { useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group, Material } from "three";
 import { useFootprintGeometry } from "./shared";
@@ -15,8 +15,10 @@ function FootprintMesh({
   groupRef: RefObject<Group | null>;
 }) {
   const { sole, toes } = useFootprintGeometry();
+  // Cast outside JSX — `as RefObject<Group>` inside JSX attrs breaks SWC
+  const ref = groupRef as unknown as React.RefObject<Group>;
   return (
-    <group ref={groupRef as RefObject<Group]}>
+    <group ref={ref}>
       <group scale={[flip ? -1 : 1, 1, 1]}>
         <mesh geometry={sole} material={material} />
         <mesh material={material} position={[0, 0.038, -0.2]} rotation={[-Math.PI / 2, 0, 0]}>

@@ -75,9 +75,10 @@ export function GearMesh({
   const geo = useGearGeometry(teeth, outerR, innerR, depth);
   const hubR = innerR * 0.42;
   const tube = innerR * 0.12;
+  const ref = groupRef as unknown as RefObject<Group> | undefined;
   return (
     <group
-      ref={groupRef as RefObject<Group> | undefined}
+      ref={ref}
       position={position}
       scale={scale}
     >
