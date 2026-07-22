@@ -9,8 +9,16 @@ import {
 } from "@/lib/spine/act-icon-motion";
 import type { ActStatus, ConductorAct } from "@/lib/spine/conductor-acts";
 import { ActIconMeshes } from "./ActIconMeshes";
+import {
+  CLAY_ACCENT,
+  CLAY_ENERGY,
+  CLAY_METAL,
+  CLAY_PRIMARY,
+  CLAY_SECONDARY,
+  COLS,
+} from "./constants";
 
-/** Reference-aligned hues: emerald / silver / cyan / neon green. */
+/** Episode keeps premium book colors; clay acts share Systems sage. */
 export const ACT_ICON_PALETTE: Record<
   Exclude<ConductorAct, "persona">,
   { primary: string; secondary: string; accent: string; metal: string; energy: string }
@@ -23,37 +31,36 @@ export const ACT_ICON_PALETTE: Record<
     energy: "#3DFF9A",
   },
   journey: {
-    primary: "#6B8F7A",
-    secondary: "#7FA28C",
-    accent: "#E8ECE8",
-    metal: "#A8B8AE",
-    energy: "#8FBEA0",
+    primary: CLAY_PRIMARY,
+    secondary: CLAY_SECONDARY,
+    accent: CLAY_ACCENT,
+    metal: CLAY_METAL,
+    energy: CLAY_ENERGY,
   },
   process: {
-    primary: "#84A59D",
-    secondary: "#96B5AD",
-    accent: "#E8ECE8",
-    metal: "#A8B8B0",
-    energy: "#9EC4BA",
+    primary: CLAY_PRIMARY,
+    secondary: CLAY_SECONDARY,
+    accent: CLAY_ACCENT,
+    metal: CLAY_METAL,
+    energy: CLAY_ENERGY,
   },
   systems: {
-    primary: "#3A7A7E",
-    secondary: "#4A9498",
-    accent: "#1A2830",
-    metal: "#B8C0C8",
-    energy: "#3EC8D0",
+    primary: CLAY_PRIMARY,
+    secondary: CLAY_SECONDARY,
+    accent: CLAY_ACCENT,
+    metal: CLAY_METAL,
+    energy: CLAY_ENERGY,
   },
   qa: {
-    primary: "#2A5F6E",
-    secondary: "#3A7A8A",
-    accent: "#8A9AA4",
-    metal: "#C5CAD0",
-    energy: "#5AB8C8",
+    primary: CLAY_PRIMARY,
+    secondary: CLAY_SECONDARY,
+    accent: CLAY_ACCENT,
+    metal: CLAY_METAL,
+    energy: CLAY_ENERGY,
   },
 };
 
 const MUTED = "#3a5068";
-const COLS = 6;
 
 export function ActIconNode({
   id,
@@ -94,77 +101,75 @@ export function ActIconNode({
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
+  const isClay = id !== "episode";
+  const isDense = id === "systems" || id === "process";
+
   const bodyMaterial = useMemo(() => {
     const c = ACT_ICON_PALETTE[id].primary;
-    const isClay = id === "journey" || id === "process";
-    const isSolid = id === "qa" || id === "systems" || isClay;
     return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
       emissiveIntensity: isClay ? 0.05 : 0.1,
-      metalness: isClay ? 0.12 : isSolid ? 0.45 : id === "episode" ? 0.35 : 0.08,
-      roughness: isClay ? 0.65 : isSolid ? 0.48 : id === "episode" ? 0.45 : 0.18,
-      clearcoat: isClay ? 0.12 : isSolid ? 0.25 : 0.55,
+      metalness: isClay ? 0.12 : 0.35,
+      roughness: isClay ? 0.65 : 0.45,
+      clearcoat: isClay ? 0.12 : 0.55,
       clearcoatRoughness: 0.12,
-      transmission: isSolid ? 0 : id === "episode" ? 0.15 : 0.35,
+      transmission: isClay ? 0 : 0.15,
       thickness: 0.35,
       ior: 1.4,
-      transparent: !isSolid,
-      opacity: isSolid ? 1 : id === "episode" ? 0.92 : 0.75,
+      transparent: !isClay,
+      opacity: isClay ? 1 : 0.92,
       depthWrite: true,
       attenuationColor: c,
       attenuationDistance: 1.2,
     });
-  }, [id]);
+  }, [id, isClay]);
 
   const accentMaterial = useMemo(() => {
     const c = ACT_ICON_PALETTE[id].accent;
-    const isScreen = id === "systems";
     return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
-      emissiveIntensity: isScreen ? 0.08 : 0.25,
-      metalness: isScreen ? 0.2 : 0.1,
-      roughness: isScreen ? 0.55 : 0.35,
-      clearcoat: 0.3,
-      transmission: 0.1,
-      thickness: 0.2,
-      transparent: !isScreen,
-      opacity: isScreen ? 1 : 0.85,
-      depthWrite: isScreen,
+      emissiveIntensity: 0.12,
+      metalness: 0.1,
+      roughness: isClay ? 0.55 : 0.35,
+      clearcoat: 0.2,
+      transmission: 0,
+      transparent: false,
+      opacity: 1,
+      depthWrite: true,
     });
-  }, [id]);
+  }, [id, isClay]);
 
   const metalMaterial = useMemo(() => {
     const c = ACT_ICON_PALETTE[id].metal;
-    const isMatte = id === "qa" || id === "systems";
     return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
       emissiveIntensity: 0.06,
-      metalness: isMatte ? 0.55 : 0.92,
-      roughness: isMatte ? 0.42 : 0.28,
-      clearcoat: isMatte ? 0.2 : 0.6,
+      metalness: isClay ? 0.2 : 0.92,
+      roughness: isClay ? 0.5 : 0.28,
+      clearcoat: isClay ? 0.15 : 0.6,
       clearcoatRoughness: 0.2,
       transparent: false,
       opacity: 1,
     });
-  }, [id]);
+  }, [id, isClay]);
 
   const energyMaterial = useMemo(() => {
     const c = ACT_ICON_PALETTE[id].energy;
     return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
-      emissiveIntensity: 1.4,
+      emissiveIntensity: isClay ? 0.55 : 1.4,
       metalness: 0.05,
-      roughness: 0.15,
+      roughness: 0.25,
       transparent: true,
-      opacity: 0.92,
+      opacity: 0.95,
       depthWrite: false,
       toneMapped: false,
     });
-  }, [id]);
+  }, [id, isClay]);
 
   useEffect(
     () => () => {
@@ -176,6 +181,7 @@ export function ActIconNode({
     [bodyMaterial, accentMaterial, metalMaterial, energyMaterial]
   );
 
+  // Column 0 = persona; acts occupy 1..5
   const colIndex = blobIndex + 1;
   const x = ((colIndex + 0.5) / COLS - 0.5) * viewport.width;
   const targets = statusToMotion({ selected, hovered, status });
@@ -192,7 +198,6 @@ export function ActIconNode({
     const live =
       accent && (current || active) ? accent : palette.primary;
     const mute = smoothedMute.current;
-    const isSolid = id === "qa" || id === "systems" || id === "journey" || id === "process";
 
     colorGoal.current.set(live).lerp(mutedColor.current, mute * 0.85);
     emissiveGoal.current
@@ -211,32 +216,26 @@ export function ActIconNode({
     bodyMaterial.color.copy(colorGoal.current);
     bodyMaterial.emissive.copy(emissiveGoal.current);
     bodyMaterial.emissiveIntensity =
-      0.06 + smoothedAmp.current * 0.28 * (1 - mute * 0.6);
-    if (isSolid) {
-      bodyMaterial.opacity = 1;
-    } else {
-      bodyMaterial.opacity =
-        id === "episode"
-          ? 0.75 + (1 - mute) * 0.2
-          : 0.55 + (1 - mute) * 0.3;
-    }
+      0.05 + smoothedAmp.current * 0.25 * (1 - mute * 0.6);
+    bodyMaterial.opacity = isClay
+      ? 1
+      : 0.75 + (1 - mute) * 0.2;
 
     accentMaterial.color.copy(accentColorGoal.current);
     accentMaterial.emissive.copy(accentColorGoal.current);
     accentMaterial.emissiveIntensity =
-      (id === "systems" ? 0.05 : 0.15) + smoothedAmp.current * 0.35 * (1 - mute);
-    accentMaterial.opacity =
-      id === "systems" ? 1 : 0.55 + (1 - mute) * 0.35;
+      0.08 + smoothedAmp.current * 0.25 * (1 - mute);
 
     metalMaterial.color.copy(metalColorGoal.current);
     metalMaterial.emissive.copy(metalColorGoal.current);
-    metalMaterial.emissiveIntensity = 0.04 + smoothedAmp.current * 0.12 * (1 - mute);
+    metalMaterial.emissiveIntensity =
+      0.04 + smoothedAmp.current * 0.12 * (1 - mute);
 
     energyMaterial.color.copy(energyColorGoal.current);
     energyMaterial.emissive.copy(energyColorGoal.current);
     energyMaterial.emissiveIntensity =
-      0.6 + smoothedAmp.current * 1.1 * (1 - mute);
-    energyMaterial.opacity = 0.55 + (1 - mute) * 0.4;
+      0.4 + smoothedAmp.current * 0.7 * (1 - mute);
+    energyMaterial.opacity = 0.7 + (1 - mute) * 0.25;
 
     if (!root.current || !icon.current) return;
 
@@ -244,23 +243,31 @@ export function ActIconNode({
     const pulse = reduceMotion
       ? 1
       : 1 +
-        Math.sin(t * 0.35) * 0.035 +
-        Math.sin(t * 0.13 + 1.7) * 0.02 +
-        smoothedAmp.current * 0.045 +
-        (current ? Math.sin(t * 2.2) * 0.018 : 0);
+        Math.sin(t * 0.35) * 0.03 +
+        Math.sin(t * 0.13 + 1.7) * 0.015 +
+        smoothedAmp.current * 0.04 +
+        (current ? Math.sin(t * 2.2) * 0.015 : 0);
 
     const s = radius * 1.55 * smoothedScale.current * pulse;
     root.current.scale.setScalar(s);
     root.current.position.y = reduceMotion
       ? 0
-      : Math.sin(t * 0.4) * radius * 0.06;
+      : Math.sin(t * 0.4) * radius * 0.05;
 
-    // Slow turn so local icon animations stay readable
+    // Dense isometric icons turn slower so detail stays readable
+    const turn = isDense
+      ? active || current
+        ? 0.12
+        : 0.04
+      : active || current
+        ? 0.24
+        : 0.09;
+
     if (!reduceMotion) {
-      icon.current.rotation.y += delta * (active || current ? 0.28 : 0.1);
-      icon.current.rotation.x = 0.1 + Math.sin(t * 0.22) * 0.04;
+      icon.current.rotation.y += delta * turn;
+      icon.current.rotation.x = 0.08 + Math.sin(t * 0.2) * 0.03;
     } else {
-      icon.current.rotation.y = 0.35;
+      icon.current.rotation.y = isDense ? 0.55 : 0.35;
       icon.current.rotation.x = 0.12;
     }
   });

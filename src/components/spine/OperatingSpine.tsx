@@ -31,7 +31,6 @@ import type { SpineGraphPayload, SpineNodeId, SpineServiceListItem } from "@/lib
 import { filterEligibleEpisodes } from "@/lib/spine/eligibility";
 import { EASE } from "@/lib/motion";
 import { getPersonaById } from "@/data/personas";
-import { PersonaAvatar } from "@/components/personas/PersonaAvatar";
 import { SpineSetupWizard, type WizardStep } from "./SpineSetupWizard";
 import { SpineBrowseModal } from "./SpineBrowseModal";
 import { PersonaChooserModal } from "./PersonaChooserModal";
@@ -654,6 +653,8 @@ export function OperatingSpine({
               accent ??
               (conductorSnap.statuses[litSelection] !== "locked" ? "#00A86B" : null)
             }
+            personaAccent={persona?.color ?? null}
+            personaAvatarUrl={persona?.avatarUrl ?? null}
           />
         </div>
         <div className="absolute inset-0 flex">
@@ -675,22 +676,6 @@ export function OperatingSpine({
                   locked ? "cursor-not-allowed opacity-50" : ""
                 }`}
               >
-                {act === "persona" && (
-                  <div className="pointer-events-none absolute left-1/2 top-[22%] z-10 -translate-x-1/2">
-                    {persona ? (
-                      <PersonaAvatar
-                        persona={persona}
-                        size={variant === "hero" ? "lg" : "md"}
-                        showGlow={status === "current" || isSel}
-                      />
-                    ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-black/40 text-[10px] text-white/40">
-                        ?
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 <span className="mb-0.5 flex items-center gap-1">
                   <span
                     className={`flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold ${

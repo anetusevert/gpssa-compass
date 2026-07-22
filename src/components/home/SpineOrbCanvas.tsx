@@ -10,11 +10,15 @@ export default function SpineOrbCanvas({
   hovered,
   statuses,
   accent,
+  personaAccent,
+  personaAvatarUrl,
 }: {
   selected: ConductorAct | null;
   hovered: ConductorAct | null;
   statuses: Record<ConductorAct, ActStatus>;
   accent: string | null;
+  personaAccent?: string | null;
+  personaAvatarUrl?: string | null;
 }) {
   return (
     <Canvas
@@ -30,6 +34,8 @@ export default function SpineOrbCanvas({
           hovered={hovered}
           statuses={statuses}
           accent={accent}
+          personaAccent={personaAccent}
+          personaAvatarUrl={personaAvatarUrl}
         />
       </Suspense>
     </Canvas>
