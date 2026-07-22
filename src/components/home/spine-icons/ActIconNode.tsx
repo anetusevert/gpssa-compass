@@ -23,18 +23,18 @@ export const ACT_ICON_PALETTE: Record<
     energy: "#3DFF9A",
   },
   journey: {
-    primary: "#128A56",
-    secondary: "#1FB86E",
-    accent: "#F2F5F8",
-    metal: "#B8C0CA",
-    energy: "#4CFFA0",
+    primary: "#6B8F7A",
+    secondary: "#7FA28C",
+    accent: "#E8ECE8",
+    metal: "#A8B8AE",
+    energy: "#8FBEA0",
   },
   process: {
-    primary: "#9AA3AD",
-    secondary: "#C0C8D0",
-    accent: "#E8EEF4",
-    metal: "#A8B0BA",
-    energy: "#39FF14",
+    primary: "#84A59D",
+    secondary: "#96B5AD",
+    accent: "#E8ECE8",
+    metal: "#A8B8B0",
+    energy: "#9EC4BA",
   },
   systems: {
     primary: "#3A7A7E",
@@ -96,20 +96,15 @@ export function ActIconNode({
 
   const bodyMaterial = useMemo(() => {
     const c = ACT_ICON_PALETTE[id].primary;
-    const isSolid = id === "qa" || id === "systems";
+    const isClay = id === "journey" || id === "process";
+    const isSolid = id === "qa" || id === "systems" || isClay;
     return new MeshPhysicalMaterial({
       color: c,
       emissive: c,
-      emissiveIntensity: 0.1,
-      metalness: isSolid
-        ? 0.45
-        : id === "process"
-          ? 0.75
-          : id === "journey" || id === "episode"
-            ? 0.35
-            : 0.08,
-      roughness: isSolid ? 0.48 : id === "episode" ? 0.45 : id === "process" ? 0.35 : 0.18,
-      clearcoat: isSolid ? 0.25 : 0.55,
+      emissiveIntensity: isClay ? 0.05 : 0.1,
+      metalness: isClay ? 0.12 : isSolid ? 0.45 : id === "episode" ? 0.35 : 0.08,
+      roughness: isClay ? 0.65 : isSolid ? 0.48 : id === "episode" ? 0.45 : 0.18,
+      clearcoat: isClay ? 0.12 : isSolid ? 0.25 : 0.55,
       clearcoatRoughness: 0.12,
       transmission: isSolid ? 0 : id === "episode" ? 0.15 : 0.35,
       thickness: 0.35,
@@ -197,7 +192,7 @@ export function ActIconNode({
     const live =
       accent && (current || active) ? accent : palette.primary;
     const mute = smoothedMute.current;
-    const isSolid = id === "qa" || id === "systems";
+    const isSolid = id === "qa" || id === "systems" || id === "journey" || id === "process";
 
     colorGoal.current.set(live).lerp(mutedColor.current, mute * 0.85);
     emissiveGoal.current

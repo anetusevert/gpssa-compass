@@ -47,11 +47,8 @@ export function ActIconMeshes({
       );
     case "journey":
       return (
-        <JourneyWalker
+        <JourneyFootprints
           body={body}
-          accent={accent}
-          metal={metal}
-          energy={energy}
           reduceMotion={reduceMotion}
           amp={amp}
         />
@@ -59,9 +56,7 @@ export function ActIconMeshes({
     case "process":
       return (
         <ProcessGears
-          metal={metal}
-          energy={energy}
-          accent={accent}
+          body={body}
           reduceMotion={reduceMotion}
           amp={amp}
         />
@@ -180,140 +175,122 @@ function EpisodeBook({
   );
 }
 
-/** 2 — Green/silver android on a continuous walk cycle. */
-function JourneyWalker({
+/** Stylized footprint sole + toes (left). Flip scale.x for right. */
+function useFootprintGeometry() {
+  return useMemo(() => {
+    const toeCenters: [number, number, number][] = [
+      [-0.07, 0.22, 0.028],
+      [-0.035, 0.255, 0.032],
+      [0.0, 0.265, 0.034],
+      [0.035, 0.255, 0.032],
+      [0.07, 0.22, 0.028],
+    ];
+
+    const sole = new Shape();
+    sole.moveTo(0, -0.22);
+    sole.bezierCurveTo(0.1, -0.22, 0.13, -0.12, 0.12, -0.02);
+    sole.bezierCurveTo(0.125, 0.08, 0.1, 0.14, 0.06, 0.16);
+    sole.lineTo(-0.06, 0.16);
+    sole.bezierCurveTo(-0.1, 0.14, -0.125, 0.08, -0.12, -0.02);
+    sole.bezierCurveTo(-0.13, -0.12, -0.1, -0.22, 0, -0.22);
+    sole.closePath();
+
+    const geo = new ExtrudeGeometry(sole, {
+      depth: 0.055,
+      bevelEnabled: true,
+      bevelThickness: 0.012,
+      bevelSize: 0.012,
+      bevelSegments: 2,
+      curveSegments: 10,
+    });
+    geo.translate(0, 0, -0.0275);
+    geo.rotateX(-Math.PI / 2);
+    return { sole: geo, toes: toeCenters };
+  }, []);
+}
+
+function FootprintMesh({
+  material,
+  flip,
+  groupRef,
+}: {
+  material: Material;
+  flip?: boolean;
+  groupRef: RefObject<Group | null>;
+}) {
+  const { sole, toes } = useFootprintGeometry();
+  return (
+    <group ref={groupRef as RefObject<Group>} scale={[flip ? -1 : 1, 1, 1]}>
+      <mesh geometry={sole} material={material} />
+      {toes.map(([x, y, r], i) => (
+        <mesh
+          key={i}
+          material={material}
+          position={[x, 0.03, y]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <cylinderGeometry args={[r, r * 0.95, 0.055, 12]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * 2 — Three sage footprints that step in over ~3s, then fade and loop.
+ * Layout matches reference: left → right → left, bottom-left to top-right.
+ */
+function JourneyFootprints({
   body,
-  accent,
-  metal,
-  energy,
   reduceMotion,
   amp,
 }: {
   body: Material;
-  accent: Material;
-  metal: Material;
-  energy: Material;
   reduceMotion: boolean;
   amp: number;
 }) {
   const root = useRef<Group>(null);
-  const leftThigh = useRef<Group>(null);
-  const rightThigh = useRef<Group>(null);
-  const leftCalf = useRef<Group>(null);
-  const rightCalf = useRef<Group>(null);
-  const leftArm = useRef<Group>(null);
-  const rightArm = useRef<Group>(null);
-  const leftFore = useRef<Group>(null);
-  const rightFore = useRef<Group>(null);
+  const f0 = useRef<Group>(null);
+  const f1 = useRef<Group>(null);
+  const f2 = useRef<Group>(null);
+  const CYCLE = 3;
 
   useFrame((state) => {
-    const t = state.clock.elapsedTime * (2.4 + amp * 1.1);
-    const swing = reduceMotion ? 0.18 : Math.sin(t) * 0.62;
-    const knee = reduceMotion ? 0.1 : Math.max(0, -Math.sin(t)) * 0.55;
+    const speed = 1 + amp * 0.15;
+    const t = reduceMotion ? CYCLE * 0.85 : (state.clock.elapsedTime * speed) % CYCLE;
+    const prints = [f0, f1, f2];
+    // Appear at 0.15 / 0.85 / 1.55s, hold, fade from 2.35s
+    const starts = [0.12, 0.78, 1.45];
+    const fadeStart = 2.35;
 
-    if (leftThigh.current) leftThigh.current.rotation.x = swing;
-    if (rightThigh.current) rightThigh.current.rotation.x = -swing;
-    if (leftCalf.current) leftCalf.current.rotation.x = swing > 0 ? knee : 0.08;
-    if (rightCalf.current) rightCalf.current.rotation.x = swing < 0 ? knee : 0.08;
-    if (leftArm.current) leftArm.current.rotation.x = -swing * 0.9;
-    if (rightArm.current) rightArm.current.rotation.x = swing * 0.9;
-    if (leftFore.current) leftFore.current.rotation.x = -0.25 + Math.abs(swing) * 0.2;
-    if (rightFore.current) rightFore.current.rotation.x = -0.25 + Math.abs(swing) * 0.2;
+    prints.forEach((ref, i) => {
+      const g = ref.current;
+      if (!g) return;
+      const appear = ease((t - starts[i]) / 0.28);
+      const fade = t < fadeStart ? 1 : 1 - ease((t - fadeStart) / 0.55);
+      const live = Math.max(0, appear * fade);
+      const press = appear > 0 && appear < 1 ? 1 + Math.sin(appear * Math.PI) * 0.18 : 1;
+      g.scale.setScalar(Math.max(0.001, live * press));
+      g.position.y = (1 - live) * 0.12;
+      g.visible = live > 0.02;
+    });
+
     if (root.current && !reduceMotion) {
-      root.current.position.y = Math.abs(Math.sin(t * 2)) * 0.035;
-      root.current.rotation.y = 0.85 + Math.sin(t * 0.5) * 0.04;
+      root.current.position.y = Math.sin(state.clock.elapsedTime * 1.1) * 0.012;
     }
   });
 
   return (
-    <group ref={root} rotation={[0.08, 0.9, 0]} scale={0.95}>
-      {/* Faceted head */}
-      <mesh material={metal} position={[0, 0.52, 0]}>
-        <icosahedronGeometry args={[0.11, 0]} />
-      </mesh>
-      <mesh material={metal} position={[0, 0.42, 0]}>
-        <cylinderGeometry args={[0.04, 0.05, 0.06, 6]} />
-      </mesh>
-
-      {/* Torso armor */}
-      <mesh material={body} position={[0, 0.22, 0]}>
-        <boxGeometry args={[0.28, 0.32, 0.16]} />
-      </mesh>
-      <mesh material={metal} position={[0, 0.22, 0]}>
-        <boxGeometry args={[0.18, 0.34, 0.1]} />
-      </mesh>
-      {/* Chest glow strips */}
-      <mesh material={energy} position={[-0.12, 0.24, 0.09]}>
-        <boxGeometry args={[0.03, 0.1, 0.02]} />
-      </mesh>
-      <mesh material={energy} position={[-0.12, 0.12, 0.09]}>
-        <boxGeometry args={[0.03, 0.06, 0.02]} />
-      </mesh>
-      {/* Shoulder pads */}
-      <mesh material={body} position={[-0.2, 0.34, 0]}>
-        <sphereGeometry args={[0.09, 10, 10]} />
-      </mesh>
-      <mesh material={body} position={[0.2, 0.34, 0]}>
-        <sphereGeometry args={[0.09, 10, 10]} />
-      </mesh>
-      <mesh material={accent} position={[-0.2, 0.34, 0.07]}>
-        <boxGeometry args={[0.04, 0.03, 0.02]} />
-      </mesh>
-
-      {/* Arms */}
-      <group ref={leftArm} position={[-0.22, 0.3, 0]}>
-        <mesh material={metal} position={[0, -0.1, 0]}>
-          <capsuleGeometry args={[0.035, 0.12, 4, 8]} />
-        </mesh>
-        <group ref={leftFore} position={[0, -0.2, 0]}>
-          <mesh material={body} position={[0, -0.08, 0]}>
-            <capsuleGeometry args={[0.032, 0.12, 4, 8]} />
-          </mesh>
-        </group>
+    <group ref={root} rotation={[0.55, 0.4, -0.4]} scale={1.2}>
+      {/* Left → right → left, bottom-left to top-right */}
+      <group position={[-0.22, 0, -0.2]} rotation={[0, 0.18, 0.1]}>
+        <FootprintMesh material={body} groupRef={f0} />
       </group>
-      <group ref={rightArm} position={[0.22, 0.3, 0]}>
-        <mesh material={metal} position={[0, -0.1, 0]}>
-          <capsuleGeometry args={[0.035, 0.12, 4, 8]} />
-        </mesh>
-        <group ref={rightFore} position={[0, -0.2, 0]}>
-          <mesh material={body} position={[0, -0.08, 0]}>
-            <capsuleGeometry args={[0.032, 0.12, 4, 8]} />
-          </mesh>
-        </group>
+      <group position={[0.02, 0, 0.02]} rotation={[0, -0.08, -0.06]}>
+        <FootprintMesh material={body} flip groupRef={f1} />
       </group>
-
-      {/* Legs */}
-      <group ref={leftThigh} position={[-0.08, 0.02, 0]}>
-        <mesh material={body} position={[0, -0.12, 0]}>
-          <boxGeometry args={[0.1, 0.2, 0.1]} />
-        </mesh>
-        <mesh material={metal} position={[0, -0.22, 0]}>
-          <sphereGeometry args={[0.045, 8, 8]} />
-        </mesh>
-        <group ref={leftCalf} position={[0, -0.24, 0]}>
-          <mesh material={body} position={[0, -0.12, 0]}>
-            <boxGeometry args={[0.09, 0.2, 0.09]} />
-          </mesh>
-          <mesh material={metal} position={[0, -0.24, 0.02]}>
-            <boxGeometry args={[0.1, 0.05, 0.16]} />
-          </mesh>
-        </group>
-      </group>
-      <group ref={rightThigh} position={[0.08, 0.02, 0]}>
-        <mesh material={body} position={[0, -0.12, 0]}>
-          <boxGeometry args={[0.1, 0.2, 0.1]} />
-        </mesh>
-        <mesh material={metal} position={[0, -0.22, 0]}>
-          <sphereGeometry args={[0.045, 8, 8]} />
-        </mesh>
-        <group ref={rightCalf} position={[0, -0.24, 0]}>
-          <mesh material={body} position={[0, -0.12, 0]}>
-            <boxGeometry args={[0.09, 0.2, 0.09]} />
-          </mesh>
-          <mesh material={metal} position={[0, -0.24, 0.02]}>
-            <boxGeometry args={[0.1, 0.05, 0.16]} />
-          </mesh>
-        </group>
+      <group position={[0.24, 0, 0.24]} rotation={[0, 0.14, 0.08]}>
+        <FootprintMesh material={body} groupRef={f2} />
       </group>
     </group>
   );
@@ -377,27 +354,29 @@ function GearMesh({
   groupRef?: RefObject<Group | null>;
 }) {
   const geo = useGearGeometry(teeth, outerR, innerR, depth);
+  const hubR = innerR * 0.42;
+  const tube = innerR * 0.12;
   return (
     <group ref={groupRef as RefObject<Group> | undefined} position={position}>
       <mesh geometry={geo} material={material} />
-      <mesh material={material} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[innerR * 0.55, innerR * 0.55, depth * 0.9, 16]} />
+      {/* Raised washer hub with open center */}
+      <mesh material={material} position={[0, 0, depth * 0.22]}>
+        <torusGeometry args={[hubR, tube, 10, 24]} />
       </mesh>
     </group>
   );
 }
 
-/** 3 — Interlocking silver gears with neon energy ribbons. */
+/**
+ * 3 — Four identical sage gears in a diagonal cluster.
+ * Soft continuous spin (~3s per turn feel), matte clay style.
+ */
 function ProcessGears({
-  metal,
-  energy,
-  accent,
+  body,
   reduceMotion,
   amp,
 }: {
-  metal: Material;
-  energy: Material;
-  accent: Material;
+  body: Material;
   reduceMotion: boolean;
   amp: number;
 }) {
@@ -405,87 +384,54 @@ function ProcessGears({
   const g1 = useRef<Group>(null);
   const g2 = useRef<Group>(null);
   const g3 = useRef<Group>(null);
-  const energyRoot = useRef<Group>(null);
   const root = useRef<Group>(null);
 
   useFrame((state, delta) => {
-    const speed = (0.7 + amp * 0.55) * (reduceMotion ? 0.15 : 1);
+    // ~one slow turn every ~3s at base amp
+    const speed = ((Math.PI * 2) / 3) * (0.85 + amp * 0.35) * (reduceMotion ? 0.12 : 1);
     if (g0.current) g0.current.rotation.z += delta * speed;
-    if (g1.current) g1.current.rotation.z -= delta * speed * 1.15;
-    if (g2.current) g2.current.rotation.z -= delta * speed * 1.35;
-    if (g3.current) g3.current.rotation.z += delta * speed * 1.6;
-    if (energyRoot.current && !reduceMotion) {
-      energyRoot.current.rotation.z += delta * (1.2 + amp);
-      const pulse = 0.85 + Math.sin(state.clock.elapsedTime * 4) * 0.15;
-      energyRoot.current.scale.setScalar(pulse);
-    }
+    if (g1.current) g1.current.rotation.z -= delta * speed;
+    if (g2.current) g2.current.rotation.z += delta * speed;
+    if (g3.current) g3.current.rotation.z -= delta * speed;
     if (root.current && !reduceMotion) {
-      root.current.position.y = Math.sin(state.clock.elapsedTime * 1.2) * 0.02;
+      root.current.position.y = Math.sin(state.clock.elapsedTime * 1.05) * 0.015;
     }
   });
 
-  return (
-    <group ref={root} rotation={[0.55, 0.35, 0.15]} scale={0.92}>
-      {/* Soft code-panel backdrop planes */}
-      <mesh material={accent} position={[-0.45, 0.2, -0.25]} rotation={[0, 0.3, 0.1]}>
-        <planeGeometry args={[0.35, 0.45]} />
-      </mesh>
-      <mesh material={accent} position={[0.42, -0.15, -0.22]} rotation={[0, -0.25, -0.08]}>
-        <planeGeometry args={[0.28, 0.38]} />
-      </mesh>
+  const size = {
+    teeth: 8,
+    outerR: 0.22,
+    innerR: 0.13,
+    depth: 0.1,
+  } as const;
 
+  return (
+    <group ref={root} rotation={[0.85, 0.25, -0.2]} scale={1.05}>
+      {/* Diagonal cluster: bottom-left → top-right */}
       <GearMesh
         groupRef={g0}
-        material={metal}
-        teeth={14}
-        outerR={0.38}
-        innerR={0.22}
-        depth={0.1}
-        position={[0.02, -0.12, 0.05]}
+        material={body}
+        {...size}
+        position={[-0.26, -0.22, 0]}
       />
       <GearMesh
         groupRef={g1}
-        material={metal}
-        teeth={12}
-        outerR={0.3}
-        innerR={0.17}
-        depth={0.09}
-        position={[-0.02, 0.28, -0.02]}
+        material={body}
+        {...size}
+        position={[-0.06, -0.02, 0.02]}
       />
       <GearMesh
         groupRef={g2}
-        material={metal}
-        teeth={11}
-        outerR={0.26}
-        innerR={0.15}
-        depth={0.08}
-        position={[-0.32, 0.02, -0.08]}
+        material={body}
+        {...size}
+        position={[0.12, 0.14, 0.01]}
       />
       <GearMesh
         groupRef={g3}
-        material={metal}
-        teeth={9}
-        outerR={0.18}
-        innerR={0.1}
-        depth={0.07}
-        position={[0.3, 0.18, 0.02]}
+        material={body}
+        {...size}
+        position={[0.3, 0.3, 0.03]}
       />
-
-      {/* Energy ribbons through hubs */}
-      <group ref={energyRoot}>
-        <mesh material={energy} position={[0, 0.05, 0.08]} rotation={[0.4, 0.2, 0.3]}>
-          <torusGeometry args={[0.22, 0.018, 8, 32, Math.PI * 1.4]} />
-        </mesh>
-        <mesh material={energy} position={[-0.08, 0.1, 0.12]} rotation={[-0.5, 0.6, 1.1]}>
-          <torusGeometry args={[0.16, 0.014, 8, 28, Math.PI * 1.2]} />
-        </mesh>
-        <mesh material={energy} position={[0.1, -0.05, 0.1]}>
-          <sphereGeometry args={[0.05, 12, 12]} />
-        </mesh>
-        <mesh material={energy} position={[-0.12, 0.22, 0.06]}>
-          <sphereGeometry args={[0.035, 10, 10]} />
-        </mesh>
-      </group>
     </group>
   );
 }
